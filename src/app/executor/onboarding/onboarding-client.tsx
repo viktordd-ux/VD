@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { SKILL_CATEGORIES, DEFAULT_SKILLS } from "@/lib/skill-tags";
 
 const STEPS = 9;
 
@@ -49,7 +50,12 @@ export function OnboardingClient({ skillOptions }: Props) {
   const [primarySkill, setPrimarySkill] = useState("");
   const [customTag, setCustomTag] = useState("");
 
-  const options = skillOptions.length ? skillOptions : ["layout", "react", "figma", "design"];
+  const predefinedSet = new Set(DEFAULT_SKILLS);
+  const extraSkills = skillOptions.filter((s) => !predefinedSet.has(s));
+  const displayCategories = [
+    ...SKILL_CATEGORIES,
+    ...(extraSkills.length ? [{ label: "Другое", skills: extraSkills }] : []),
+  ];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -231,55 +237,72 @@ export function OnboardingClient({ skillOptions }: Props) {
         )}
 
         {step === 7 && (
-          <div className="space-y-4">
-            <h1 className="text-xl font-semibold text-zinc-900">Навыки</h1>
-            <p className="text-sm text-zinc-600">
-              Выберите теги, с которыми вы работаете. Основной навык используется при приоритете
-              подбора.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {options.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => toggleSkill(s)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    skills.includes(s)
-                      ? "bg-zinc-900 text-white"
-                      : "border border-zinc-300 bg-white text-zinc-700"
-                  }`}
-                >
-                  {s}
-                </button>
+          <div className="space-y-5">
+            <div>
+              <h1 className="text-xl font-semibold text-zinc-900">Навыки</h1>
+              <p className="mt-1 text-sm text-zinc-600">
+                Выберите теги, с которыми вы работаете. Основной навык используется при приоритете
+                подбора.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {displayCategories.map((cat) => (
+                <div key={cat.label}>
+                  <p className="mb-2 text-xs font-semibold text-zinc-500">{cat.label}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {cat.skills.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => toggleSkill(s)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          skills.includes(s)
+                            ? "bg-zinc-900 text-white"
+                            : "border border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={customTag}
-                onChange={(e) => setCustomTag(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())}
-                placeholder="Свой тег и Enter"
-                className="min-w-[160px] flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-              />
-              <Button type="button" variant="secondary" size="sm" onClick={addCustomSkill}>
-                Добавить
-              </Button>
-            </div>
+
             <div>
-              <label className="text-xs font-medium text-zinc-600">Основной навык</label>
-              <select
-                value={primarySkill}
-                onChange={(e) => setPrimarySkill(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-              >
-                <option value="">— выберите из выбранных —</option>
-                {skills.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <p className="mb-2 text-xs font-semibold text-zinc-500">Свой навык</p>
+              <div className="flex gap-2">
+                <input
+                  value={customTag}
+                  onChange={(e) => setCustomTag(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())}
+                  placeholder="Введите и нажмите Enter"
+                  className="min-w-[160px] flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+                <Button type="button" variant="secondary" size="sm" onClick={addCustomSkill}>
+                  Добавить
+                </Button>
+              </div>
             </div>
+
+            {skills.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-zinc-600">Основной навык</label>
+                <select
+                  value={primarySkill}
+                  onChange={(e) => setPrimarySkill(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                >
+                  <option value="">— выберите из выбранных —</option>
+                  {skills.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         )}
 
