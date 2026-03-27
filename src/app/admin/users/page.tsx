@@ -28,7 +28,7 @@ export default async function UsersPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Исполнители</h1>
         <CreateExecutorDialog />
       </div>
-      <p className="text-sm text-zinc-600">
+      <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         Рейтинг подбора: учёт просрочек по завершённым заказам, скорости и прибыли (шкала 0–100).
         Нажмите на строку, чтобы открыть карточку исполнителя.
       </p>
@@ -43,6 +43,7 @@ export default async function UsersPage() {
               <th className={thClass}>Рейтинг</th>
               <th className={thClass}>Статус</th>
               <th className={thClass}>Профиль</th>
+              <th className={thClass}>Действие</th>
             </tr>
           </thead>
           <tbody>
@@ -74,7 +75,19 @@ export default async function UsersPage() {
                     </span>
                   </td>
                   <td className={`${tdClass} tabular-nums`}>
-                    {score !== undefined ? score : "—"}
+                    {score !== undefined ? (
+                      <div className="min-w-[140px]">
+                        <p className="text-xs font-semibold text-zinc-800">{score}</p>
+                        <div className="mt-1 h-2 rounded-full bg-zinc-100">
+                          <div
+                            className="h-2 rounded-full bg-blue-600"
+                            style={{ width: `${Math.max(5, Math.min(100, score))}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className={tdClass}>
                     <Badge tone={u.status === "active" ? "success" : "danger"}>
@@ -85,6 +98,14 @@ export default async function UsersPage() {
                     <Badge tone={u.onboarded ? "success" : "warning"}>
                       {u.onboarded ? "Заполнен" : "Онбординг"}
                     </Badge>
+                  </td>
+                  <td className={tdClass}>
+                    <Link
+                      href={`/admin/users/${u.id}`}
+                      className="inline-flex rounded-md border border-blue-300 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                    >
+                      Подробнее
+                    </Link>
                   </td>
                 </tr>
               );

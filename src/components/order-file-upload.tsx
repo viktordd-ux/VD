@@ -42,11 +42,11 @@ export function OrderFileUpload({ orderId }: { orderId: string }) {
   }
 
   return (
-    <form ref={formRef} onSubmit={onUpload} className="mt-4 space-y-3">
+    <form ref={formRef} onSubmit={onUpload} className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
       <div>
         <label className="text-xs font-medium text-zinc-600">Загрузить документ (ТЗ, бриф, референсы…)</label>
         <div className="mt-1 flex items-center gap-3">
-          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50">
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-blue-50">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"

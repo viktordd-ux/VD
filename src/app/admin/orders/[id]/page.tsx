@@ -75,7 +75,7 @@ export default async function AdminOrderPage({ params }: Props) {
         ← К списку заказов
       </Link>
 
-      <Card className="p-6">
+      <Card className="p-6 shadow-md shadow-slate-950/[0.06]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
@@ -162,9 +162,12 @@ export default async function AdminOrderPage({ params }: Props) {
         <AdminFileUpload orderId={id} />
 
         {files.length > 0 && (
-          <ul className="mt-5 divide-y divide-zinc-100">
+          <ul className="mt-5 space-y-2">
             {files.map((f) => (
-              <li key={f.id} className="flex items-start gap-3 py-2.5 text-sm">
+              <li
+                key={f.id}
+                className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm shadow-sm"
+              >
                 <span
                   className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                     f.uploadedBy === "admin"

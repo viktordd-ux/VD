@@ -129,6 +129,21 @@ export default async function OrdersPage({
     );
   }
 
+  const baseParams = new URLSearchParams();
+  if (filter && filter !== "active") baseParams.set("filter", filter);
+  if (lowMargin) baseParams.set("lowMargin", "1");
+  if (skillsFilter.length) baseParams.set("skills", skillsFilter.join(","));
+  if (statusFilter.length) baseParams.set("status", statusFilter.join(","));
+  if (riskFilter.length) baseParams.set("risk", riskFilter.join(","));
+  if (deadlineAfter) baseParams.set("deadlineAfter", deadlineAfter);
+  if (deadlineBefore) baseParams.set("deadlineBefore", deadlineBefore);
+  if (skillsMode === "all") baseParams.set("skillsMode", "all");
+  const sortHref = (nextSort: OrderListSort) => {
+    const p = new URLSearchParams(baseParams);
+    p.set("sort", nextSort);
+    return `/admin/orders?${p.toString()}`;
+  };
+
   return (
     <OrdersBulkProvider>
     <div className="space-y-6">
@@ -169,9 +184,21 @@ export default async function OrdersPage({
                 <th className={thClass}>Клиент</th>
                 <th className={thClass}>Статус</th>
                 <th className={thClass}>Исполнитель</th>
-                <th className={thClass}>Дедлайн</th>
-                <th className={thClass}>Прибыль</th>
-                <th className={thClass}>Маржа %</th>
+                <th className={thClass}>
+                  <Link href={sortHref(sort === "deadline_asc" ? "deadline_desc" : "deadline_asc")}>
+                    Дедлайн
+                  </Link>
+                </th>
+                <th className={thClass}>
+                  <Link href={sortHref(sort === "profit_desc" ? "profit_asc" : "profit_desc")}>
+                    Прибыль
+                  </Link>
+                </th>
+                <th className={thClass}>
+                  <Link href={sortHref(sort === "margin_desc" ? "margin_asc" : "margin_desc")}>
+                    Маржа %
+                  </Link>
+                </th>
                 <th className={thClass}>Обновлён</th>
                 <th className={`${thClass} w-[200px]`}>Действия</th>
               </tr>

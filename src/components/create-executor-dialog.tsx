@@ -55,7 +55,7 @@ export function CreateExecutorDialog() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
       >
         Создать исполнителя
       </button>
@@ -98,14 +98,14 @@ export function CreateExecutorDialog() {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                 >
                   {busy ? "…" : "Создать"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="rounded-md border border-zinc-300 px-4 py-2 text-sm"
+                  className="rounded-md border border-blue-300 bg-transparent px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
                 >
                   Отмена
                 </button>

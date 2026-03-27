@@ -39,7 +39,7 @@ export function FinanceFilters({ executors, initial }: Props) {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-wrap items-end gap-4 rounded-2xl border border-zinc-200/90 bg-zinc-50/80 p-5 shadow-sm shadow-zinc-950/[0.03]"
+      className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/[0.06]"
     >
       <div>
         <label className="text-xs font-medium text-zinc-500">Период с</label>
@@ -86,7 +86,7 @@ export function FinanceFilters({ executors, initial }: Props) {
       <button
         type="submit"
         disabled={busy}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
       >
         {busy ? "…" : "Применить"}
       </button>

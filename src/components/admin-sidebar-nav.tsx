@@ -49,7 +49,7 @@ export function AdminSidebarNav() {
   }
 
   return (
-    <nav className="flex flex-1 flex-col gap-0.5 p-2">
+    <nav className="flex flex-1 flex-col gap-1 p-3">
       {items.map((item) => {
         const isOn = active(item.href);
         const count = item.badgeKey ? badges[item.badgeKey] : 0;
@@ -58,21 +58,21 @@ export function AdminSidebarNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200",
               isOn
-                ? "bg-zinc-900 text-white shadow-sm"
-                : "text-zinc-700 hover:bg-zinc-100",
+                ? "bg-blue-600 text-white shadow-sm shadow-blue-950/30"
+                : "text-slate-100 hover:bg-slate-700/80",
             )}
           >
             <item.icon
-              className={cn("h-[18px] w-[18px] shrink-0", isOn ? "text-white" : "text-zinc-500")}
+              className={cn("h-[18px] w-[18px] shrink-0", isOn ? "text-white" : "text-slate-300")}
             />
             <span className="flex-1">{item.label}</span>
             {count > 0 && (
               <span
                 className={cn(
                   "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none",
-                  isOn ? "bg-white text-zinc-900" : "bg-red-500 text-white",
+                  isOn ? "bg-white text-slate-900" : "bg-red-500 text-white",
                 )}
               >
                 {count > 99 ? "99+" : count}
