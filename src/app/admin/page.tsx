@@ -1,7 +1,7 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { buildDailyProfitSeries } from "@/lib/daily-profit";
-import { ProfitAreaChart } from "@/components/profit-area-chart";
+import { ProfitAreaChartLazy } from "@/components/charts-lazy";
 import { Card } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -110,7 +110,7 @@ export default async function AdminDashboard() {
         </div>
       </section>
 
-      <ProfitAreaChart
+      <ProfitAreaChartLazy
         series30={series30}
         title="График прибыли по завершённым заказам"
       />

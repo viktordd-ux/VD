@@ -3,8 +3,10 @@ import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { buildDailyProfitSeries } from "@/lib/daily-profit";
 import { buildMarginSeriesByExecutor } from "@/lib/finance-margin-series";
-import { FinanceMarginBarChart } from "@/components/finance-margin-bar";
-import { ProfitAreaChart } from "@/components/profit-area-chart";
+import {
+  FinanceMarginBarChartLazy,
+  ProfitAreaChartLazy,
+} from "@/components/charts-lazy";
 import { FinanceFilters } from "./finance-filters";
 
 export const dynamic = "force-dynamic";
@@ -162,14 +164,14 @@ export default async function FinancePage({
         initial={filterInitial}
       />
 
-      <FinanceMarginBarChart
+      <FinanceMarginBarChartLazy
         series1={series1}
         series7={series7}
         series30={series30}
         title="Маржа % по исполнителям (завершённые заказы)"
       />
 
-      <ProfitAreaChart
+      <ProfitAreaChartLazy
         series30={series30profit}
         title="Прибыль по завершённым заказам по дням"
       />
