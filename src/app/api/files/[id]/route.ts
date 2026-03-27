@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
-import { getFileSignedUrl } from "@/lib/uploads";
+import { deleteStorageFile, getFileSignedUrl, isStorageFileEntry } from "@/lib/uploads";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -22,8 +22,16 @@ export async function GET(_req: Request, { params }: Params) {
     return forbidden();
   }
 
+  if (file.kind === "link" && file.externalUrl) {
+    return NextResponse.redirect(file.externalUrl);
+  }
+
+  if (!isStorageFileEntry(file)) {
+    return NextResponse.json({ error: "Запись без файла" }, { status: 404 });
+  }
+
   try {
-    const signedUrl = await getFileSignedUrl(file.filePath);
+    const signedUrl = await getFileSignedUrl(file.filePath!);
     return NextResponse.redirect(signedUrl);
   } catch {
     return NextResponse.json({ error: "Файл недоступен" }, { status: 404 });
@@ -39,11 +47,12 @@ export async function DELETE(_req: Request, { params }: Params) {
   const file = await prisma.file.findUnique({ where: { id } });
   if (!file) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  try {
-    const { deleteStorageFile } = await import("@/lib/uploads");
-    await deleteStorageFile(file.filePath);
-  } catch {
-    // Storage delete failure is non-fatal
+  if (isStorageFileEntry(file)) {
+    try {
+      await deleteStorageFile(file.filePath!);
+    } catch {
+      // Storage delete failure is non-fatal
+    }
   }
 
   await prisma.file.delete({ where: { id } });

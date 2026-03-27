@@ -39,6 +39,11 @@ enum FileUploaderRole {
   executor
 }
 
+enum FileEntryKind {
+  file
+  link
+}
+
 enum CheckpointStatus {
   pending
   awaiting_approval
@@ -137,7 +142,10 @@ model File {
   id          String           @id @default(cuid())
   orderId     String           @map("order_id")
   uploadedBy  FileUploaderRole @map("uploaded_by")
-  filePath    String           @map("file_path")
+  kind        FileEntryKind    @default(file)
+  filePath    String?          @map("file_path")
+  externalUrl String?          @map("external_url") @db.Text
+  linkTitle   String?          @map("link_title") @db.Text
   comment     String?          @db.Text
   createdAt   DateTime         @default(now()) @map("created_at")
 

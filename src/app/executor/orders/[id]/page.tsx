@@ -8,6 +8,7 @@ import { ExecutorOrderToolbar } from "@/components/executor-order-toolbar";
 import { OrderHistoryTabs } from "@/components/order-history-tabs";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
+import { displayFileEntryLabel } from "@/lib/uploads";
 import { ExecutorOrderPanel } from "./ui";
 
 export const dynamic = "force-dynamic";
@@ -94,14 +95,21 @@ export default async function ExecutorOrderPage({ params }: Props) {
         <ul className="mt-3 space-y-3 text-sm">
           {executorFiles.map((f) => (
             <li key={f.id} className="rounded-lg border border-zinc-100 bg-zinc-50/80 p-3">
-              <a
-                href={`/api/files/${f.id}`}
-                className="font-medium text-blue-600 hover:underline"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {f.filePath.split("/").pop()}
-              </a>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={`/api/files/${f.id}`}
+                  className="min-w-0 font-medium text-zinc-900 underline-offset-2 hover:underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {displayFileEntryLabel(f)}
+                </a>
+                {f.kind === "link" && (
+                  <span className="shrink-0 rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-700">
+                    Ссылка
+                  </span>
+                )}
+              </div>
               {f.comment ? (
                 <p className="mt-2 whitespace-pre-wrap text-xs text-zinc-600">
                   {f.comment}
@@ -127,11 +135,11 @@ export default async function ExecutorOrderPage({ params }: Props) {
               <li key={f.id}>
                 <a
                   href={`/api/files/${f.id}`}
-                  className="text-blue-600 hover:underline"
+                  className="font-medium text-zinc-900 underline-offset-2 hover:underline"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {f.filePath.split("/").pop()}
+                  {displayFileEntryLabel(f)}
                 </a>
                 {f.comment ? (
                   <span className="text-zinc-500"> — {f.comment}</span>

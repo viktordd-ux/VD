@@ -11,7 +11,7 @@ import { OrderHistoryTabs } from "@/components/order-history-tabs";
 import { OrderRiskBadges } from "@/components/order-risk-badges";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
-import { displayFilename } from "@/lib/uploads";
+import { displayFileEntryLabel } from "@/lib/uploads";
 import { AdminOrderDelete } from "./admin-order-delete";
 import { AdminOrderForm } from "./ui";
 
@@ -152,7 +152,7 @@ export default async function AdminOrderPage({ params }: Props) {
           {files.length > 0 && (
             <a
               href={`/api/orders/${id}/files/archive`}
-              className="text-sm font-medium text-blue-600 hover:underline"
+              className="text-sm font-medium text-zinc-800 underline-offset-2 hover:underline"
             >
               Скачать архив (ZIP)
             </a>
@@ -171,21 +171,28 @@ export default async function AdminOrderPage({ params }: Props) {
                 <span
                   className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                     f.uploadedBy === "admin"
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-zinc-200 text-zinc-800"
                       : "bg-zinc-100 text-zinc-600"
                   }`}
                 >
                   {f.uploadedBy === "admin" ? "Админ" : "Исполнитель"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <a
-                    href={`/api/files/${f.id}`}
-                    className="truncate font-medium text-blue-600 hover:underline"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {displayFilename(f.filePath)}
-                  </a>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      href={`/api/files/${f.id}`}
+                      className="min-w-0 truncate font-medium text-zinc-900 underline-offset-2 hover:underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {displayFileEntryLabel(f)}
+                    </a>
+                    {f.kind === "link" && (
+                      <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-600">
+                        Ссылка
+                      </span>
+                    )}
+                  </div>
                   {f.comment && (
                     <p className="mt-0.5 text-xs text-zinc-500">{f.comment}</p>
                   )}

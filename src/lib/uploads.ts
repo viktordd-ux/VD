@@ -1,3 +1,4 @@
+import type { FileEntryKind } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 import path from "path";
@@ -79,4 +80,39 @@ export function displayFilename(filePath: string): string {
   const base = filePath.split("/").pop() ?? filePath;
   const match = base.match(/^[0-9a-f-]{36}_(.+)$/i);
   return match ? match[1] : base;
+}
+
+export function isStorageFileEntry(f: {
+  kind: FileEntryKind;
+  filePath: string | null;
+}): boolean {
+  return f.kind === "file" && Boolean(f.filePath?.trim());
+}
+
+/** Подпись в списке: файл по пути в хранилище или ссылка с опциональным названием. */
+export function displayFileEntryLabel(f: {
+  kind: FileEntryKind;
+  filePath: string | null;
+  externalUrl: string | null;
+  linkTitle: string | null;
+}): string {
+  if (f.kind === "link" && f.externalUrl) {
+    const t = f.linkTitle?.trim();
+    return t || f.externalUrl;
+  }
+  if (f.filePath) return displayFilename(f.filePath);
+  return "—";
+}
+
+/** Проверка и нормализация URL (http/https). */
+export function normalizeExternalUrl(input: string): string | null {
+  const t = input.trim();
+  if (!t) return null;
+  try {
+    const u = new URL(t.includes("://") ? t : `https://${t}`);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
 }

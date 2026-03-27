@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
-import { saveOrderFile } from "@/lib/uploads";
+import { normalizeExternalUrl, saveOrderFile } from "@/lib/uploads";
 
 export const maxDuration = 60;
 
@@ -42,6 +42,60 @@ export async function POST(req: Request, { params }: Params) {
     return forbidden();
   }
 
+  const uploadedBy = user.role === "admin" ? "admin" : "executor";
+  const ct = req.headers.get("content-type") ?? "";
+
+  if (ct.includes("application/json")) {
+    let body: { externalUrl?: string; comment?: string | null; linkTitle?: string | null };
+    try {
+      body = (await req.json()) as typeof body;
+    } catch {
+      return NextResponse.json({ error: "Некорректный JSON" }, { status: 400 });
+    }
+    const url = normalizeExternalUrl(String(body.externalUrl ?? ""));
+    if (!url) {
+      return NextResponse.json(
+        { error: "Укажите корректную ссылку (http или https)" },
+        { status: 400 },
+      );
+    }
+    const comment = body.comment?.trim() ? body.comment.trim() : null;
+    const linkTitle = body.linkTitle?.trim() ? body.linkTitle.trim() : null;
+
+    let row: Awaited<ReturnType<typeof prisma.file.create>>;
+    try {
+      row = await prisma.file.create({
+        data: {
+          orderId,
+          uploadedBy,
+          kind: "link",
+          filePath: null,
+          externalUrl: url,
+          linkTitle,
+          comment,
+        },
+      });
+    } catch (err) {
+      console.error("[files/link] DB error:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ error: `Ошибка базы данных: ${msg}` }, { status: 500 });
+    }
+
+    try {
+      await writeAudit({
+        entityType: "file",
+        entityId: row.id,
+        actionType: "upload",
+        changedById: user.id,
+        diff: { orderId, kind: "link", externalUrl: url },
+      });
+    } catch (err) {
+      console.error("[files/link] Audit error (non-fatal):", err);
+    }
+
+    return NextResponse.json(row);
+  }
+
   let formData: FormData;
   try {
     formData = await req.formData();
@@ -66,12 +120,16 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: `Ошибка хранилища: ${msg}` }, { status: 502 });
   }
 
-  const uploadedBy = user.role === "admin" ? "admin" : "executor";
-
   let row: Awaited<ReturnType<typeof prisma.file.create>>;
   try {
     row = await prisma.file.create({
-      data: { orderId, uploadedBy, filePath, comment },
+      data: {
+        orderId,
+        uploadedBy,
+        kind: "file",
+        filePath,
+        comment,
+      },
     });
   } catch (err) {
     console.error("[files/upload] DB error:", err);

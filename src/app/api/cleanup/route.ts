@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { deleteStorageFile } from "@/lib/uploads";
+import { deleteStorageFile, isStorageFileEntry } from "@/lib/uploads";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
   // Все файлы этих заказов
   const files = await prisma.file.findMany({
     where: { orderId: { in: orderIds } },
-    select: { id: true, filePath: true },
+    select: { id: true, kind: true, filePath: true },
   });
 
   if (files.length === 0) {
@@ -54,8 +54,17 @@ export async function GET(req: Request) {
   let errors = 0;
 
   for (const file of files) {
+    if (!isStorageFileEntry(file)) {
+      try {
+        await prisma.file.delete({ where: { id: file.id } });
+        deleted++;
+      } catch {
+        errors++;
+      }
+      continue;
+    }
     try {
-      await deleteStorageFile(file.filePath);
+      await deleteStorageFile(file.filePath!);
     } catch {
       // Если файл уже удалён из хранилища — не страшно, продолжаем
       errors++;

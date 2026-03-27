@@ -3,7 +3,12 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
-import { downloadFileBuffer, displayFilename } from "@/lib/uploads";
+import {
+  displayFileEntryLabel,
+  downloadFileBuffer,
+  displayFilename,
+  isStorageFileEntry,
+} from "@/lib/uploads";
 
 export const runtime = "nodejs";
 
@@ -35,7 +40,23 @@ export async function GET(_req: Request, { params }: Params) {
 
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
-    const name = `${String(i + 1).padStart(3, "0")}_${f.uploadedBy}_${displayFilename(f.filePath)}`;
+    const label = displayFileEntryLabel(f);
+    const baseName = `${String(i + 1).padStart(3, "0")}_${f.uploadedBy}_${label.replace(/[/\\?%*:|"<>]/g, "_").slice(0, 80)}`;
+
+    if (f.kind === "link" && f.externalUrl) {
+      zip.file(
+        `${baseName}.url.txt`,
+        `${f.linkTitle ? `${f.linkTitle}\n` : ""}${f.externalUrl}${f.comment ? `\n\n${f.comment}` : ""}`,
+      );
+      continue;
+    }
+
+    if (!isStorageFileEntry(f) || !f.filePath) {
+      zip.file(`${baseName}.txt`, "Нет данных файла");
+      continue;
+    }
+
+    const name = `${baseName}_${displayFilename(f.filePath)}`;
     try {
       const buf = await downloadFileBuffer(f.filePath);
       zip.file(name, buf);
