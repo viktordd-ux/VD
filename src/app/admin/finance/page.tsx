@@ -8,6 +8,7 @@ import {
   FinanceMarginBarChartLazy,
   ProfitAreaChartLazy,
 } from "@/components/charts-lazy";
+import { AdminFinanceTable } from "@/components/admin-finance-table";
 import { FinanceFilters } from "./finance-filters";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,21 @@ export default async function FinancePage({
         }
       : {}),
   };
+
+  const allOrders = await prisma.order.findMany({
+    where: { ...orderIsActive, ...execWhere },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      clientName: true,
+      budgetClient: true,
+      budgetExecutor: true,
+      profit: true,
+    },
+    take: 200,
+  });
 
   const [totals, dayP, weekP, monthP, series30profit, doneOrders, users] =
     await Promise.all([
@@ -276,6 +292,29 @@ export default async function FinancePage({
         </Link>{" "}
         в списке заказов.
       </p>
+
+      <section>
+        <div className="mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Редактирование финансов по заказам
+          </h2>
+          <p className="mt-1 text-xs text-zinc-400">
+            Нажмите «Изменить» для корректировки бюджетов (возвраты, скидки). Прибыль
+            пересчитывается автоматически. Изменения записываются в историю аудита.
+          </p>
+        </div>
+        <AdminFinanceTable
+          orders={allOrders.map((o) => ({
+            id: o.id,
+            title: o.title,
+            status: o.status,
+            clientName: o.clientName,
+            budgetClient: o.budgetClient.toString(),
+            budgetExecutor: o.budgetExecutor.toString(),
+            profit: o.profit.toString(),
+          }))}
+        />
+      </section>
     </div>
   );
 }

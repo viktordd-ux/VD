@@ -14,6 +14,7 @@ import {
 } from "@/components/table-wrap";
 import { formatUserDisplayName } from "@/lib/user-profile";
 import { userStatusLabel } from "@/lib/ui-labels";
+import { AdminUserStatusToggle } from "@/components/admin-user-status-toggle";
 import { ExecutorSkillsEditor } from "../ui";
 
 export const dynamic = "force-dynamic";
@@ -108,10 +109,14 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
           </div>
           <div>
             <dt className="text-xs font-medium uppercase text-zinc-500">Статус аккаунта</dt>
-            <dd className="mt-1">
+            <dd className="mt-1 flex items-center gap-3">
               <Badge tone={user.status === "active" ? "success" : "danger"}>
                 {userStatusLabel[user.status]}
               </Badge>
+              <AdminUserStatusToggle
+                userId={user.id}
+                currentStatus={user.status}
+              />
             </dd>
           </div>
           <div>
