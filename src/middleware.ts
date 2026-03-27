@@ -4,10 +4,21 @@ import { getToken } from "next-auth/jwt";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const token = await getToken({
-    req,
-    secret: process.env.AUTH_SECRET,
-  });
+  const secret = process.env.AUTH_SECRET;
+
+  let token: Awaited<ReturnType<typeof getToken>> = null;
+  if (secret) {
+    try {
+      token = await getToken({
+        req,
+        secret,
+        secureCookie: process.env.NODE_ENV === "production",
+      });
+    } catch {
+      token = null;
+    }
+  }
+
   const isLoggedIn = !!token;
   const role = token?.role as "admin" | "executor" | undefined;
   const isApiAuth = pathname.startsWith("/api/auth");
