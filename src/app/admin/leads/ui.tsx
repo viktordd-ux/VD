@@ -29,7 +29,7 @@ export function ConvertLeadButton({ leadId }: { leadId: string }) {
       disabled={loading}
       title="Создать заказ из лида одним кликом"
       onClick={onConvert}
-      className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+      className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 sm:w-auto sm:min-h-0 sm:py-1.5 sm:text-xs"
     >
       {loading ? "…" : "В заказ"}
     </button>
@@ -45,7 +45,7 @@ export function LeadDeleteButton({ leadId }: { leadId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-md border border-red-200 bg-white px-2 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50"
+        className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-50 sm:w-auto sm:min-h-0 sm:px-2 sm:py-1.5 sm:text-xs"
       >
         Удалить
       </button>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Card } from "@/components/ui/card";
 
 type OrderRow = {
   id: string;
@@ -74,7 +75,8 @@ export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+    <>
+    <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm md:block">
       <table className="w-full min-w-[760px] text-left text-sm">
         <thead className="border-b border-zinc-100 bg-zinc-50 text-xs uppercase text-zinc-500">
           <tr>
@@ -209,5 +211,148 @@ export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
         <p className="p-4 text-sm text-zinc-500">Нет заказов.</p>
       )}
     </div>
+
+    <div className="space-y-3 md:hidden">
+      {orders.length === 0 && (
+        <p className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 shadow-sm">
+          Нет заказов.
+        </p>
+      )}
+      {orders.map((o) => {
+        const isEditing = editing === o.id;
+        const isBusy = busy === o.id;
+        const bc = Number(isEditing ? formData.budgetClient : o.budgetClient);
+        const be = Number(isEditing ? formData.budgetExecutor : o.budgetExecutor);
+        const profit = isEditing ? bc - be : Number(o.profit);
+        const margin = bc > 0 ? ((profit / bc) * 100).toFixed(1) : "—";
+
+        return (
+          <Card
+            key={o.id}
+            className={`p-4 shadow-sm ${isEditing ? "ring-2 ring-amber-200" : ""}`}
+          >
+            <div className="border-b border-zinc-100 pb-3">
+              <Link
+                href={`/admin/orders/${o.id}`}
+                className="text-base font-semibold text-zinc-900 hover:underline"
+              >
+                {o.title}
+              </Link>
+              <p className="mt-1 text-sm text-zinc-500">{o.clientName}</p>
+              <p className="mt-2 text-xs text-zinc-600">
+                {STATUS_LABEL[o.status] ?? o.status}
+              </p>
+            </div>
+
+            {isEditing ? (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-zinc-600">Бюджет клиента</label>
+                  <input
+                    type="number"
+                    value={formData.budgetClient}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, budgetClient: e.target.value }))
+                    }
+                    className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2 text-base tabular-nums"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-zinc-600">Бюджет исполнителя</label>
+                  <input
+                    type="number"
+                    value={formData.budgetExecutor}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, budgetExecutor: e.target.value }))
+                    }
+                    className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2 text-base tabular-nums"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-4 text-sm tabular-nums">
+                  <span>
+                    <span className="text-zinc-500">Прибыль: </span>
+                    <span className="font-semibold text-zinc-900">{profit.toFixed(0)}</span>
+                  </span>
+                  <span>
+                    <span className="text-zinc-500">Маржа: </span>
+                    <span className="text-zinc-600">{margin}%</span>
+                  </span>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-zinc-600">Причина (необязательно)</label>
+                  <input
+                    type="text"
+                    placeholder="Причина изменения"
+                    value={formData.note}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, note: e.target.value }))
+                    }
+                    className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2 text-base"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() => void saveEdit(o.id)}
+                    className="min-h-11 w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    {isBusy ? "…" : "Сохранить"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(null)}
+                    className="min-h-11 w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-100"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">Бюджет клиента</dt>
+                    <dd className="tabular-nums font-medium">{Number(o.budgetClient).toFixed(0)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">Бюджет исп.</dt>
+                    <dd className="tabular-nums font-medium">{Number(o.budgetExecutor).toFixed(0)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">Прибыль</dt>
+                    <dd className="tabular-nums font-semibold text-zinc-900">
+                      {Number(o.profit).toFixed(0)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">Маржа</dt>
+                    <dd className="tabular-nums text-zinc-600">{margin}%</dd>
+                  </div>
+                </dl>
+                <div className="mt-4 flex flex-col gap-2 border-t border-zinc-100 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(o)}
+                    className="min-h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-100"
+                  >
+                    Изменить
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() => void deleteRow(o.id, o.title)}
+                    className="min-h-11 w-full text-sm font-medium text-zinc-600 underline-offset-2 hover:underline disabled:opacity-50"
+                  >
+                    Удалить из финансов
+                  </button>
+                </div>
+              </>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+    </>
   );
 }

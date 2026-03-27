@@ -10,6 +10,7 @@ import {
   trClass,
 } from "@/components/table-wrap";
 import prisma from "@/lib/prisma";
+import { Card } from "@/components/ui/card";
 import { OrderLiveRefresh } from "@/components/order-live-refresh";
 import { orderIsActive } from "@/lib/active-scope";
 import { redirect } from "next/navigation";
@@ -42,37 +43,71 @@ export default async function ExecutorHome() {
           description="Когда администратор назначит вам заказ, он появится в этом списке."
         />
       ) : (
-        <TableWrap>
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-100 bg-zinc-50/90">
-              <tr>
-                <th className={thClass}>Название</th>
-                <th className={thClass}>Статус</th>
-                <th className={thClass}>Дедлайн</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o) => (
-                <tr key={o.id} className={trClass}>
-                  <td className={tdClass}>
-                    <Link
-                      href={`/executor/orders/${o.id}`}
-                      className="font-medium text-blue-600 hover:underline"
-                    >
-                      {o.title}
-                    </Link>
-                  </td>
-                  <td className={tdClass}>
-                    <OrderStatusBadge status={o.status} />
-                  </td>
-                  <td className={`${tdClass} tabular-nums`}>
-                    {o.deadline ? o.deadline.toISOString().slice(0, 10) : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableWrap>
+        <>
+          <div className="hidden md:block">
+            <TableWrap>
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-zinc-100 bg-zinc-50/90">
+                  <tr>
+                    <th className={thClass}>Название</th>
+                    <th className={thClass}>Статус</th>
+                    <th className={thClass}>Дедлайн</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((o) => (
+                    <tr key={o.id} className={trClass}>
+                      <td className={tdClass}>
+                        <Link
+                          href={`/executor/orders/${o.id}`}
+                          className="font-medium text-blue-600 hover:underline"
+                        >
+                          {o.title}
+                        </Link>
+                      </td>
+                      <td className={tdClass}>
+                        <OrderStatusBadge status={o.status} />
+                      </td>
+                      <td className={`${tdClass} tabular-nums`}>
+                        {o.deadline ? o.deadline.toISOString().slice(0, 10) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {orders.map((o) => (
+              <Card key={o.id} className="p-4 shadow-sm">
+                <div className="flex flex-col gap-3 border-b border-zinc-100 pb-3">
+                  <Link
+                    href={`/executor/orders/${o.id}`}
+                    className="text-base font-semibold text-blue-600 hover:underline"
+                  >
+                    {o.title}
+                  </Link>
+                  <OrderStatusBadge status={o.status} />
+                </div>
+                <dl className="mt-3">
+                  <div className="flex justify-between gap-3 text-sm">
+                    <dt className="text-zinc-500">Дедлайн</dt>
+                    <dd className="tabular-nums font-medium text-zinc-900">
+                      {o.deadline ? o.deadline.toISOString().slice(0, 10) : "—"}
+                    </dd>
+                  </div>
+                </dl>
+                <Link
+                  href={`/executor/orders/${o.id}`}
+                  className="mt-4 flex min-h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800"
+                >
+                  Открыть заказ
+                </Link>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       <div id="password" className="scroll-mt-8">

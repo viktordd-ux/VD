@@ -32,6 +32,7 @@ import {
 import { QuickCreateOrderButton } from "./quick-create-order";
 import { OrdersFilterForm } from "./orders-filter-form";
 import { OrderLiveRefresh } from "@/components/order-live-refresh";
+import { Card } from "@/components/ui/card";
 import { OrdersFilterHydration } from "./orders-filter-hydration";
 
 export const dynamic = "force-dynamic";
@@ -150,14 +151,16 @@ export default async function OrdersPage({
     <div className="space-y-6">
       <OrderLiveRefresh />
       <OrdersFilterHydration />
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Заказы</h1>
           {filterSummary.length > 0 && (
             <p className="mt-1 text-sm text-zinc-600">{filterSummary.join(" · ")}</p>
           )}
         </div>
-        <QuickCreateOrderButton templates={templates} />
+        <div className="w-full shrink-0 sm:w-auto [&_button]:w-full [&_button]:sm:w-auto">
+          <QuickCreateOrderButton templates={templates} />
+        </div>
       </div>
 
       <OrdersFilterForm
@@ -177,75 +180,139 @@ export default async function OrdersPage({
           }
         />
       ) : (
-        <TableWrap>
-          <table className="w-full min-w-[1000px] text-left text-sm">
-            <thead className="border-b border-zinc-100 bg-zinc-50/90">
-              <tr>
-                <th className={`${thClass} w-10`} aria-label="Выбор" />
-                <th className={thClass}>Название</th>
-                <th className={thClass}>Клиент</th>
-                <th className={thClass}>Статус</th>
-                <th className={thClass}>Исполнитель</th>
-                <th className={thClass}>
-                  <Link href={sortHref(sort === "deadline_asc" ? "deadline_desc" : "deadline_asc")}>
-                    Дедлайн
-                  </Link>
-                </th>
-                <th className={thClass}>
-                  <Link href={sortHref(sort === "profit_desc" ? "profit_asc" : "profit_desc")}>
-                    Прибыль
-                  </Link>
-                </th>
-                <th className={thClass}>
-                  <Link href={sortHref(sort === "margin_desc" ? "margin_asc" : "margin_desc")}>
-                    Маржа %
-                  </Link>
-                </th>
-                <th className={thClass}>Обновлён</th>
-                <th className={`${thClass} w-[200px]`}>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o) => (
-                <tr key={o.id} className={trClass}>
-                  <td className={`${tdClass} align-middle`}>
-                    <OrdersBulkCheckbox orderId={o.id} />
-                  </td>
-                  <td className={tdClass}>
+        <>
+          <div className="hidden md:block">
+            <TableWrap>
+              <table className="w-full min-w-[1000px] text-left text-sm">
+                <thead className="border-b border-zinc-100 bg-zinc-50/90">
+                  <tr>
+                    <th className={`${thClass} w-10`} aria-label="Выбор" />
+                    <th className={thClass}>Название</th>
+                    <th className={thClass}>Клиент</th>
+                    <th className={thClass}>Статус</th>
+                    <th className={thClass}>Исполнитель</th>
+                    <th className={thClass}>
+                      <Link href={sortHref(sort === "deadline_asc" ? "deadline_desc" : "deadline_asc")}>
+                        Дедлайн
+                      </Link>
+                    </th>
+                    <th className={thClass}>
+                      <Link href={sortHref(sort === "profit_desc" ? "profit_asc" : "profit_desc")}>
+                        Прибыль
+                      </Link>
+                    </th>
+                    <th className={thClass}>
+                      <Link href={sortHref(sort === "margin_desc" ? "margin_asc" : "margin_desc")}>
+                        Маржа %
+                      </Link>
+                    </th>
+                    <th className={thClass}>Обновлён</th>
+                    <th className={`${thClass} w-[200px]`}>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((o) => (
+                    <tr key={o.id} className={trClass}>
+                      <td className={`${tdClass} align-middle`}>
+                        <OrdersBulkCheckbox orderId={o.id} />
+                      </td>
+                      <td className={tdClass}>
+                        <Link
+                          href={`/admin/orders/${o.id}`}
+                          className="font-medium text-blue-600 hover:underline"
+                        >
+                          {o.title}
+                        </Link>
+                      </td>
+                      <td className={tdClass}>{o.clientName}</td>
+                      <td className={tdClass}>
+                        <OrderStatusBadge status={o.status} />
+                      </td>
+                      <td className={tdClass}>{o.executor?.name ?? "—"}</td>
+                      <td className={`${tdClass} tabular-nums text-zinc-600`}>
+                        {o.deadline ? o.deadline.toISOString().slice(0, 10) : "—"}
+                      </td>
+                      <td className={`${tdClass} tabular-nums`}>{o.profit.toString()}</td>
+                      <td className={`${tdClass} tabular-nums text-zinc-700`}>
+                        {(marginRatio(o) * 100).toFixed(1)}%
+                      </td>
+                      <td className={`${tdClass} tabular-nums text-xs text-zinc-500`}>
+                        {o.updatedAt.toISOString().slice(0, 16).replace("T", " ")}
+                      </td>
+                      <td className={`${tdClass} align-top`}>
+                        <OrderRowQuickActions
+                          orderId={o.id}
+                          status={o.status}
+                          checkpointCount={o.checkpoints.length}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {orders.map((o) => (
+              <Card key={o.id} className="overflow-hidden p-4 shadow-sm">
+                <div className="flex items-start gap-3 border-b border-zinc-100 pb-3">
+                  <OrdersBulkCheckbox orderId={o.id} />
+                  <div className="min-w-0 flex-1">
                     <Link
                       href={`/admin/orders/${o.id}`}
-                      className="font-medium text-blue-600 hover:underline"
+                      className="text-base font-semibold text-blue-600 hover:underline"
                     >
                       {o.title}
                     </Link>
-                  </td>
-                  <td className={tdClass}>{o.clientName}</td>
-                  <td className={tdClass}>
-                    <OrderStatusBadge status={o.status} />
-                  </td>
-                  <td className={tdClass}>{o.executor?.name ?? "—"}</td>
-                  <td className={`${tdClass} tabular-nums text-zinc-600`}>
-                    {o.deadline ? o.deadline.toISOString().slice(0, 10) : "—"}
-                  </td>
-                  <td className={`${tdClass} tabular-nums`}>{o.profit.toString()}</td>
-                  <td className={`${tdClass} tabular-nums text-zinc-700`}>
-                    {(marginRatio(o) * 100).toFixed(1)}%
-                  </td>
-                  <td className={`${tdClass} tabular-nums text-xs text-zinc-500`}>
-                    {o.updatedAt.toISOString().slice(0, 16).replace("T", " ")}
-                  </td>
-                  <td className={`${tdClass} align-top`}>
-                    <OrderRowQuickActions
-                      orderId={o.id}
-                      status={o.status}
-                      checkpointCount={o.checkpoints.length}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableWrap>
+                    <p className="mt-1 text-sm text-zinc-600">{o.clientName}</p>
+                  </div>
+                  <OrderStatusBadge status={o.status} />
+                </div>
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">Исполнитель</dt>
+                    <dd className="max-w-[60%] text-right font-medium text-zinc-900">
+                      {o.executor?.name ?? "—"}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">Дедлайн</dt>
+                    <dd className="tabular-nums text-zinc-800">
+                      {o.deadline ? o.deadline.toISOString().slice(0, 10) : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">Прибыль</dt>
+                    <dd className="tabular-nums font-medium">{o.profit.toString()}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">Маржа</dt>
+                    <dd className="tabular-nums text-zinc-700">
+                      {(marginRatio(o) * 100).toFixed(1)}%
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3 text-xs">
+                    <dt className="text-zinc-500">Обновлён</dt>
+                    <dd className="tabular-nums text-zinc-500">
+                      {o.updatedAt.toISOString().slice(0, 16).replace("T", " ")}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-4 border-t border-zinc-100 pt-3">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Действия
+                  </p>
+                  <OrderRowQuickActions
+                    orderId={o.id}
+                    status={o.status}
+                    checkpointCount={o.checkpoints.length}
+                  />
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </div>
     </OrdersBulkProvider>

@@ -55,57 +55,58 @@ export function CreateExecutorDialog() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+        className="min-h-11 w-full rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 sm:w-auto sm:py-2"
       >
         Создать исполнителя
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-[250] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-zinc-200 bg-white p-5 shadow-xl sm:rounded-xl sm:p-6">
             <h2 className="text-lg font-semibold">Новый исполнитель</h2>
             <form onSubmit={onSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="text-xs text-zinc-500">Имя</label>
+                <label className="text-sm font-medium text-zinc-700">Имя</label>
                 <input
                   name="name"
                   required
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base sm:min-h-0 sm:py-2 sm:text-sm"
                   placeholder="Иван Иванов"
                 />
               </div>
               <div>
-                <label className="text-xs text-zinc-500">Эл. почта (логин)</label>
+                <label className="text-sm font-medium text-zinc-700">Эл. почта (логин)</label>
                 <input
                   name="email"
                   type="email"
                   required
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                  autoComplete="email"
+                  className="mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base sm:min-h-0 sm:py-2 sm:text-sm"
                   placeholder="name@студия.ru"
                 />
               </div>
               <div>
-                <label className="text-xs text-zinc-500">
+                <label className="text-sm font-medium text-zinc-700">
                   Навыки (теги через запятую)
                 </label>
                 <input
                   name="skills"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base sm:min-h-0 sm:py-2 sm:text-sm"
                   placeholder="react, figma"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <button
                   type="submit"
                   disabled={busy}
-                  className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+                  className="min-h-11 w-full rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 sm:w-auto sm:py-2"
                 >
                   {busy ? "…" : "Создать"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="rounded-md border border-zinc-300 bg-transparent px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                  className="min-h-11 w-full rounded-md border border-zinc-300 bg-transparent px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-100 sm:w-auto sm:py-2"
                 >
                   Отмена
                 </button>

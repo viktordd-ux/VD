@@ -163,7 +163,7 @@ export function OnboardingClient({ skillOptions }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="mx-auto max-w-lg space-y-6 px-1 sm:px-0">
       <div>
         <div className="h-2 overflow-hidden rounded-full bg-zinc-200">
           <div
@@ -176,11 +176,11 @@ export function OnboardingClient({ skillOptions }: Props) {
         </p>
       </div>
 
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         {step < 5 && (
           <div className="space-y-3">
-            <h1 className="text-xl font-semibold text-zinc-900">{intro[step].title}</h1>
-            <p className="text-sm leading-relaxed text-zinc-600">{intro[step].body}</p>
+            <h1 className="text-xl font-semibold leading-snug text-zinc-900">{intro[step].title}</h1>
+            <p className="text-base leading-relaxed text-zinc-600">{intro[step].body}</p>
           </div>
         )}
 
@@ -189,20 +189,20 @@ export function OnboardingClient({ skillOptions }: Props) {
             <h1 className="text-xl font-semibold text-zinc-900">Личные данные</h1>
             <p className="text-sm text-zinc-600">Как к вам обращаться в системе и документах.</p>
             <div>
-              <label className="text-xs font-medium text-zinc-600">Имя</label>
+              <label className="text-sm font-medium text-zinc-700">Имя</label>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
                 required
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-zinc-600">Фамилия</label>
+              <label className="text-sm font-medium text-zinc-700">Фамилия</label>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
                 required
               />
             </div>
@@ -216,21 +216,23 @@ export function OnboardingClient({ skillOptions }: Props) {
               Укажите телефон и/или Telegram — с вами смогут связаться вне системы.
             </p>
             <div>
-              <label className="text-xs font-medium text-zinc-600">Телефон</label>
+              <label className="text-sm font-medium text-zinc-700">Телефон</label>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+7 …"
-                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                inputMode="tel"
+                autoComplete="tel"
+                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-zinc-600">Telegram</label>
+              <label className="text-sm font-medium text-zinc-700">Telegram</label>
               <input
                 value={telegram}
                 onChange={(e) => setTelegram(e.target.value)}
                 placeholder="@username"
-                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
               />
             </div>
           </div>
@@ -256,7 +258,7 @@ export function OnboardingClient({ skillOptions }: Props) {
                         key={s}
                         type="button"
                         onClick={() => toggleSkill(s)}
-                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        className={`min-h-10 rounded-full px-3 py-2 text-xs font-medium transition-colors md:min-h-0 md:py-1 ${
                           skills.includes(s)
                             ? "bg-zinc-900 text-white"
                             : "border border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400"
@@ -272,15 +274,21 @@ export function OnboardingClient({ skillOptions }: Props) {
 
             <div>
               <p className="mb-2 text-xs font-semibold text-zinc-500">Свой навык</p>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   value={customTag}
                   onChange={(e) => setCustomTag(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())}
                   placeholder="Введите и нажмите Enter"
-                  className="min-w-[160px] flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                  className="min-h-11 min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
                 />
-                <Button type="button" variant="secondary" size="sm" onClick={addCustomSkill}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full shrink-0 sm:w-auto"
+                  onClick={addCustomSkill}
+                >
                   Добавить
                 </Button>
               </div>
@@ -288,11 +296,11 @@ export function OnboardingClient({ skillOptions }: Props) {
 
             {skills.length > 0 && (
               <div>
-                <label className="text-xs font-medium text-zinc-600">Основной навык</label>
+                <label className="text-sm font-medium text-zinc-700">Основной навык</label>
                 <select
                   value={primarySkill}
                   onChange={(e) => setPrimarySkill(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
                 >
                   <option value="">— выберите из выбранных —</option>
                   {skills.map((s) => (
@@ -339,12 +347,25 @@ export function OnboardingClient({ skillOptions }: Props) {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <div className="mt-6 flex flex-wrap justify-between gap-2">
-          <Button type="button" variant="secondary" size="md" disabled={step === 0} onClick={back}>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-between">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="order-2 w-full sm:order-1 sm:w-auto"
+            disabled={step === 0}
+            onClick={back}
+          >
             Назад
           </Button>
           {step < STEPS - 1 ? (
-            <Button type="button" variant="primary" size="md" onClick={next}>
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className="order-1 w-full sm:order-2 sm:w-auto"
+              onClick={next}
+            >
               Далее
             </Button>
           ) : (
@@ -352,6 +373,7 @@ export function OnboardingClient({ skillOptions }: Props) {
               type="button"
               variant="primary"
               size="md"
+              className="order-1 w-full sm:order-2 sm:w-auto"
               disabled={submitting || !canGoNext()}
               onClick={() => void finish()}
             >

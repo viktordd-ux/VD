@@ -38,30 +38,32 @@ export default function LoginPage() {
         <p className="mt-1 text-center text-sm text-zinc-500">Вход в студию</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-zinc-600">Эл. почта</label>
+            <label className="block text-sm font-medium text-zinc-700">Эл. почта</label>
             <input
               type="email"
               required
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
+              className="mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base outline-none focus:border-zinc-900"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600">Пароль</label>
+            <label className="block text-sm font-medium text-zinc-700">Пароль</label>
             <input
               type="password"
               required
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
+              className="mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base outline-none focus:border-zinc-900"
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md bg-zinc-900 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+            className="min-h-11 w-full rounded-md bg-zinc-900 py-2.5 text-base font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
           >
             {loading ? "…" : "Войти"}
           </button>

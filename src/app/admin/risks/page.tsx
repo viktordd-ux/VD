@@ -60,8 +60,8 @@ export default async function RisksPage() {
           </p>
         )}
         {flagged.map(({ order, flags }) => (
-          <Card key={order.id} className="flex flex-col gap-3 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-2">
+          <Card key={order.id} className="flex flex-col gap-3 p-4 md:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div>
                 <Link
                   href={`/admin/orders/${order.id}`}

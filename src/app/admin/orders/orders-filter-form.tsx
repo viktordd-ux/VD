@@ -151,7 +151,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
         e.preventDefault();
         applyFromForm(new FormData(e.currentTarget));
       }}
-      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/[0.06]"
+      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-950/[0.06] sm:p-5"
     >
       <div className="flex flex-wrap gap-2">
         {FILTER_TABS.map((t) => (
@@ -171,13 +171,13 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="w-full sm:w-auto">
           <label className="text-xs font-medium text-zinc-500">Сортировка</label>
           <select
             name="sort"
             defaultValue={initial.sort}
-            className="mt-1 block rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+            className="mt-1 block min-h-11 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-base sm:min-h-0 sm:py-2 sm:text-sm"
           >
             {SORT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -186,7 +186,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
             ))}
           </select>
         </div>
-        <div>
+        <div className="w-full sm:w-auto">
           <label className="text-xs font-medium text-zinc-500">
             Дедлайн от
           </label>
@@ -194,10 +194,10 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
             type="date"
             name="deadlineAfter"
             defaultValue={initial.deadlineAfter}
-            className="mt-1 block rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+            className="mt-1 block min-h-11 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-base sm:min-h-0 sm:py-2 sm:text-sm"
           />
         </div>
-        <div>
+        <div className="w-full sm:w-auto">
           <label className="text-xs font-medium text-zinc-500">
             Дедлайн до
           </label>
@@ -205,10 +205,10 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
             type="date"
             name="deadlineBefore"
             defaultValue={initial.deadlineBefore}
-            className="mt-1 block rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+            className="mt-1 block min-h-11 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-base sm:min-h-0 sm:py-2 sm:text-sm"
           />
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm sm:min-h-0">
           <input
             type="checkbox"
             name="lowMargin"
@@ -220,7 +220,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
         <button
           type="submit"
           disabled={busy}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+          className="min-h-11 w-full rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 sm:w-auto sm:py-2"
         >
           {busy ? "…" : "Применить"}
         </button>

@@ -38,8 +38,8 @@ export function ExecutorOrderPanel({
   }
 
   return (
-    <div className="relative space-y-6">
-      <Card className="p-6">
+    <div className="relative space-y-6 pb-24 lg:pb-0">
+      <Card className="p-4 md:p-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
           Файлы и ссылки
         </h2>
@@ -49,8 +49,8 @@ export function ExecutorOrderPanel({
         <OrderFileUpload orderId={orderId} />
       </Card>
 
-      <Card className="p-6">
-        <form onSubmit={onSubmit}>
+      <Card className="hidden p-4 md:block md:p-6">
+        <form id="executor-submit-form" onSubmit={onSubmit}>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
             Сдать работу
           </h2>
@@ -68,6 +68,20 @@ export function ExecutorOrderPanel({
           </Button>
         </form>
       </Card>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+        <p className="mb-2 text-center text-xs text-zinc-500">
+          Статус «В работе» — можно сдать на проверку
+        </p>
+        <button
+          type="submit"
+          form="executor-submit-form"
+          disabled={loading || status !== "IN_PROGRESS"}
+          className="flex min-h-11 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "…" : "Сдать на проверку"}
+        </button>
+      </div>
     </div>
   );
 }

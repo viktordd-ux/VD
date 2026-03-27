@@ -58,7 +58,7 @@ export function AdminSidebarNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+              "flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-base font-medium transition-colors md:min-h-0 md:py-2 md:text-sm",
               isOn
                 ? "bg-zinc-900 text-white shadow-sm"
                 : "text-zinc-700 hover:bg-zinc-100",

@@ -75,89 +75,93 @@ export function AdminOrderForm({
         )
       : null;
 
+  const fieldClass =
+    "mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base leading-relaxed md:min-h-0 md:py-2 md:text-sm";
+  const labelClass = "text-sm font-medium text-zinc-700 md:text-xs";
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <Card className="space-y-4 p-6">
+    <form id="admin-order-edit-form" onSubmit={onSubmit} className="space-y-4 pb-24 lg:pb-0">
+      <Card className="space-y-4 p-4 md:p-6">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
         Данные заказа
       </h2>
       <div>
-        <label className="text-xs font-medium text-zinc-600">Название</label>
+        <label className={labelClass}>Название</label>
         <input
           name="title"
           defaultValue={order.title}
           required
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className={fieldClass}
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-zinc-600">Техническое задание</label>
+        <label className={labelClass}>Техническое задание</label>
         <textarea
           name="description"
           defaultValue={order.description}
           required
           rows={6}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className={`${fieldClass} min-h-[8rem] py-3`}
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-xs font-medium text-zinc-600">Клиент</label>
+          <label className={labelClass}>Клиент</label>
           <input
             name="clientName"
             defaultValue={order.clientName}
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={fieldClass}
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-zinc-600">Платформа</label>
+          <label className={labelClass}>Платформа</label>
           <input
             name="platform"
             defaultValue={order.platform}
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={fieldClass}
           />
         </div>
       </div>
       <div>
-        <label className="text-xs font-medium text-zinc-600">Дедлайн</label>
+        <label className={labelClass}>Дедлайн</label>
         <input
           type="datetime-local"
           name="deadline"
           defaultValue={dl}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className={fieldClass}
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
-          <label className="text-xs font-medium text-zinc-600">Бюджет клиента</label>
+          <label className={labelClass}>Бюджет клиента</label>
           <input
             name="budgetClient"
             type="number"
             step="0.01"
             defaultValue={order.budgetClient.toString()}
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm tabular-nums"
+            className={`${fieldClass} tabular-nums`}
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-zinc-600">Бюджет исполнителя</label>
+          <label className={labelClass}>Бюджет исполнителя</label>
           <input
             name="budgetExecutor"
             type="number"
             step="0.01"
             defaultValue={order.budgetExecutor.toString()}
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm tabular-nums"
+            className={`${fieldClass} tabular-nums`}
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-zinc-600">Прибыль (авто)</label>
+          <label className={labelClass}>Прибыль (авто)</label>
           <input
             readOnly
             value={order.profit.toString()}
-            className="mt-1 w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm tabular-nums"
+            className="mt-1 w-full min-h-11 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-base tabular-nums md:min-h-0 md:py-2 md:text-sm"
           />
           {marginPct !== null && (
             <p className="mt-1 text-xs text-zinc-500">Маржа: {marginPct}% от клиента</p>
@@ -165,23 +169,23 @@ export function AdminOrderForm({
         </div>
       </div>
       <div>
-        <label className="text-xs font-medium text-zinc-600">
+        <label className={labelClass}>
           Требуемые навыки (для авто-подбора, через запятую)
         </label>
         <input
           name="requiredSkills"
           defaultValue={order.requiredSkills.join(", ")}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className={fieldClass}
           placeholder="react, figma"
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-xs font-medium text-zinc-600">Статус</label>
+          <label className={labelClass}>Статус</label>
           <select
             name="status"
             defaultValue={order.status}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={fieldClass}
           >
             <option value="LEAD">{orderStatusLabel.LEAD}</option>
             <option value="IN_PROGRESS">{orderStatusLabel.IN_PROGRESS}</option>
@@ -190,18 +194,18 @@ export function AdminOrderForm({
           </select>
         </div>
         <div>
-          <label className="text-xs font-medium text-zinc-600">Исполнитель</label>
+          <label className={labelClass}>Исполнитель</label>
           <input
             type="search"
             placeholder="Фильтр по навыку (тег)"
             value={skillTag}
             onChange={(e) => setSkillTag(e.target.value)}
-            className="mb-2 mt-1 w-full rounded-md border border-dashed border-zinc-300 px-3 py-1.5 text-xs"
+            className="mb-2 mt-1 w-full min-h-11 rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm md:min-h-0 md:py-1.5"
           />
           <select
             name="executorId"
             defaultValue={order.executorId ?? ""}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={`${fieldClass}`}
           >
             <option value="">—</option>
             {filteredExecutors.map((u) => (
@@ -211,7 +215,7 @@ export function AdminOrderForm({
               </option>
             ))}
           </select>
-          <div className="mt-2">
+          <div className="mt-2 [&_button]:w-full [&_button]:sm:w-auto">
             <AdminAutoAssignButton orderId={order.id} />
           </div>
           {skillTag && filteredExecutors.length === 0 && (
@@ -225,10 +229,27 @@ export function AdminOrderForm({
           {leadStatusLabel[order.lead.status]}
         </p>
       )}
-      <Button type="submit" variant="primary" size="md" disabled={loading}>
+      <Button
+        type="submit"
+        variant="primary"
+        size="md"
+        disabled={loading}
+        className="hidden w-full lg:inline-flex"
+      >
         {loading ? "…" : "Сохранить"}
       </Button>
       </Card>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/95 p-4 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur supports-[backdrop-filter]:bg-white/90 lg:hidden">
+        <button
+          type="submit"
+          form="admin-order-edit-form"
+          disabled={loading}
+          className="flex min-h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:opacity-50"
+        >
+          {loading ? "…" : "Сохранить заказ"}
+        </button>
+      </div>
     </form>
   );
 }

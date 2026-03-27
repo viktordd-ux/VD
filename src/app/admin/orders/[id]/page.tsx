@@ -68,54 +68,63 @@ export default async function AdminOrderPage({ params }: Props) {
     : "Не задан";
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto max-w-3xl space-y-6 md:space-y-8">
       <OrderLiveRefresh />
       <Link
         href="/admin/orders"
-        className="inline-flex text-sm text-zinc-500 hover:text-zinc-800"
+        className="inline-flex min-h-11 items-center text-base text-zinc-500 hover:text-zinc-800 md:min-h-0 md:text-sm"
       >
         ← К списку заказов
       </Link>
 
-      <Card className="p-6 shadow-md shadow-slate-950/[0.06]">
+      <Card className="p-4 shadow-md shadow-slate-950/[0.06] md:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            <h1 className="text-xl font-semibold leading-snug tracking-tight text-zinc-900 md:text-2xl">
               {order.title}
             </h1>
             <OrderRiskBadges flags={riskFlags} />
           </div>
-          <OrderStatusBadge status={order.status} />
+          <div className="shrink-0 self-start">
+            <OrderStatusBadge status={order.status} />
+          </div>
         </div>
-        <dl className="mt-6 grid gap-4 border-t border-zinc-100 pt-6 sm:grid-cols-2">
-          <div>
+        <dl className="mt-6 space-y-4 border-t border-zinc-100 pt-6 sm:grid sm:grid-cols-2 sm:gap-4 sm:space-y-0">
+          <div className="order-1 sm:order-none">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
               Исполнитель
             </dt>
-            <dd className="mt-1 text-sm font-medium text-zinc-900">
+            <dd className="mt-1 text-base font-medium leading-relaxed text-zinc-900 md:text-sm">
               {order.executor?.name ?? "Не назначен"}
             </dd>
           </div>
-          <div>
+          <div className="order-2 sm:order-none">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
               Дедлайн
             </dt>
-            <dd className="mt-1 text-sm tabular-nums text-zinc-900">{deadlineLabel}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Маржа
-            </dt>
-            <dd className="mt-1 text-sm font-semibold tabular-nums text-emerald-800">
-              {marginPct !== null ? `${marginPct}%` : "—"}
+            <dd className="mt-1 text-base tabular-nums leading-relaxed text-zinc-900 md:text-sm">
+              {deadlineLabel}
             </dd>
           </div>
-          <div>
+          <div className="order-3 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4 sm:order-none sm:col-span-2">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Прибыль
+              Финансы
             </dt>
-            <dd className="mt-1 text-sm font-semibold tabular-nums text-zinc-900">
-              {order.profit.toString()}
+            <dd className="mt-2">
+              <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-baseline sm:gap-8">
+                <div>
+                  <span className="text-zinc-500">Маржа: </span>
+                  <span className="font-semibold tabular-nums text-emerald-800">
+                    {marginPct !== null ? `${marginPct}%` : "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-500">Прибыль: </span>
+                  <span className="font-semibold tabular-nums text-zinc-900">
+                    {order.profit.toString()}
+                  </span>
+                </div>
+              </div>
             </dd>
           </div>
         </dl>
@@ -127,8 +136,8 @@ export default async function AdminOrderPage({ params }: Props) {
         executorScores={executorScores}
       />
 
-      <Card className="p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <Card className="p-4 md:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-zinc-900">Этапы</h2>
             <p className="mt-1 text-xs text-zinc-500">
@@ -145,8 +154,8 @@ export default async function AdminOrderPage({ params }: Props) {
         </div>
       </Card>
 
-      <Card className="p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <Card className="p-4 md:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-zinc-900">Файлы</h2>
             <p className="mt-0.5 text-xs text-zinc-500">ТЗ, брифы, референсы и результаты работы</p>
@@ -219,7 +228,7 @@ export default async function AdminOrderPage({ params }: Props) {
 
       <AdminOrderDelete orderId={id} />
 
-      <Card className="p-6">
+      <Card className="p-4 md:p-6">
         <h2 className="text-base font-semibold text-zinc-900">История и аудит</h2>
         <p className="mt-1 text-xs text-zinc-500">
           Хронология изменений, этапов и записей аудита по заказу.

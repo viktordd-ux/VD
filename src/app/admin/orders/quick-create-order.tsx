@@ -47,30 +47,30 @@ export function QuickCreateOrderButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+        className="min-h-11 w-full rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 sm:w-auto sm:py-2"
       >
         {label}
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-zinc-200 bg-white p-5 shadow-lg sm:rounded-xl sm:p-6">
             <h2 className="text-lg font-semibold">Быстрое создание заказа</h2>
             <p className="mt-1 text-sm text-zinc-500">
               Первая строка — название, далее — ТЗ. При выборе шаблона подставится ТЗ шаблона и этапы.
             </p>
-            <label className="mt-4 block text-xs font-medium text-zinc-600">Текст заказа</label>
+            <label className="mt-4 block text-sm font-medium text-zinc-700">Текст заказа</label>
             <textarea
               value={orderText}
               onChange={(e) => setOrderText(e.target.value)}
               rows={8}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2.5 text-base leading-relaxed"
               placeholder="Название заказа&#10;Подробное ТЗ..."
             />
-            <label className="mt-4 block text-xs font-medium text-zinc-600">Шаблон (необязательно)</label>
+            <label className="mt-4 block text-sm font-medium text-zinc-700">Шаблон (необязательно)</label>
             <select
               value={templateId}
               onChange={(e) => setTemplateId(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+              className="mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2 text-base sm:min-h-0 sm:py-2 sm:text-sm"
             >
               <option value="">— без шаблона —</option>
               {templates.map((t) => (
@@ -79,11 +79,11 @@ export function QuickCreateOrderButton({
                 </option>
               ))}
             </select>
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                className="min-h-11 w-full rounded-md border border-zinc-200 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-100 sm:w-auto"
               >
                 Отмена
               </button>
@@ -91,7 +91,7 @@ export function QuickCreateOrderButton({
                 type="button"
                 disabled={loading || !orderText.trim()}
                 onClick={submit}
-                className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                className="min-h-11 w-full rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
               >
                 {loading ? "…" : "Создать"}
               </button>

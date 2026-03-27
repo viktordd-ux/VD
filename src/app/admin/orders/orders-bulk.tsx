@@ -86,35 +86,37 @@ export function OrdersBulkToolbar() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+      <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:flex-wrap sm:items-center">
         <span className="font-medium">Выбрано: {n}</span>
-        <button
-          type="button"
-          onClick={() => {
-            if (
-              !window.confirm(
-                `Скрыть ${n} заказ(ов)? Данные останутся в БД, но исчезнут из списков и отчётов.`,
-              )
-            ) {
-              return;
-            }
-            void bulk(true);
-          }}
-          className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800"
-        >
-          Удалить (скрыть)
-        </button>
-        <button
-          type="button"
-          onClick={() => setHardOpen(true)}
-          className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-900 hover:bg-red-100"
-        >
-          Удалить навсегда…
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                !window.confirm(
+                  `Скрыть ${n} заказ(ов)? Данные останутся в БД, но исчезнут из списков и отчётов.`,
+                )
+              ) {
+                return;
+              }
+              void bulk(true);
+            }}
+            className="min-h-11 w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 sm:w-auto sm:py-1.5 sm:text-xs"
+          >
+            Удалить (скрыть)
+          </button>
+          <button
+            type="button"
+            onClick={() => setHardOpen(true)}
+            className="min-h-11 w-full rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-900 hover:bg-red-100 sm:w-auto sm:py-1.5 sm:text-xs"
+          >
+            Удалить навсегда…
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => clear()}
-          className="text-xs text-zinc-600 underline"
+          className="min-h-11 w-full text-sm text-zinc-600 underline sm:min-h-0 sm:w-auto sm:text-xs"
         >
           Снять выбор
         </button>

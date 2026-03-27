@@ -29,11 +29,12 @@ export function OrderRowQuickActions({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-1.5">
       <Button
         type="button"
         variant="secondary"
         size="sm"
+        className="w-full sm:w-auto"
         disabled={busy !== null}
         title="Назначить лучшего исполнителя автоматически"
         onClick={() =>
@@ -54,6 +55,7 @@ export function OrderRowQuickActions({
           type="button"
           variant="secondary"
           size="sm"
+          className="w-full sm:w-auto"
           disabled={busy !== null}
           title="Завершить все этапы"
           onClick={() =>
@@ -74,6 +76,7 @@ export function OrderRowQuickActions({
           type="button"
           variant="secondary"
           size="sm"
+          className="w-full sm:w-auto"
           disabled={busy !== null}
           onClick={() =>
             run("review", async () => {
@@ -94,7 +97,7 @@ export function OrderRowQuickActions({
           type="button"
           variant="secondary"
           size="sm"
-          className="border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+          className="w-full border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 sm:w-auto"
           disabled={busy !== null}
           onClick={() =>
             run("done", async () => {
@@ -114,7 +117,7 @@ export function OrderRowQuickActions({
         type="button"
         variant="secondary"
         size="sm"
-        className="border-red-200 text-red-800 hover:bg-red-50"
+        className="w-full border-red-200 text-red-800 hover:bg-red-50 sm:w-auto"
         disabled={busy !== null}
         onClick={() => setDeleteOpen(true)}
       >

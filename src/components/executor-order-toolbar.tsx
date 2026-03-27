@@ -54,10 +54,10 @@ export function ExecutorOrderToolbar({
   }
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
       <a
         href={`/api/orders/${orderId}/files/archive`}
-        className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 shadow-sm transition-colors hover:bg-zinc-50"
+        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 shadow-sm transition-colors hover:bg-zinc-50 sm:min-h-0 sm:py-2"
       >
         Скачать все файлы (ZIP)
       </a>
@@ -67,7 +67,7 @@ export function ExecutorOrderToolbar({
           variant="primary"
           size="md"
           disabled={busy}
-          className="bg-indigo-700 hover:bg-indigo-800"
+          className="w-full bg-indigo-700 hover:bg-indigo-800 sm:w-auto"
           onClick={() => void completeAll()}
         >
           {busy ? "…" : "Сдать все этапы на проверку"}

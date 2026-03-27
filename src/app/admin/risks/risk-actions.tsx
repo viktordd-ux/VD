@@ -62,55 +62,55 @@ export function RiskOrderActions({
   }
 
   return (
-    <div className="flex flex-col items-end gap-2 text-sm">
-      <div className="flex flex-wrap justify-end gap-2">
+    <div className="flex w-full flex-col gap-2 text-sm md:w-auto md:items-end">
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
         <button
           type="button"
           onClick={() => setOpen(open === "executor" ? null : "executor")}
-          className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-50"
+          className="min-h-11 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 sm:min-h-0 sm:w-auto sm:py-1 sm:text-xs"
         >
           Сменить исполнителя
         </button>
         <button
           type="button"
           onClick={() => setOpen(open === "deadline" ? null : "deadline")}
-          className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-50"
+          className="min-h-11 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 sm:min-h-0 sm:w-auto sm:py-1 sm:text-xs"
         >
           Продлить дедлайн
         </button>
         {executorEmail && (
           <a
             href={`mailto:${executorEmail}?subject=Заказ ${orderId.slice(0, 8)}`}
-            className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-50"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 sm:min-h-0 sm:w-auto sm:py-1 sm:text-xs"
           >
             Написать
           </a>
         )}
       </div>
       {open === "deadline" && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-2">
+        <div className="flex w-full flex-col gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <input
             type="datetime-local"
             value={newDl}
             onChange={(e) => setNewDl(e.target.value)}
-            className="rounded border border-zinc-300 px-2 py-1 text-xs"
+            className="min-h-11 w-full rounded-lg border border-zinc-300 px-3 py-2 text-base sm:min-h-0 sm:w-auto sm:py-1 sm:text-xs"
           />
           <button
             type="button"
             disabled={loading}
             onClick={patchDeadline}
-            className="rounded bg-zinc-900 px-2 py-1 text-xs text-white disabled:opacity-50"
+            className="min-h-11 w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50 sm:w-auto sm:py-1 sm:text-xs"
           >
             Сохранить
           </button>
         </div>
       )}
       {open === "executor" && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-2">
+        <div className="flex w-full flex-col gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <select
             value={execId}
             onChange={(e) => setExecId(e.target.value)}
-            className="max-w-[200px] rounded border border-zinc-300 px-2 py-1 text-xs"
+            className="min-h-11 w-full max-w-none rounded-lg border border-zinc-300 px-3 py-2 text-base sm:max-w-[200px] sm:min-h-0 sm:py-1 sm:text-xs"
           >
             <option value="">—</option>
             {executors.map((e) => (
@@ -123,7 +123,7 @@ export function RiskOrderActions({
             type="button"
             disabled={loading}
             onClick={patchExecutor}
-            className="rounded bg-zinc-900 px-2 py-1 text-xs text-white disabled:opacity-50"
+            className="min-h-11 w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50 sm:w-auto sm:py-1 sm:text-xs"
           >
             Сохранить
           </button>
