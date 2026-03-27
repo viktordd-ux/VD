@@ -18,18 +18,22 @@ export const authConfig = {
           token.onboarded = s.onboarded;
         }
       }
-      // Invalidate session if user was deleted or deactivated (banned).
-      if (!user && token.id) {
-        const { default: prisma } = await import("@/lib/prisma");
-        const u = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { id: true, status: true, onboarded: true },
-        });
-        if (!u || u.status !== "active") {
-          return { ...token, exp: 0 };
-        }
-        if (token.role === "executor" && typeof u.onboarded === "boolean") {
-          token.onboarded = u.onboarded;
+      // Только для исполнителей: подтянуть onboarded из БД для старых JWT (без блокировки админа и без падения при сбое БД).
+      if (
+        typeof token.onboarded !== "boolean" &&
+        token.role === "executor" &&
+        token.id &&
+        !user
+      ) {
+        try {
+          const { default: prisma } = await import("@/lib/prisma");
+          const u = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { onboarded: true },
+          });
+          if (u) token.onboarded = u.onboarded;
+        } catch {
+          // Не инвалидируем сессию при временной ошибке БД (важно для Vercel / cold start).
         }
       }
       return token;
