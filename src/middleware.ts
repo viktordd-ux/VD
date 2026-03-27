@@ -1,49 +1,55 @@
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export default auth((req) => {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const isLoggedIn = !!req.auth;
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+  });
+  const isLoggedIn = !!token;
+  const role = token?.role as "admin" | "executor" | undefined;
   const isApiAuth = pathname.startsWith("/api/auth");
 
   if (pathname.startsWith("/api") && !isApiAuth) {
     if (!isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return;
+    return NextResponse.next();
   }
 
-  /** NextAuth: /api/auth/session, signin, csrf и т.д. должны отдавать JSON, не редирект на /login */
   if (isApiAuth) {
     return NextResponse.next();
   }
 
   if (pathname === "/login") {
-    if (isLoggedIn && req.auth?.user) {
-      const home =
-        req.auth.user.role === "admin" ? "/admin" : "/executor";
+    if (isLoggedIn && role) {
+      const home = role === "admin" ? "/admin" : "/executor";
       return NextResponse.redirect(new URL(home, req.nextUrl));
     }
-    return;
+    return NextResponse.next();
   }
 
   if (!isLoggedIn) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  if (pathname.startsWith("/admin") && req.auth?.user?.role !== "admin") {
+  if (pathname.startsWith("/admin") && role !== "admin") {
     return NextResponse.redirect(new URL("/executor", req.nextUrl));
   }
 
-  if (pathname.startsWith("/executor") && req.auth?.user?.role !== "executor") {
+  if (pathname.startsWith("/executor") && role !== "executor") {
     return NextResponse.redirect(new URL("/admin", req.nextUrl));
   }
 
   if (pathname === "/") {
-    const home = req.auth?.user?.role === "admin" ? "/admin" : "/executor";
+    const home = role === "admin" ? "/admin" : "/executor";
     return NextResponse.redirect(new URL(home, req.nextUrl));
   }
-});
+
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
