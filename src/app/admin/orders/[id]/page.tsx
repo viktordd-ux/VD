@@ -6,10 +6,12 @@ import { getExecutorMetricsMap } from "@/lib/executor-matching";
 import { getOrderRiskFlags } from "@/lib/order-risk";
 import { AdminCompleteAllCheckpoints } from "@/components/admin-complete-all-checkpoints";
 import { AdminCheckpointsPanel } from "@/components/admin-checkpoints-panel";
+import { AdminFileUpload } from "@/components/admin-file-upload";
 import { OrderHistoryTabs } from "@/components/order-history-tabs";
 import { OrderRiskBadges } from "@/components/order-risk-badges";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
+import { displayFilename } from "@/lib/uploads";
 import { AdminOrderDelete } from "./admin-order-delete";
 import { AdminOrderForm } from "./ui";
 
@@ -143,7 +145,10 @@ export default async function AdminOrderPage({ params }: Props) {
 
       <Card className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-zinc-900">Файлы</h2>
+          <div>
+            <h2 className="text-base font-semibold text-zinc-900">Файлы</h2>
+            <p className="mt-0.5 text-xs text-zinc-500">ТЗ, брифы, референсы и результаты работы</p>
+          </div>
           {files.length > 0 && (
             <a
               href={`/api/orders/${id}/files/archive`}
@@ -153,24 +158,51 @@ export default async function AdminOrderPage({ params }: Props) {
             </a>
           )}
         </div>
-        <ul className="mt-4 space-y-2 text-sm">
-          {files.map((f) => (
-            <li key={f.id}>
-              <a
-                href={`/api/files/${f.id}`}
-                className="text-blue-600 hover:underline"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {f.filePath.split("/").pop()}
-              </a>
-              {f.comment ? <span className="text-zinc-500"> — {f.comment}</span> : null}
-            </li>
-          ))}
-          {files.length === 0 && (
-            <li className="text-zinc-500">Файлов пока нет — загрузите их со стороны исполнителя.</li>
-          )}
-        </ul>
+
+        <AdminFileUpload orderId={id} />
+
+        {files.length > 0 && (
+          <ul className="mt-5 divide-y divide-zinc-100">
+            {files.map((f) => (
+              <li key={f.id} className="flex items-start gap-3 py-2.5 text-sm">
+                <span
+                  className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                    f.uploadedBy === "admin"
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-zinc-100 text-zinc-600"
+                  }`}
+                >
+                  {f.uploadedBy === "admin" ? "Админ" : "Исполнитель"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <a
+                    href={`/api/files/${f.id}`}
+                    className="truncate font-medium text-blue-600 hover:underline"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {displayFilename(f.filePath)}
+                  </a>
+                  {f.comment && (
+                    <p className="mt-0.5 text-xs text-zinc-500">{f.comment}</p>
+                  )}
+                  <p className="mt-0.5 text-xs text-zinc-400">
+                    {new Date(f.createdAt).toLocaleString("ru-RU", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {files.length === 0 && (
+          <p className="mt-4 text-sm text-zinc-400">Файлов пока нет.</p>
+        )}
       </Card>
 
       <AdminOrderDelete orderId={id} />

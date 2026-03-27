@@ -22,6 +22,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@prisma/client": "5.22.0",
+    "@supabase/supabase-js": "^2.100.1",
     "bcryptjs": "^3.0.3",
     "jszip": "^3.10.1",
     "next": "^15.5.14",

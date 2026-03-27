@@ -1,11 +1,9 @@
-import fs from "fs/promises";
-import path from "path";
 import JSZip from "jszip";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
-import { absoluteFilePath } from "@/lib/uploads";
+import { downloadFileBuffer, displayFilename } from "@/lib/uploads";
 
 export const runtime = "nodejs";
 
@@ -37,27 +35,18 @@ export async function GET(_req: Request, { params }: Params) {
 
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
-    const base = path.basename(f.filePath);
-    const name = `${String(i + 1).padStart(3, "0")}_${f.uploadedBy}_${base}`;
-
-    const abs = absoluteFilePath(f.filePath);
+    const name = `${String(i + 1).padStart(3, "0")}_${f.uploadedBy}_${displayFilename(f.filePath)}`;
     try {
-      const buf = await fs.readFile(abs);
+      const buf = await downloadFileBuffer(f.filePath);
       zip.file(name, buf);
     } catch {
-      zip.file(
-        `${name}.txt`,
-        `Файл отсутствует на диске: ${f.filePath}`,
-      );
+      zip.file(`${name}.txt`, `Файл недоступен: ${f.filePath}`);
     }
   }
 
-  const body = await zip.generateAsync({
-    type: "nodebuffer",
-    compression: "DEFLATE",
-  });
-
+  const body = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
   const filename = `order-${orderId.slice(0, 8)}-files.zip`;
+
   return new NextResponse(new Uint8Array(body), {
     headers: {
       "Content-Type": "application/zip",
