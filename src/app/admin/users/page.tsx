@@ -15,11 +15,11 @@ export default async function UsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Исполнители</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Исполнители</h1>
         <CreateExecutorDialog />
       </div>
       <p className="text-sm text-zinc-600">
-        Score: учёт просрочек по завершённым заказам, средней скорости и суммарной прибыли (0–100).
+        Рейтинг подбора: учёт просрочек по завершённым заказам, скорости и прибыли (шкала 0–100).
       </p>
       <div className="space-y-4">
         {users.map((u) => (

@@ -1,6 +1,14 @@
 "use client";
 
+import type { CheckpointStatus } from "@prisma/client";
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import {
+  auditActionLabel,
+  auditEntityLabel,
+  checkpointStatusLabel,
+  userRoleLabel,
+} from "@/lib/ui-labels";
 
 type ChangedBy = {
   id: string;
@@ -61,13 +69,13 @@ export function OrderHistoryTabs({ orderId }: { orderId: string }) {
   }, [orderId]);
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "all", label: "Все" },
+    { id: "all", label: "Вся хронология" },
     { id: "checkpoints", label: "Этапы" },
     { id: "audit", label: "Аудит" },
   ];
 
   if (loading) {
-    return <p className="text-sm text-zinc-500">Загрузка истории…</p>;
+    return <p className="text-sm text-zinc-500">Загрузка…</p>;
   }
 
   return (
@@ -78,7 +86,7 @@ export function OrderHistoryTabs({ orderId }: { orderId: string }) {
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`rounded-t-md px-3 py-1.5 text-sm font-medium ${
+            className={`rounded-t-lg px-3 py-2 text-sm font-medium transition-colors ${
               tab === t.id
                 ? "border border-b-0 border-zinc-200 bg-white text-zinc-900"
                 : "text-zinc-500 hover:text-zinc-800"
@@ -94,18 +102,24 @@ export function OrderHistoryTabs({ orderId }: { orderId: string }) {
           {checkpoints.map((c) => (
             <li
               key={c.id}
-              className="rounded-md border border-zinc-100 bg-zinc-50/80 px-3 py-2"
+              className="rounded-xl border border-zinc-100 bg-zinc-50/80 px-3 py-2.5"
             >
               <span className="font-medium">{c.title}</span>
-              <span className="ml-2 text-xs text-zinc-500">{c.status}</span>
-              <p className="text-xs text-zinc-500">
-                Обновлено:{" "}
-                {new Date(c.updatedAt).toLocaleString("ru-RU")}
+              <span className="ml-2">
+                <Badge
+                  tone={c.status === "done" ? "success" : "neutral"}
+                >
+                  {checkpointStatusLabel[c.status as CheckpointStatus] ??
+                    c.status}
+                </Badge>
+              </span>
+              <p className="mt-1 text-xs text-zinc-500">
+                Обновлено: {new Date(c.updatedAt).toLocaleString("ru-RU")}
               </p>
             </li>
           ))}
           {checkpoints.length === 0 && (
-            <li className="text-zinc-500">Нет этапов</li>
+            <li className="text-zinc-500">Этапов пока нет</li>
           )}
         </ul>
       )}
@@ -116,18 +130,18 @@ export function OrderHistoryTabs({ orderId }: { orderId: string }) {
             <li key={r.id} className="border-b border-zinc-100 pb-2 last:border-0">
               <span className="text-zinc-500">
                 {new Date(r.changedAt).toLocaleString("ru-RU")} ·{" "}
-                {r.changedBy.name} ({r.changedBy.role})
+                {r.changedBy.name} ({userRoleLabel(r.changedBy.role)})
               </span>
-              <span className="ml-2 font-mono text-xs text-zinc-800">
-                {r.actionType}
+              <span className="ml-2 text-xs font-medium text-zinc-800">
+                {auditActionLabel(r.actionType)}
               </span>
               <span className="ml-1 text-xs text-zinc-400">
-                [{r.entityType}]
+                [{auditEntityLabel(r.entityType)}]
               </span>
             </li>
           ))}
           {audit.length === 0 && (
-            <li className="text-zinc-500">Записей нет</li>
+            <li className="text-zinc-500">Записей аудита нет</li>
           )}
         </ul>
       )}
@@ -138,19 +152,22 @@ export function OrderHistoryTabs({ orderId }: { orderId: string }) {
             <li
               key={r.id}
               className={`border-b border-zinc-100 pb-2 last:border-0 ${
-                r.entityType === "checkpoint" ? "bg-amber-50/40 pl-2" : ""
+                r.entityType === "checkpoint" ? "rounded-r-lg bg-amber-50/50 pl-2" : ""
               }`}
             >
               <span className="text-zinc-500">
-                {new Date(r.changedAt).toLocaleString("ru-RU")} ·{" "}
-                {r.changedBy.name}
+                {new Date(r.changedAt).toLocaleString("ru-RU")} · {r.changedBy.name}
               </span>
-              <span className="ml-2 font-mono text-xs">{r.actionType}</span>
-              <span className="ml-1 text-xs text-zinc-400">[{r.entityType}]</span>
+              <span className="ml-2 text-xs font-medium">
+                {auditActionLabel(r.actionType)}
+              </span>
+              <span className="ml-1 text-xs text-zinc-400">
+                [{auditEntityLabel(r.entityType)}]
+              </span>
             </li>
           ))}
           {audit.length === 0 && (
-            <li className="text-zinc-500">Записей нет</li>
+            <li className="text-zinc-500">Записей пока нет</li>
           )}
         </ul>
       )}

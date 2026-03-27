@@ -75,13 +75,13 @@ export function CreateExecutorDialog() {
                 />
               </div>
               <div>
-                <label className="text-xs text-zinc-500">Email (логин)</label>
+                <label className="text-xs text-zinc-500">Эл. почта (логин)</label>
                 <input
                   name="email"
                   type="email"
                   required
                   className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-                  placeholder="user@example.com"
+                  placeholder="name@студия.ru"
                 />
               </div>
               <div>

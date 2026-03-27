@@ -101,7 +101,7 @@ export function RiskOrderActions({
             onClick={patchDeadline}
             className="rounded bg-zinc-900 px-2 py-1 text-xs text-white disabled:opacity-50"
           >
-            OK
+            Сохранить
           </button>
         </div>
       )}
@@ -125,7 +125,7 @@ export function RiskOrderActions({
             onClick={patchExecutor}
             className="rounded bg-zinc-900 px-2 py-1 text-xs text-white disabled:opacity-50"
           >
-            OK
+            Сохранить
           </button>
         </div>
       )}

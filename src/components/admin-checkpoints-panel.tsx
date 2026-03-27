@@ -21,6 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { checkpointStatusLabel } from "@/lib/ui-labels";
 
 function dueInputValue(d: Date | string | null | undefined): string {
   if (!d) return "";
@@ -111,8 +112,8 @@ function SortableRow({
           }}
           className="w-fit rounded border border-zinc-200 bg-white px-2 py-1 text-sm"
         >
-          <option value="pending">pending</option>
-          <option value="done">done</option>
+          <option value="pending">{checkpointStatusLabel.pending}</option>
+          <option value="done">{checkpointStatusLabel.done}</option>
         </select>
       </div>
       <button
@@ -229,7 +230,7 @@ export function AdminCheckpointsPanel({
   }
 
   async function remove(id: string) {
-    if (!confirm("Удалить чекпоинт?")) return;
+    if (!confirm("Удалить этот этап?")) return;
     setBusy(id);
     const res = await fetch(`/api/checkpoints/${id}`, { method: "DELETE" });
     setBusy(null);
@@ -243,7 +244,7 @@ export function AdminCheckpointsPanel({
   return (
     <div className="space-y-4">
       <p className="text-xs text-zinc-500">
-        Перетаскивание за ⋮⋮ (мышь и тач). Дедлайн — datetime-local.
+        Перетаскивание за ⋮⋮ (мышь и сенсор). Дедлайн — дата и время.
       </p>
       <form
         onSubmit={add}
@@ -296,7 +297,7 @@ export function AdminCheckpointsPanel({
       </DndContext>
 
       {items.length === 0 && (
-        <p className="text-sm text-zinc-500">Чекпоинтов пока нет.</p>
+        <p className="text-sm text-zinc-500">Этапов пока нет — добавьте первый ниже.</p>
       )}
     </div>
   );

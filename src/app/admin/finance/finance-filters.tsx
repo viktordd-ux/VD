@@ -39,7 +39,7 @@ export function FinanceFilters({ executors, initial }: Props) {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-wrap items-end gap-4 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4"
+      className="flex flex-wrap items-end gap-4 rounded-2xl border border-zinc-200/90 bg-zinc-50/80 p-5 shadow-sm shadow-zinc-950/[0.03]"
     >
       <div>
         <label className="text-xs font-medium text-zinc-500">Период с</label>

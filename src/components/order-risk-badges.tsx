@@ -1,5 +1,6 @@
 import type { OrderRiskFlags } from "@/lib/order-risk";
 import { hasAnyRed, hasAnyYellow } from "@/lib/order-risk";
+import { Badge } from "@/components/ui/badge";
 
 export function OrderRiskBadges({ flags }: { flags: OrderRiskFlags }) {
   if (!hasAnyRed(flags) && !hasAnyYellow(flags)) return null;
@@ -7,29 +8,19 @@ export function OrderRiskBadges({ flags }: { flags: OrderRiskFlags }) {
   return (
     <div className="flex flex-wrap gap-2">
       {flags.redRevisions && (
-        <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-          Много правок
-        </span>
+        <Badge tone="danger">Много правок</Badge>
       )}
       {flags.redDeadline && (
-        <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-          Дедлайн
-        </span>
+        <Badge tone="danger">Просрочен дедлайн</Badge>
       )}
       {flags.yellowCheckpoint && (
-        <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
-          Чекпоинт просрочен
-        </span>
+        <Badge tone="warning">Этап просрочен</Badge>
       )}
       {flags.yellowSilent && (
-        <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
-          Нет активности
-        </span>
+        <Badge tone="warning">Нет активности</Badge>
       )}
       {flags.redSilent && (
-        <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-          Долгая тишина
-        </span>
+        <Badge tone="danger">Долгая тишина</Badge>
       )}
     </div>
   );

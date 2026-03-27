@@ -1,8 +1,11 @@
 "use client";
 
+import type { OrderStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/components/toast-provider";
+import { orderStatusLabel } from "@/lib/ui-labels";
 
 export function ExecutorOrderToolbar({
   orderId,
@@ -21,7 +24,7 @@ export function ExecutorOrderToolbar({
     if (!hasCheckpoints) return;
     if (
       !confirm(
-        "Отметить все этапы выполненными? При необходимости заказ уйдёт в REVIEW.",
+        "Отметить все этапы выполненными? При необходимости заказ будет переведён на проверку.",
       )
     ) {
       return;
@@ -40,9 +43,10 @@ export function ExecutorOrderToolbar({
       updated: number;
       order?: { status: string } | null;
     };
+    const st = data.order?.status as OrderStatus | undefined;
     toast(
       data.updated
-        ? `Завершено этапов: ${data.updated}. Статус: ${data.order?.status ?? "—"}`
+        ? `Завершено этапов: ${data.updated}. Статус: ${st ? orderStatusLabel[st] : "—"}`
         : "Все этапы уже были выполнены",
       "success",
     );
@@ -53,19 +57,21 @@ export function ExecutorOrderToolbar({
     <div className="flex flex-wrap gap-3">
       <a
         href={`/api/orders/${orderId}/files/archive`}
-        className="inline-flex items-center rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+        className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 shadow-sm transition-colors hover:bg-zinc-50"
       >
         Скачать все файлы (ZIP)
       </a>
       {status === "IN_PROGRESS" && hasCheckpoints && (
-        <button
+        <Button
           type="button"
+          variant="primary"
+          size="md"
           disabled={busy}
+          className="bg-indigo-700 hover:bg-indigo-800"
           onClick={() => void completeAll()}
-          className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-60"
         >
           {busy ? "…" : "Завершить все этапы"}
-        </button>
+        </Button>
       )}
     </div>
   );

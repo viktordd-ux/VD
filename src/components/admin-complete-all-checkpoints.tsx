@@ -1,8 +1,11 @@
 "use client";
 
+import type { OrderStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/components/toast-provider";
+import { orderStatusLabel } from "@/lib/ui-labels";
 
 export function AdminCompleteAllCheckpoints({
   orderId,
@@ -32,8 +35,9 @@ export function AdminCompleteAllCheckpoints({
       updated: number;
       order?: { status: string } | null;
     };
+    const st = data.order?.status as OrderStatus | undefined;
     toast(
-      `Этапов обновлено: ${data.updated}. Статус заказа: ${data.order?.status ?? "—"}`,
+      `Этапов обновлено: ${data.updated}. Статус: ${st ? orderStatusLabel[st] : "—"}`,
       "success",
     );
     router.refresh();
@@ -42,13 +46,15 @@ export function AdminCompleteAllCheckpoints({
   if (!hasCheckpoints) return null;
 
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
+      size="sm"
       disabled={busy}
+      className="border-indigo-200 bg-indigo-50 text-indigo-900 hover:bg-indigo-100"
       onClick={() => void completeAll()}
-      className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-900 hover:bg-indigo-100 disabled:opacity-60"
     >
       {busy ? "…" : "Завершить все этапы"}
-    </button>
+    </Button>
   );
 }

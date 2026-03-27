@@ -4,6 +4,8 @@ import type { User } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CredentialsModal } from "@/components/credentials-modal";
+import { Badge } from "@/components/ui/badge";
+import { userStatusLabel } from "@/lib/ui-labels";
 
 export function ExecutorSkillsEditor({
   user,
@@ -64,7 +66,7 @@ export function ExecutorSkillsEditor({
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-zinc-200/90 bg-white p-5 shadow-sm shadow-zinc-950/[0.04]">
       <CredentialsModal
         open={credentials !== null}
         title="Новый пароль"
@@ -76,10 +78,14 @@ export function ExecutorSkillsEditor({
         <div>
           <p className="font-medium">{user.name}</p>
           <p className="text-sm text-zinc-500">{user.email}</p>
-          <p className="mt-1 text-xs uppercase text-zinc-400">{user.status}</p>
+          <p className="mt-1">
+            <Badge tone={user.status === "active" ? "success" : "danger"}>
+              {userStatusLabel[user.status]}
+            </Badge>
+          </p>
           {score !== undefined && (
             <p className="mt-2 text-sm font-semibold tabular-nums text-zinc-800">
-              Score: {score}
+              Рейтинг подбора: {score}
             </p>
           )}
         </div>

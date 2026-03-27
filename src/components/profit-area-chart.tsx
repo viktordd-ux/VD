@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Card } from "@/components/ui/card";
 import {
   Area,
   AreaChart,
@@ -36,9 +37,9 @@ export function ProfitAreaChart({
   }));
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <Card className="p-5">
       {title ? (
-        <h3 className="text-sm font-semibold text-zinc-800">{title}</h3>
+        <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {([1, 7, 30] as const).map((r) => (
@@ -79,6 +80,7 @@ export function ProfitAreaChart({
           </AreaChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </Card>
   );
 }
+

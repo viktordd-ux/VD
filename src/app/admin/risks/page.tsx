@@ -1,5 +1,7 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
+import { OrderStatusBadge } from "@/components/order-status-badge";
+import { Card } from "@/components/ui/card";
 import { getOrderRiskFlags } from "@/lib/order-risk";
 import { RiskOrderActions } from "./risk-actions";
 
@@ -41,22 +43,23 @@ export default async function RisksPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Риски</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Риски</h1>
       <p className="text-sm text-zinc-600">
-        Активные заказы с авто-флагами: просрочки, правки, чекпоинты, тишина (пороги из
-        SILENCE_WARNING_DAYS / SILENCE_HIGH_DAYS).
+        Активные заказы с автоматическими метками: просрочки, правки, этапы, тишина
+        (пороги из переменных окружения).
       </p>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">Заказы</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Заказы
+        </h2>
         {flagged.length === 0 && (
-          <p className="text-sm text-zinc-500">Сейчас нет записей по авто-флагам.</p>
+          <p className="text-sm text-zinc-500">
+            Сейчас нет заказов, подпадающих под выбранные риски.
+          </p>
         )}
         {flagged.map(({ order, flags }) => (
-          <div
-            key={order.id}
-            className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
-          >
+          <Card key={order.id} className="flex flex-col gap-3 p-5">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <Link
@@ -65,8 +68,9 @@ export default async function RisksPage() {
                 >
                   {order.title}
                 </Link>
-                <p className="text-xs text-zinc-500">
-                  {order.status} · правок: {order.revisionCount}
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                  <OrderStatusBadge status={order.status} />
+                  <span>· правок: {order.revisionCount}</span>
                 </p>
               </div>
               <RiskOrderActions
@@ -86,7 +90,7 @@ export default async function RisksPage() {
               )}
               {flags.yellowCheckpoint && (
                 <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-900">
-                  Чекпоинт
+                  Этап
                 </span>
               )}
               {flags.yellowSilent && (
@@ -100,19 +104,19 @@ export default async function RisksPage() {
                 </span>
               )}
             </div>
-          </div>
+          </Card>
         ))}
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">
-          Забаненные исполнители
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Заблокированные исполнители
         </h2>
         <ul className="mt-2 space-y-1 text-sm">
           {banned.map((u) => (
             <li key={u.id}>{u.name}</li>
           ))}
-          {banned.length === 0 && <li className="text-zinc-500">Нет</li>}
+          {banned.length === 0 && <li className="text-zinc-500">Нет заблокированных</li>}
         </ul>
       </section>
     </div>

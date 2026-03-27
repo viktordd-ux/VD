@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Card } from "@/components/ui/card";
 import {
   Bar,
   BarChart,
@@ -33,9 +34,9 @@ export function FinanceMarginBarChart({
   }, [range, series1, series7, series30]);
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <Card className="p-5">
       {title ? (
-        <h3 className="text-sm font-semibold text-zinc-800">{title}</h3>
+        <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {([
@@ -58,7 +59,8 @@ export function FinanceMarginBarChart({
         ))}
       </div>
       <p className="mt-2 text-xs text-zinc-500">
-        По DONE-заказам с updatedAt в выбранном окне. Маржа % = Σприбыль / Σбюджет клиента.
+        По завершённым заказам с датой обновления в выбранном окне. Маржа % = сумма прибыли /
+        сумма бюджета клиента.
       </p>
       <div className="mt-4 h-72 w-full min-w-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -88,6 +90,6 @@ export function FinanceMarginBarChart({
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </Card>
   );
 }

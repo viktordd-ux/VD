@@ -41,8 +41,8 @@ export function ExecutorChangePassword() {
   }
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <h2 className="text-sm font-semibold uppercase text-zinc-500">
+    <section className="rounded-2xl border border-zinc-200/90 bg-white p-6 shadow-sm shadow-zinc-950/[0.04]">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
         Сменить пароль
       </h2>
       <form onSubmit={onSubmit} className="mt-4 max-w-md space-y-3">

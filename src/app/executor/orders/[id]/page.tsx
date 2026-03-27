@@ -5,6 +5,8 @@ import prisma from "@/lib/prisma";
 import { ExecutorCheckpoints } from "@/components/executor-checkpoints";
 import { ExecutorOrderToolbar } from "@/components/executor-order-toolbar";
 import { OrderHistoryTabs } from "@/components/order-history-tabs";
+import { OrderStatusBadge } from "@/components/order-status-badge";
+import { Card } from "@/components/ui/card";
 import { ExecutorOrderPanel } from "./ui";
 
 export const dynamic = "force-dynamic";
@@ -40,27 +42,34 @@ export default async function ExecutorOrderPage({ params }: Props) {
       <Link href="/executor" className="text-sm text-zinc-500 hover:text-zinc-800">
         ← К задачам
       </Link>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{order.title}</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          {order.platform} · {order.status}
-        </p>
-      </div>
+      <Card className="p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+              {order.title}
+            </h1>
+            <p className="mt-1 text-sm text-zinc-600">{order.platform}</p>
+          </div>
+          <OrderStatusBadge status={order.status} />
+        </div>
+      </Card>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">ТЗ</h2>
+      <Card className="p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Техническое задание
+        </h2>
         <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{order.description}</p>
-      </section>
+      </Card>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">Дедлайн</h2>
+      <Card className="p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Дедлайн</h2>
         <p className="mt-3 text-sm">
           {order.deadline ? order.deadline.toISOString().slice(0, 16).replace("T", " ") : "—"}
         </p>
-      </section>
+      </Card>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">Чекпоинты</h2>
+      <Card className="p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Этапы</h2>
         <div className="mt-3">
           <ExecutorCheckpoints checkpoints={checkpoints} />
         </div>
@@ -71,10 +80,10 @@ export default async function ExecutorOrderPage({ params }: Props) {
             hasCheckpoints={checkpoints.length > 0}
           />
         </div>
-      </section>
+      </Card>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">
+      <Card className="p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
           Мои файлы
         </h2>
         <p className="mt-1 text-xs text-zinc-500">
@@ -104,11 +113,11 @@ export default async function ExecutorOrderPage({ params }: Props) {
             <li className="text-zinc-500">Вы ещё не загружали файлы по этому заказу.</li>
           )}
         </ul>
-      </section>
+      </Card>
 
       {studioFiles.length > 0 && (
-        <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-semibold uppercase text-zinc-500">
+        <Card className="p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
             Материалы студии
           </h2>
           <ul className="mt-3 space-y-2 text-sm">
@@ -128,20 +137,20 @@ export default async function ExecutorOrderPage({ params }: Props) {
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       )}
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">
-          История изменений
+      <Card className="p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          История и аудит
         </h2>
         <p className="mt-1 text-xs text-zinc-500">
-          Аудит и этапы по этому заказу (доступ только вашему заказу).
+          Хронология и записи аудита по этому заказу.
         </p>
         <div className="mt-3">
           <OrderHistoryTabs orderId={id} />
         </div>
-      </section>
+      </Card>
 
       <ExecutorOrderPanel orderId={order.id} status={order.status} />
     </div>

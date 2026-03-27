@@ -13,10 +13,10 @@ const RISK_OPTIONS = [
 ] as const;
 
 const STATUS_OPTIONS = [
-  { value: "LEAD", label: "LEAD" },
-  { value: "IN_PROGRESS", label: "IN PROGRESS" },
-  { value: "REVIEW", label: "REVIEW" },
-  { value: "DONE", label: "DONE" },
+  { value: "LEAD", label: "Лид" },
+  { value: "IN_PROGRESS", label: "В работе" },
+  { value: "REVIEW", label: "На проверке" },
+  { value: "DONE", label: "Завершён" },
 ] as const;
 
 const SORT_OPTIONS = [
@@ -151,7 +151,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
         e.preventDefault();
         applyFromForm(new FormData(e.currentTarget));
       }}
-      className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4"
+      className="space-y-4 rounded-2xl border border-zinc-200/90 bg-zinc-50/80 p-5 shadow-sm shadow-zinc-950/[0.03]"
     >
       <div className="flex flex-wrap gap-2">
         {FILTER_TABS.map((t) => (

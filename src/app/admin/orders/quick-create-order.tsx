@@ -5,7 +5,13 @@ import { useState } from "react";
 
 type TemplateOpt = { id: string; title: string };
 
-export function QuickCreateOrderButton({ templates }: { templates: TemplateOpt[] }) {
+export function QuickCreateOrderButton({
+  templates,
+  label = "Быстро создать заказ",
+}: {
+  templates: TemplateOpt[];
+  label?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [orderText, setOrderText] = useState("");
@@ -43,7 +49,7 @@ export function QuickCreateOrderButton({ templates }: { templates: TemplateOpt[]
         onClick={() => setOpen(true)}
         className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
       >
-        Быстро создать заказ
+        {label}
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

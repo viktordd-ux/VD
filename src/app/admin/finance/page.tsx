@@ -154,7 +154,7 @@ export default async function FinancePage({
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Финансы</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Финансы</h1>
 
       <FinanceFilters
         key={JSON.stringify(filterInitial)}
@@ -166,12 +166,12 @@ export default async function FinancePage({
         series1={series1}
         series7={series7}
         series30={series30}
-        title="Маржа % по исполнителям (DONE)"
+        title="Маржа % по исполнителям (завершённые заказы)"
       />
 
       <ProfitAreaChart
         series30={series30profit}
-        title="Прибыль по завершённым заказам (по дням, updatedAt)"
+        title="Прибыль по завершённым заказам по дням"
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -196,8 +196,8 @@ export default async function FinancePage({
       </div>
 
       <div>
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">
-          Прибыль (DONE, по дате обновления, без фильтра страницы)
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Прибыль по завершённым (по дате обновления, без фильтров страницы)
         </h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -222,7 +222,7 @@ export default async function FinancePage({
       </div>
 
       <section>
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
           По исполнителям (с учётом фильтров выше)
         </h2>
         <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">

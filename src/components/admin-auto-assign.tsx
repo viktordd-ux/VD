@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export function AdminAutoAssignButton({ orderId }: { orderId: string }) {
   const router = useRouter();
@@ -19,13 +20,14 @@ export function AdminAutoAssignButton({ orderId }: { orderId: string }) {
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
+      size="md"
       onClick={onClick}
       disabled={loading}
-      className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
     >
       {loading ? "…" : "Назначить автоматически"}
-    </button>
+    </Button>
   );
 }

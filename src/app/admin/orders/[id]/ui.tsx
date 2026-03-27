@@ -4,6 +4,9 @@ import type { Order, User, Lead } from "@prisma/client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminAutoAssignButton } from "@/components/admin-auto-assign";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { leadStatusLabel, orderStatusLabel } from "@/lib/ui-labels";
 
 type ExecutorOption = Pick<User, "id" | "name" | "email" | "skills">;
 
@@ -73,11 +76,11 @@ export function AdminOrderForm({
       : null;
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm"
-    >
-      <h2 className="text-sm font-semibold uppercase text-zinc-500">Карточка заказа</h2>
+    <form onSubmit={onSubmit} className="space-y-4">
+      <Card className="space-y-4 p-6">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        Данные заказа
+      </h2>
       <div>
         <label className="text-xs font-medium text-zinc-600">Название</label>
         <input
@@ -88,7 +91,7 @@ export function AdminOrderForm({
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-zinc-600">ТЗ (description)</label>
+        <label className="text-xs font-medium text-zinc-600">Техническое задание</label>
         <textarea
           name="description"
           defaultValue={order.description}
@@ -180,10 +183,10 @@ export function AdminOrderForm({
             defaultValue={order.status}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
           >
-            <option value="LEAD">LEAD</option>
-            <option value="IN_PROGRESS">IN PROGRESS</option>
-            <option value="REVIEW">REVIEW</option>
-            <option value="DONE">DONE</option>
+            <option value="LEAD">{orderStatusLabel.LEAD}</option>
+            <option value="IN_PROGRESS">{orderStatusLabel.IN_PROGRESS}</option>
+            <option value="REVIEW">{orderStatusLabel.REVIEW}</option>
+            <option value="DONE">{orderStatusLabel.DONE}</option>
           </select>
         </div>
         <div>
@@ -203,7 +206,7 @@ export function AdminOrderForm({
             <option value="">—</option>
             {filteredExecutors.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} · score {executorScores[u.id] ?? "—"}
+                {u.name} · рейтинг {executorScores[u.id] ?? "—"}
                 {u.skills.length ? ` · ${u.skills.join(", ")}` : ""}
               </option>
             ))}
@@ -218,16 +221,14 @@ export function AdminOrderForm({
       </div>
       {order.lead && (
         <p className="text-xs text-zinc-500">
-          Источник: лид {order.lead.id} · {order.lead.status}
+          Источник: лид {order.lead.id.slice(0, 8)}… ·{" "}
+          {leadStatusLabel[order.lead.status]}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
-      >
+      <Button type="submit" variant="primary" size="md" disabled={loading}>
         {loading ? "…" : "Сохранить"}
-      </button>
+      </Button>
+      </Card>
     </form>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export function OrderRowQuickActions({
   orderId,
@@ -27,9 +28,12 @@ export function OrderRowQuickActions({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
         disabled={busy !== null}
+        title="Назначить лучшего исполнителя автоматически"
         onClick={() =>
           run("assign", async () => {
             const res = await fetch(`/api/orders/${orderId}/auto-assign`, {
@@ -40,15 +44,16 @@ export function OrderRowQuickActions({
             }
           })
         }
-        className="rounded border border-zinc-200 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-        title="Назначить лучшего исполнителя"
       >
         {busy === "assign" ? "…" : "Авто"}
-      </button>
+      </Button>
       {checkpointCount > 0 && status === "IN_PROGRESS" && (
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           disabled={busy !== null}
+          title="Завершить все этапы"
           onClick={() =>
             run("cp", async () => {
               const res = await fetch(
@@ -58,15 +63,15 @@ export function OrderRowQuickActions({
               if (!res.ok) alert("Не удалось завершить этапы");
             })
           }
-          className="rounded border border-zinc-200 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-          title="Завершить все чекпоинты"
         >
           {busy === "cp" ? "…" : "Этапы"}
-        </button>
+        </Button>
       )}
       {status !== "REVIEW" && status !== "DONE" && (
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           disabled={busy !== null}
           onClick={() =>
             run("review", async () => {
@@ -75,17 +80,19 @@ export function OrderRowQuickActions({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ status: "REVIEW" }),
               });
-              if (!res.ok) alert("Не удалось перевести в REVIEW");
+              if (!res.ok) alert("Не удалось перевести на проверку");
             })
           }
-          className="rounded border border-zinc-200 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
         >
-          {busy === "review" ? "…" : "REVIEW"}
-        </button>
+          {busy === "review" ? "…" : "На проверку"}
+        </Button>
       )}
       {status !== "DONE" && (
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
+          className="border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
           disabled={busy !== null}
           onClick={() =>
             run("done", async () => {
@@ -94,13 +101,12 @@ export function OrderRowQuickActions({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ status: "DONE" }),
               });
-              if (!res.ok) alert("Не удалось перевести в DONE");
+              if (!res.ok) alert("Не удалось завершить заказ");
             })
           }
-          className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
         >
-          {busy === "done" ? "…" : "DONE"}
-        </button>
+          {busy === "done" ? "…" : "Завершить"}
+        </Button>
       )}
     </div>
   );

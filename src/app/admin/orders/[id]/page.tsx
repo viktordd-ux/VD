@@ -7,6 +7,8 @@ import { AdminCompleteAllCheckpoints } from "@/components/admin-complete-all-che
 import { AdminCheckpointsPanel } from "@/components/admin-checkpoints-panel";
 import { OrderHistoryTabs } from "@/components/order-history-tabs";
 import { OrderRiskBadges } from "@/components/order-risk-badges";
+import { OrderStatusBadge } from "@/components/order-status-badge";
+import { Card } from "@/components/ui/card";
 import { AdminOrderForm } from "./ui";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +30,7 @@ export default async function AdminOrderPage({ params }: Props) {
   });
   const metrics = await getExecutorMetricsMap(executors.map((e) => e.id));
   const executorScores = Object.fromEntries(
-    [...metrics.entries()].map(([id, m]) => [id, m.score]),
+    [...metrics.entries()].map(([eid, m]) => [eid, m.score]),
   );
 
   const files = await prisma.file.findMany({
@@ -43,15 +45,75 @@ export default async function AdminOrderPage({ params }: Props) {
 
   const riskFlags = getOrderRiskFlags(order, checkpoints, files);
 
+  const marginPct =
+    Number(order.budgetClient) > 0
+      ? Math.round(
+          (Number(order.profit) / Number(order.budgetClient)) * 100,
+        )
+      : null;
+
+  const deadlineLabel = order.deadline
+    ? order.deadline.toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Не задан";
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <Link href="/admin/orders" className="text-sm text-zinc-500 hover:text-zinc-800">
-        ← К заказам
+      <Link
+        href="/admin/orders"
+        className="inline-flex text-sm text-zinc-500 hover:text-zinc-800"
+      >
+        ← К списку заказов
       </Link>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{order.title}</h1>
-        <OrderRiskBadges flags={riskFlags} />
-      </div>
+
+      <Card className="p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+              {order.title}
+            </h1>
+            <OrderRiskBadges flags={riskFlags} />
+          </div>
+          <OrderStatusBadge status={order.status} />
+        </div>
+        <dl className="mt-6 grid gap-4 border-t border-zinc-100 pt-6 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Исполнитель
+            </dt>
+            <dd className="mt-1 text-sm font-medium text-zinc-900">
+              {order.executor?.name ?? "Не назначен"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Дедлайн
+            </dt>
+            <dd className="mt-1 text-sm tabular-nums text-zinc-900">{deadlineLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Маржа
+            </dt>
+            <dd className="mt-1 text-sm font-semibold tabular-nums text-emerald-800">
+              {marginPct !== null ? `${marginPct}%` : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Прибыль
+            </dt>
+            <dd className="mt-1 text-sm font-semibold tabular-nums text-zinc-900">
+              {order.profit.toString()}
+            </dd>
+          </div>
+        </dl>
+      </Card>
 
       <AdminOrderForm
         order={order}
@@ -59,12 +121,12 @@ export default async function AdminOrderPage({ params }: Props) {
         executorScores={executorScores}
       />
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <Card className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold uppercase text-zinc-500">Чекпоинты</h2>
+            <h2 className="text-base font-semibold text-zinc-900">Этапы</h2>
             <p className="mt-1 text-xs text-zinc-500">
-              Все этапы done при активном заказе в IN PROGRESS переводят заказ в REVIEW.
+              Когда все этапы выполнены при статусе «В работе», заказ переходит на проверку.
             </p>
           </div>
           <AdminCompleteAllCheckpoints
@@ -75,21 +137,21 @@ export default async function AdminOrderPage({ params }: Props) {
         <div className="mt-4">
           <AdminCheckpointsPanel orderId={id} initial={checkpoints} />
         </div>
-      </section>
+      </Card>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <Card className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase text-zinc-500">Файлы</h2>
+          <h2 className="text-base font-semibold text-zinc-900">Файлы</h2>
           {files.length > 0 && (
             <a
               href={`/api/orders/${id}/files/archive`}
               className="text-sm font-medium text-blue-600 hover:underline"
             >
-              Скачать все (ZIP)
+              Скачать архив (ZIP)
             </a>
           )}
         </div>
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="mt-4 space-y-2 text-sm">
           {files.map((f) => (
             <li key={f.id}>
               <a
@@ -103,16 +165,21 @@ export default async function AdminOrderPage({ params }: Props) {
               {f.comment ? <span className="text-zinc-500"> — {f.comment}</span> : null}
             </li>
           ))}
-          {files.length === 0 && <li className="text-zinc-500">Нет файлов</li>}
+          {files.length === 0 && (
+            <li className="text-zinc-500">Файлов пока нет — загрузите их со стороны исполнителя.</li>
+          )}
         </ul>
-      </section>
+      </Card>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase text-zinc-500">История изменений</h2>
-        <div className="mt-3">
+      <Card className="p-6">
+        <h2 className="text-base font-semibold text-zinc-900">История и аудит</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Хронология изменений, этапов и записей аудита по заказу.
+        </p>
+        <div className="mt-4">
           <OrderHistoryTabs orderId={id} />
         </div>
-      </section>
+      </Card>
     </div>
   );
 }

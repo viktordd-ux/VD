@@ -45,12 +45,15 @@ function QuickForm({ templates }: { templates: TemplateOpt[] }) {
         ← К заказам
       </Link>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">One Click</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          Быстро создать заказ
+        </h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Создать заказ из текста, применить шаблон этапов и сразу назначить лучшего исполнителя.
+          Создайте заказ из текста, подставьте шаблон этапов и сразу назначьте подходящего
+          исполнителя.
         </p>
       </div>
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-zinc-200/90 bg-white p-6 shadow-sm shadow-zinc-950/[0.04]">
         <label className="text-xs font-medium text-zinc-600">Текст заказа</label>
         <textarea
           value={orderText}

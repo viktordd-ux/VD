@@ -1,5 +1,13 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
+import { EmptyState } from "@/components/empty-state";
+import { OrderStatusBadge } from "@/components/order-status-badge";
+import {
+  TableWrap,
+  tdClass,
+  thClass,
+  trClass,
+} from "@/components/table-wrap";
 import {
   computeFlags,
   isLowMargin,
@@ -19,13 +27,6 @@ import { OrdersFilterForm } from "./orders-filter-form";
 import { OrdersFilterHydration } from "./orders-filter-hydration";
 
 export const dynamic = "force-dynamic";
-
-const statusLabels: Record<string, string> = {
-  LEAD: "LEAD",
-  IN_PROGRESS: "IN PROGRESS",
-  REVIEW: "REVIEW",
-  DONE: "DONE",
-};
 
 export default async function OrdersPage({
   searchParams,
@@ -126,7 +127,7 @@ export default async function OrdersPage({
       <OrdersFilterHydration />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Заказы</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Заказы</h1>
           {filterSummary.length > 0 && (
             <p className="mt-1 text-sm text-zinc-600">{filterSummary.join(" · ")}</p>
           )}
@@ -140,59 +141,69 @@ export default async function OrdersPage({
         initial={initial}
       />
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-        <table className="w-full min-w-[1000px] text-left text-sm">
-          <thead className="border-b border-zinc-100 bg-zinc-50 text-xs uppercase text-zinc-500">
-            <tr>
-              <th className="px-4 py-3">Название</th>
-              <th className="px-4 py-3">Клиент</th>
-              <th className="px-4 py-3">Статус</th>
-              <th className="px-4 py-3">Исполнитель</th>
-              <th className="px-4 py-3">Дедлайн</th>
-              <th className="px-4 py-3">Прибыль</th>
-              <th className="px-4 py-3">Маржа %</th>
-              <th className="px-4 py-3">Обновлён</th>
-              <th className="px-4 py-3 w-[200px]">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((o) => (
-              <tr key={o.id} className="border-b border-zinc-50 last:border-0">
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/admin/orders/${o.id}`}
-                    className="font-medium text-blue-600 hover:underline"
-                  >
-                    {o.title}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">{o.clientName}</td>
-                <td className="px-4 py-3">{statusLabels[o.status] ?? o.status}</td>
-                <td className="px-4 py-3">{o.executor?.name ?? "—"}</td>
-                <td className="px-4 py-3 tabular-nums text-zinc-600">
-                  {o.deadline
-                    ? o.deadline.toISOString().slice(0, 10)
-                    : "—"}
-                </td>
-                <td className="px-4 py-3 tabular-nums">{o.profit.toString()}</td>
-                <td className="px-4 py-3 tabular-nums text-zinc-700">
-                  {(marginRatio(o) * 100).toFixed(1)}%
-                </td>
-                <td className="px-4 py-3 tabular-nums text-xs text-zinc-500">
-                  {o.updatedAt.toISOString().slice(0, 16).replace("T", " ")}
-                </td>
-                <td className="px-4 py-3 align-top">
-                  <OrderRowQuickActions
-                    orderId={o.id}
-                    status={o.status}
-                    checkpointCount={o.checkpoints.length}
-                  />
-                </td>
+      {orders.length === 0 ? (
+        <EmptyState
+          title="Нет заказов по выбранным условиям"
+          description="Измените фильтры или создайте новый заказ."
+          action={
+            <QuickCreateOrderButton templates={templates} label="Создать заказ" />
+          }
+        />
+      ) : (
+        <TableWrap>
+          <table className="w-full min-w-[1000px] text-left text-sm">
+            <thead className="border-b border-zinc-100 bg-zinc-50/90">
+              <tr>
+                <th className={thClass}>Название</th>
+                <th className={thClass}>Клиент</th>
+                <th className={thClass}>Статус</th>
+                <th className={thClass}>Исполнитель</th>
+                <th className={thClass}>Дедлайн</th>
+                <th className={thClass}>Прибыль</th>
+                <th className={thClass}>Маржа %</th>
+                <th className={thClass}>Обновлён</th>
+                <th className={`${thClass} w-[200px]`}>Действия</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {orders.map((o) => (
+                <tr key={o.id} className={trClass}>
+                  <td className={tdClass}>
+                    <Link
+                      href={`/admin/orders/${o.id}`}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      {o.title}
+                    </Link>
+                  </td>
+                  <td className={tdClass}>{o.clientName}</td>
+                  <td className={tdClass}>
+                    <OrderStatusBadge status={o.status} />
+                  </td>
+                  <td className={tdClass}>{o.executor?.name ?? "—"}</td>
+                  <td className={`${tdClass} tabular-nums text-zinc-600`}>
+                    {o.deadline ? o.deadline.toISOString().slice(0, 10) : "—"}
+                  </td>
+                  <td className={`${tdClass} tabular-nums`}>{o.profit.toString()}</td>
+                  <td className={`${tdClass} tabular-nums text-zinc-700`}>
+                    {(marginRatio(o) * 100).toFixed(1)}%
+                  </td>
+                  <td className={`${tdClass} tabular-nums text-xs text-zinc-500`}>
+                    {o.updatedAt.toISOString().slice(0, 16).replace("T", " ")}
+                  </td>
+                  <td className={`${tdClass} align-top`}>
+                    <OrderRowQuickActions
+                      orderId={o.id}
+                      status={o.status}
+                      checkpointCount={o.checkpoints.length}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableWrap>
+      )}
     </div>
   );
 }
