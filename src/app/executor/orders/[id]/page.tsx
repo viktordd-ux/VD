@@ -8,6 +8,7 @@ import { ExecutorOrderToolbar } from "@/components/executor-order-toolbar";
 import { OrderHistoryTabs } from "@/components/order-history-tabs";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
+import { OrderLiveRefresh } from "@/components/order-live-refresh";
 import { displayFileEntryLabel } from "@/lib/uploads";
 import { ExecutorOrderPanel } from "./ui";
 
@@ -42,6 +43,7 @@ export default async function ExecutorOrderPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
+      <OrderLiveRefresh />
       <Link href="/executor" className="text-sm text-zinc-500 hover:text-zinc-800">
         ← К задачам
       </Link>

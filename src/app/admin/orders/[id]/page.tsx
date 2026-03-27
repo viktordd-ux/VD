@@ -12,6 +12,7 @@ import { OrderRiskBadges } from "@/components/order-risk-badges";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
 import { displayFileEntryLabel } from "@/lib/uploads";
+import { OrderLiveRefresh } from "@/components/order-live-refresh";
 import { AdminOrderDelete } from "./admin-order-delete";
 import { AdminOrderForm } from "./ui";
 
@@ -68,6 +69,7 @@ export default async function AdminOrderPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
+      <OrderLiveRefresh />
       <Link
         href="/admin/orders"
         className="inline-flex text-sm text-zinc-500 hover:text-zinc-800"

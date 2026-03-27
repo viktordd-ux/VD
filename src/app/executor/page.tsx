@@ -10,6 +10,7 @@ import {
   trClass,
 } from "@/components/table-wrap";
 import prisma from "@/lib/prisma";
+import { OrderLiveRefresh } from "@/components/order-live-refresh";
 import { orderIsActive } from "@/lib/active-scope";
 import { redirect } from "next/navigation";
 
@@ -32,6 +33,7 @@ export default async function ExecutorHome() {
 
   return (
     <div className="space-y-8">
+      <OrderLiveRefresh />
       <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Мои задачи</h1>
 
       {orders.length === 0 ? (

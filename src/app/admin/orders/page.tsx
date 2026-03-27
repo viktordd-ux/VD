@@ -31,6 +31,7 @@ import {
 } from "./orders-bulk";
 import { QuickCreateOrderButton } from "./quick-create-order";
 import { OrdersFilterForm } from "./orders-filter-form";
+import { OrderLiveRefresh } from "@/components/order-live-refresh";
 import { OrdersFilterHydration } from "./orders-filter-hydration";
 
 export const dynamic = "force-dynamic";
@@ -147,6 +148,7 @@ export default async function OrdersPage({
   return (
     <OrdersBulkProvider>
     <div className="space-y-6">
+      <OrderLiveRefresh />
       <OrdersFilterHydration />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
