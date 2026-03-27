@@ -107,7 +107,13 @@ export function OrderHistoryTabs({ orderId }: { orderId: string }) {
               <span className="font-medium">{c.title}</span>
               <span className="ml-2">
                 <Badge
-                  tone={c.status === "done" ? "success" : "neutral"}
+                  tone={
+                    c.status === "done"
+                      ? "success"
+                      : c.status === "awaiting_approval"
+                        ? "review"
+                        : "neutral"
+                  }
                 >
                   {checkpointStatusLabel[c.status as CheckpointStatus] ??
                     c.status}

@@ -41,6 +41,7 @@ enum FileUploaderRole {
 
 enum CheckpointStatus {
   pending
+  awaiting_approval
   done
 }
 
@@ -152,6 +153,8 @@ model Checkpoint {
   title     String
   status    CheckpointStatus
   dueDate   DateTime?        @map("due_date")
+  paymentAmount    Decimal    @default(0) @map("payment_amount") @db.Decimal(12, 2)
+  payoutReleasedAt DateTime?  @map("payout_released_at")
   position  Int              @default(0)
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")

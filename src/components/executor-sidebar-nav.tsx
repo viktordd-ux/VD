@@ -16,11 +16,29 @@ const items: {
     icon: IconList,
   },
   {
+    href: "/executor/earnings",
+    label: "Заработок",
+    icon: IconWallet,
+  },
+  {
     href: "/executor#password",
     label: "Сменить пароль",
     icon: IconKey,
   },
 ];
+
+function navItemActive(pathname: string, href: string): boolean {
+  if (href === "/executor") {
+    return (
+      pathname === "/executor" ||
+      (pathname.startsWith("/executor/orders") && !pathname.startsWith("/executor/earnings"))
+    );
+  }
+  if (href === "/executor/earnings") {
+    return pathname === "/executor/earnings" || pathname.startsWith("/executor/earnings/");
+  }
+  return false;
+}
 
 export function ExecutorSidebarNav() {
   const pathname = usePathname();
@@ -28,10 +46,7 @@ export function ExecutorSidebarNav() {
   return (
     <nav className="flex flex-1 flex-col gap-0.5 p-2">
       {items.map((item) => {
-        const isTasks = item.href === "/executor";
-        const isOn = isTasks
-          ? pathname === "/executor" || pathname.startsWith("/executor/orders")
-          : false;
+        const isOn = navItemActive(pathname, item.href);
         return (
           <Link
             key={item.href}
@@ -51,6 +66,16 @@ export function ExecutorSidebarNav() {
         );
       })}
     </nav>
+  );
+}
+
+function IconWallet({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 7a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+      <path d="M16 12h4" />
+      <circle cx="16" cy="12" r="1" />
+    </svg>
   );
 }
 

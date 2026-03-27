@@ -43,7 +43,8 @@ function SortableRow({
     patch: Partial<{
       title: string;
       dueDate: string | null;
-      status: "pending" | "done";
+      status: "pending" | "awaiting_approval" | "done";
+      paymentAmount: number;
     }>,
   ) => void;
   onRemove: (id: string) => void;
@@ -103,16 +104,30 @@ function SortableRow({
             if (nextIso !== prevIso) void onSave(c.id, { dueDate: v || null });
           }}
         />
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          title="Выплата исполнителю за этап (₽)"
+          defaultValue={Number(c.paymentAmount)}
+          className="w-[88px] rounded border border-zinc-200 bg-white px-2 py-1 text-xs tabular-nums"
+          onBlur={(e) => {
+            const v = Number(e.target.value);
+            if (!Number.isFinite(v) || v < 0) return;
+            if (v !== Number(c.paymentAmount)) void onSave(c.id, { paymentAmount: v });
+          }}
+        />
         <select
           defaultValue={c.status}
           disabled={busy === c.id}
           onChange={(e) => {
-            const status = e.target.value as "pending" | "done";
+            const status = e.target.value as "pending" | "awaiting_approval" | "done";
             void onSave(c.id, { status });
           }}
           className="w-fit rounded border border-zinc-200 bg-white px-2 py-1 text-sm"
         >
           <option value="pending">{checkpointStatusLabel.pending}</option>
+          <option value="awaiting_approval">{checkpointStatusLabel.awaiting_approval}</option>
           <option value="done">{checkpointStatusLabel.done}</option>
         </select>
       </div>
@@ -212,7 +227,8 @@ export function AdminCheckpointsPanel({
     patch: Partial<{
       title: string;
       dueDate: string | null;
-      status: "pending" | "done";
+      status: "pending" | "awaiting_approval" | "done";
+      paymentAmount: number;
     }>,
   ) {
     setBusy(id);
@@ -244,7 +260,9 @@ export function AdminCheckpointsPanel({
   return (
     <div className="space-y-4">
       <p className="text-xs text-zinc-500">
-        Перетаскивание за ⋮⋮ (мышь и сенсор). Дедлайн — дата и время.
+        Перетаскивание за ⋮⋮ (мышь и сенсор). Дедлайн — дата и время. Укажите сумму выплаты в поле «₽» —
+        её меняете только вы; исполнитель сдаёт этап на проверку, после принятия этапа выплата
+        фиксируется в его «Заработке».
       </p>
       <form
         onSubmit={add}

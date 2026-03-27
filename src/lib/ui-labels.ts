@@ -24,7 +24,8 @@ export const leadStatusLabel: Record<LeadStatus, string> = {
 /** Подписи статусов этапа. */
 export const checkpointStatusLabel: Record<CheckpointStatus, string> = {
   pending: "Ожидает",
-  done: "Готово",
+  awaiting_approval: "На проверке",
+  done: "Принято",
 };
 
 /** Статус пользователя в UI. */

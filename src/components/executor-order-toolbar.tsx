@@ -24,7 +24,7 @@ export function ExecutorOrderToolbar({
     if (!hasCheckpoints) return;
     if (
       !confirm(
-        "Отметить все этапы выполненными? При необходимости заказ будет переведён на проверку.",
+        "Сдать все этапы в статусе «Ожидает» на проверку администратору? Заказ перейдёт на проверку только после принятия всех этапов админом.",
       )
     ) {
       return;
@@ -46,8 +46,8 @@ export function ExecutorOrderToolbar({
     const st = data.order?.status as OrderStatus | undefined;
     toast(
       data.updated
-        ? `Завершено этапов: ${data.updated}. Статус: ${st ? orderStatusLabel[st] : "—"}`
-        : "Все этапы уже были выполнены",
+        ? `Отправлено на проверку этапов: ${data.updated}. Статус заказа: ${st ? orderStatusLabel[st] : "—"}`
+        : "Нет этапов в статусе «Ожидает» для отправки",
       "success",
     );
     router.refresh();
@@ -70,7 +70,7 @@ export function ExecutorOrderToolbar({
           className="bg-indigo-700 hover:bg-indigo-800"
           onClick={() => void completeAll()}
         >
-          {busy ? "…" : "Завершить все этапы"}
+          {busy ? "…" : "Сдать все этапы на проверку"}
         </Button>
       )}
     </div>

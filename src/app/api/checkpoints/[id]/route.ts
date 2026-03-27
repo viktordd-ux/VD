@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { CheckpointStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { forbidden, requireAdmin, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
@@ -7,6 +8,19 @@ import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { dispatchNotification } from "@/lib/notifications";
 
 type Params = { params: Promise<{ id: string }> };
+
+function payoutFieldsOnStatusChange(
+  prev: CheckpointStatus,
+  next: CheckpointStatus,
+): { payoutReleasedAt: Date | null } | Record<string, never> {
+  if (prev !== "done" && next === "done") {
+    return { payoutReleasedAt: new Date() };
+  }
+  if (prev === "done" && next !== "done") {
+    return { payoutReleasedAt: null };
+  }
+  return {};
+}
 
 export async function PATCH(req: Request, { params }: Params) {
   const user = await requireUser();
@@ -23,11 +37,35 @@ export async function PATCH(req: Request, { params }: Params) {
 
   if (user.role === "executor") {
     if (order.executorId !== user.id) return forbidden();
-    const body = (await req.json()) as { status?: "pending" | "done" };
+    const body = (await req.json()) as { status?: CheckpointStatus };
     if (Object.keys(body).some((k) => k !== "status")) return forbidden();
-    if (!body.status) {
+    if (body.status === undefined) {
       return NextResponse.json({ error: "status required" }, { status: 400 });
     }
+
+    if (body.status === "done") {
+      return NextResponse.json(
+        { error: "Принять этап может только администратор" },
+        { status: 403 },
+      );
+    }
+
+    if (existing.status === "done") {
+      return NextResponse.json(
+        { error: "Этап уже принят администратором" },
+        { status: 403 },
+      );
+    }
+
+    const allowed =
+      (existing.status === "pending" && body.status === "awaiting_approval") ||
+      (existing.status === "awaiting_approval" && body.status === "pending") ||
+      existing.status === body.status;
+
+    if (!allowed) {
+      return NextResponse.json({ error: "Недопустимый переход статуса" }, { status: 400 });
+    }
+
     const updated = await prisma.checkpoint.update({
       where: { id },
       data: { status: body.status },
@@ -40,15 +78,17 @@ export async function PATCH(req: Request, { params }: Params) {
       diff: { before: existing, after: updated },
     });
     await syncOrderStatusFromCheckpoints(existing.orderId, user.id);
-    if (body.status === "done" && existing.status !== "done") {
+
+    if (body.status === "awaiting_approval" && existing.status === "pending") {
       void dispatchNotification({
-        key: `cp-done-${id}-${Date.now()}`,
-        title: "Чекпоинт выполнен",
-        body: `Этап «${updated.title}» (исполнитель)`,
+        key: `cp-submit-${id}-${Date.now()}`,
+        title: "Этап сдан на проверку",
+        body: `«${updated.title}» — исполнитель ждёт принятия`,
         audience: "admin",
         event: "checkpoint_done",
       });
     }
+
     const orderRow = await prisma.order.findUnique({
       where: { id: existing.orderId },
       select: { status: true },
@@ -65,8 +105,23 @@ export async function PATCH(req: Request, { params }: Params) {
   const body = (await req.json()) as Partial<{
     title: string;
     dueDate: string | null;
-    status: "pending" | "done";
+    status: CheckpointStatus;
+    paymentAmount: number;
   }>;
+
+  const payoutExtra =
+    body.status !== undefined && body.status !== existing.status
+      ? payoutFieldsOnStatusChange(existing.status, body.status)
+      : {};
+
+  let paymentAmount: number | undefined;
+  if (body.paymentAmount !== undefined) {
+    const n = Number(body.paymentAmount);
+    if (!Number.isFinite(n) || n < 0) {
+      return NextResponse.json({ error: "paymentAmount must be >= 0" }, { status: 400 });
+    }
+    paymentAmount = n;
+  }
 
   const updated = await prisma.checkpoint.update({
     where: { id },
@@ -79,6 +134,8 @@ export async function PATCH(req: Request, { params }: Params) {
             ? new Date(body.dueDate)
             : null,
       status: body.status ?? undefined,
+      paymentAmount: paymentAmount !== undefined ? paymentAmount : undefined,
+      ...payoutExtra,
     },
   });
 
@@ -95,8 +152,8 @@ export async function PATCH(req: Request, { params }: Params) {
   if (body.status === "done" && existing.status !== "done") {
     void dispatchNotification({
       key: `cp-done-admin-${id}-${Date.now()}`,
-      title: "Чекпоинт выполнен",
-      body: `Этап «${updated.title}» (админ)`,
+      title: "Этап принят",
+      body: `«${updated.title}» — выплата по этапу зафиксирована`,
       audience: "admin",
       event: "checkpoint_done",
     });

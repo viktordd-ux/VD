@@ -40,7 +40,7 @@ export async function POST(req: Request, { params }: Params) {
   const body = (await req.json()) as {
     title?: string;
     dueDate?: string | null;
-    status?: "pending" | "done";
+    status?: "pending" | "awaiting_approval" | "done";
   };
   if (!body.title) {
     return NextResponse.json({ error: "title required" }, { status: 400 });

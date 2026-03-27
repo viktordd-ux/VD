@@ -20,7 +20,13 @@ export function AdminCompleteAllCheckpoints({
 
   async function completeAll() {
     if (!hasCheckpoints) return;
-    if (!confirm("Отметить все этапы выполненными?")) return;
+    if (
+      !confirm(
+        "Принять все незавершённые этапы? Для каждого будет зафиксирована выплата по указанной сумме этапа.",
+      )
+    ) {
+      return;
+    }
     setBusy(true);
     const res = await fetch(
       `/api/orders/${orderId}/checkpoints/complete-all`,
@@ -37,7 +43,9 @@ export function AdminCompleteAllCheckpoints({
     };
     const st = data.order?.status as OrderStatus | undefined;
     toast(
-      `Этапов обновлено: ${data.updated}. Статус: ${st ? orderStatusLabel[st] : "—"}`,
+      data.updated
+        ? `Принято этапов: ${data.updated}. Статус заказа: ${st ? orderStatusLabel[st] : "—"}`
+        : "Все этапы уже приняты",
       "success",
     );
     router.refresh();
@@ -54,7 +62,7 @@ export function AdminCompleteAllCheckpoints({
       className="border-indigo-200 bg-indigo-50 text-indigo-900 hover:bg-indigo-100"
       onClick={() => void completeAll()}
     >
-      {busy ? "…" : "Завершить все этапы"}
+      {busy ? "…" : "Принять все этапы"}
     </Button>
   );
 }
