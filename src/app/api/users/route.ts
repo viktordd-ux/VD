@@ -36,17 +36,25 @@ export async function POST(req: Request) {
     ? body.skills.map((s) => String(s).trim()).filter(Boolean)
     : [];
 
+  const nameParts = name.trim().split(/\s+/);
+  const firstName = nameParts[0] ?? "";
+  const lastName = nameParts.slice(1).join(" ");
+
   const plain = generatePassword(10);
   const passwordHash = await hash(plain, 10);
 
   const created = await prisma.user.create({
     data: {
       name,
+      firstName,
+      lastName,
       email: emailRaw,
       passwordHash,
       role: "executor",
       status: "active",
       skills,
+      primarySkill: skills[0] ?? "",
+      onboarded: false,
     },
     select: { id: true, email: true, name: true },
   });
@@ -88,10 +96,16 @@ export async function GET(req: Request) {
     select: {
       id: true,
       name: true,
+      firstName: true,
+      lastName: true,
       email: true,
       role: true,
       status: true,
+      phone: true,
+      telegram: true,
       skills: true,
+      primarySkill: true,
+      onboarded: true,
       createdAt: true,
       updatedAt: true,
     },

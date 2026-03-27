@@ -27,15 +27,26 @@ async function main() {
     update: {
       passwordHash: execHash,
       skills: ["layout", "react", "figma"],
+      primarySkill: "react",
+      onboarded: true,
+      firstName: "Исполнитель",
+      lastName: "Тестовый",
+      name: "Исполнитель Тестовый",
       status: "active",
     },
     create: {
-      name: "Исполнитель",
+      name: "Исполнитель Тестовый",
+      firstName: "Исполнитель",
+      lastName: "Тестовый",
       email: "executor@vd.local",
       passwordHash: execHash,
       role: "executor",
       status: "active",
+      phone: "+79990000000",
+      telegram: "@executor_vd",
       skills: ["layout", "react", "figma"],
+      primarySkill: "react",
+      onboarded: true,
     },
   });
 

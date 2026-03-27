@@ -44,11 +44,17 @@ enum CheckpointStatus {
 model User {
   id           String     @id @default(cuid())
   name         String
+  firstName    String     @default("") @map("first_name")
+  lastName     String     @default("") @map("last_name")
   email        String     @unique
   passwordHash String     @map("password_hash")
   role         UserRole
   status       UserStatus
+  phone        String?    @map("phone")
+  telegram     String?    @map("telegram")
   skills       String[]   @default([])
+  primarySkill String     @default("") @map("primary_skill")
+  onboarded    Boolean    @default(false) @map("onboarded")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
