@@ -2,6 +2,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Миграции (migrate deploy) не встраивайте в Vercel build: Session pooler Supabase даёт
+// MaxClientsInSessionMode / лимит сессий. Запускайте migrate локально или в CI с прямым URL
+// к БД (Supabase → Connect → Postgres, host db.*.supabase.co:5432, не pooler).
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
