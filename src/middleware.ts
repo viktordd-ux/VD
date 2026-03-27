@@ -8,6 +8,11 @@ function executorOnboardingDone(onboarded: boolean | undefined) {
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+
+  if (pathname === "/api/health") {
+    return NextResponse.next();
+  }
+
   const isLoggedIn = !!req.auth;
   const role = (req.auth?.user as { role?: "admin" | "executor" } | undefined)?.role;
   const onboarded = (req.auth?.user as { onboarded?: boolean } | undefined)?.onboarded;
