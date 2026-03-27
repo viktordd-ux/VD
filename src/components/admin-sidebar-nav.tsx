@@ -2,63 +2,46 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+
+type Badges = { review: number; newLeads: number; overdue: number };
 
 const items: {
   href: string;
   label: string;
+  badgeKey?: keyof Badges;
   icon: (props: { className?: string }) => ReactNode;
 }[] = [
-  {
-    href: "/admin",
-    label: "Дашборд",
-    icon: IconLayout,
-  },
-  {
-    href: "/admin/orders",
-    label: "Заказы",
-    icon: IconOrders,
-  },
-  {
-    href: "/admin/leads",
-    label: "Лиды",
-    icon: IconUsers,
-  },
-  {
-    href: "/admin/quick",
-    label: "Быстро создать",
-    icon: IconZap,
-  },
-  {
-    href: "/admin/users",
-    label: "Исполнители",
-    icon: IconUserCog,
-  },
-  {
-    href: "/admin/templates",
-    label: "Шаблоны",
-    icon: IconTemplate,
-  },
-  {
-    href: "/admin/risks",
-    label: "Риски",
-    icon: IconAlert,
-  },
-  {
-    href: "/admin/finance",
-    label: "Финансы",
-    icon: IconChart,
-  },
-  {
-    href: "/admin/audit",
-    label: "История",
-    icon: IconHistory,
-  },
+  { href: "/admin", label: "Дашборд", icon: IconLayout },
+  { href: "/admin/orders", label: "Заказы", badgeKey: "review", icon: IconOrders },
+  { href: "/admin/leads", label: "Лиды", badgeKey: "newLeads", icon: IconUsers },
+  { href: "/admin/quick", label: "Быстро создать", icon: IconZap },
+  { href: "/admin/users", label: "Исполнители", icon: IconUserCog },
+  { href: "/admin/templates", label: "Шаблоны", icon: IconTemplate },
+  { href: "/admin/risks", label: "Риски", badgeKey: "overdue", icon: IconAlert },
+  { href: "/admin/finance", label: "Финансы", icon: IconChart },
+  { href: "/admin/audit", label: "История", icon: IconHistory },
 ];
 
 export function AdminSidebarNav() {
   const pathname = usePathname();
+  const [badges, setBadges] = useState<Badges>({ review: 0, newLeads: 0, overdue: 0 });
+
+  useEffect(() => {
+    async function fetchBadges() {
+      try {
+        const res = await fetch("/api/admin/badges");
+        if (res.ok) setBadges(await res.json() as Badges);
+      } catch {
+        // ignore network errors silently
+      }
+    }
+    void fetchBadges();
+    const id = setInterval(() => void fetchBadges(), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   function active(href: string): boolean {
     if (href === "/admin") return pathname === "/admin";
@@ -69,6 +52,7 @@ export function AdminSidebarNav() {
     <nav className="flex flex-1 flex-col gap-0.5 p-2">
       {items.map((item) => {
         const isOn = active(item.href);
+        const count = item.badgeKey ? badges[item.badgeKey] : 0;
         return (
           <Link
             key={item.href}
@@ -83,7 +67,17 @@ export function AdminSidebarNav() {
             <item.icon
               className={cn("h-[18px] w-[18px] shrink-0", isOn ? "text-white" : "text-zinc-500")}
             />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {count > 0 && (
+              <span
+                className={cn(
+                  "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none",
+                  isOn ? "bg-white text-zinc-900" : "bg-red-500 text-white",
+                )}
+              >
+                {count > 99 ? "99+" : count}
+              </span>
+            )}
           </Link>
         );
       })}
