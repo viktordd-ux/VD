@@ -40,35 +40,54 @@ export async function POST(req: Request, { params }: Params) {
     return forbidden();
   }
 
-  const formData = await req.formData();
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "Не удалось разобрать форму" }, { status: 400 });
+  }
+
   const file = formData.get("file");
   const comment = (formData.get("comment") as string | null) ?? null;
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "file required" }, { status: 400 });
+  if (!(file instanceof File) || file.size === 0) {
+    return NextResponse.json({ error: "Файл не выбран" }, { status: 400 });
   }
 
-  const buf = Buffer.from(await file.arrayBuffer());
-  const filePath = await saveOrderFile(orderId, buf, file.name);
+  let filePath: string;
+  try {
+    const buf = Buffer.from(await file.arrayBuffer());
+    filePath = await saveOrderFile(orderId, buf, file.name);
+  } catch (err) {
+    console.error("[files/upload] Supabase storage error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Ошибка хранилища: ${msg}` }, { status: 502 });
+  }
 
   const uploadedBy = user.role === "admin" ? "admin" : "executor";
 
-  const row = await prisma.file.create({
-    data: {
-      orderId,
-      uploadedBy,
-      filePath,
-      comment,
-    },
-  });
+  let row: Awaited<ReturnType<typeof prisma.file.create>>;
+  try {
+    row = await prisma.file.create({
+      data: { orderId, uploadedBy, filePath, comment },
+    });
+  } catch (err) {
+    console.error("[files/upload] DB error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Ошибка базы данных: ${msg}` }, { status: 500 });
+  }
 
-  await writeAudit({
-    entityType: "file",
-    entityId: row.id,
-    actionType: "upload",
-    changedById: user.id,
-    diff: { orderId, filePath },
-  });
+  try {
+    await writeAudit({
+      entityType: "file",
+      entityId: row.id,
+      actionType: "upload",
+      changedById: user.id,
+      diff: { orderId, filePath },
+    });
+  } catch (err) {
+    console.error("[files/upload] Audit write error (non-fatal):", err);
+  }
 
   return NextResponse.json(row);
 }
