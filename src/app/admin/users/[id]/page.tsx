@@ -45,6 +45,13 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
     }),
   ]);
 
+  const initials = formatUserDisplayName(user)
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
   return (
     <div className="space-y-8">
       <Link
@@ -54,12 +61,27 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
         ← К списку исполнителей
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-          {formatUserDisplayName(user)}
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">{user.email}</p>
-      </div>
+      <Card className="p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white">
+              {initials || "EX"}
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+                {formatUserDisplayName(user)}
+              </h1>
+              <p className="mt-1 text-sm text-zinc-500">{user.email}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={user.status === "active" ? "success" : "danger"}>
+              {userStatusLabel[user.status]}
+            </Badge>
+            <Badge tone="neutral">{user.onboarded ? "Профиль заполнен" : "Профиль не заполнен"}</Badge>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-5">
@@ -90,51 +112,48 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Прибыль (завершённые)
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-emerald-800">
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900">
             {metrics.totalProfit.toFixed(0)}
           </p>
         </Card>
       </div>
 
-      <Card className="p-6">
-        <h2 className="text-base font-semibold text-zinc-900">Контакты и статус</h2>
-        <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs font-medium uppercase text-zinc-500">Телефон</dt>
-            <dd className="mt-1 text-sm">{user.phone?.trim() || "—"}</dd>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="p-6">
+          <h2 className="text-base font-semibold text-zinc-900">Контакты</h2>
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+              <dt className="text-xs font-medium uppercase text-zinc-500">Телефон</dt>
+              <dd className="mt-1 text-sm font-medium text-zinc-900">{user.phone?.trim() || "—"}</dd>
+            </div>
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+              <dt className="text-xs font-medium uppercase text-zinc-500">Telegram</dt>
+              <dd className="mt-1 text-sm font-medium text-zinc-900">{user.telegram?.trim() || "—"}</dd>
+            </div>
+          </dl>
+        </Card>
+        <Card className="p-6">
+          <h2 className="text-base font-semibold text-zinc-900">Управление аккаунтом</h2>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Badge tone={user.status === "active" ? "success" : "danger"}>
+              Статус: {userStatusLabel[user.status]}
+            </Badge>
+            <Badge tone="neutral">{user.onboarded ? "Онбординг пройден" : "Нужен онбординг"}</Badge>
           </div>
-          <div>
-            <dt className="text-xs font-medium uppercase text-zinc-500">Telegram</dt>
-            <dd className="mt-1 text-sm">{user.telegram?.trim() || "—"}</dd>
+          <div className="mt-4">
+            <AdminUserStatusToggle
+              userId={user.id}
+              currentStatus={user.status}
+            />
           </div>
-          <div>
-            <dt className="text-xs font-medium uppercase text-zinc-500">Статус аккаунта</dt>
-            <dd className="mt-1 flex items-center gap-3">
-              <Badge tone={user.status === "active" ? "success" : "danger"}>
-                {userStatusLabel[user.status]}
-              </Badge>
-              <AdminUserStatusToggle
-                userId={user.id}
-                currentStatus={user.status}
-              />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase text-zinc-500">Профиль</dt>
-            <dd className="mt-1">
-              <Badge tone={user.onboarded ? "success" : "warning"}>
-                {user.onboarded ? "Онбординг пройден" : "Нужен онбординг"}
-              </Badge>
-            </dd>
-          </div>
-        </dl>
-      </Card>
+        </Card>
+      </div>
 
       <Card className="p-6">
         <h2 className="text-base font-semibold text-zinc-900">Навыки</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {user.primarySkill ? (
-            <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-900 ring-2 ring-blue-300">
+            <span className="inline-flex rounded-full bg-zinc-900 px-3 py-1 text-sm font-semibold text-white ring-1 ring-zinc-900">
               {user.primarySkill} — основной
             </span>
           ) : null}
@@ -149,7 +168,7 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
               </span>
             ))}
         </div>
-        <div className="mt-6 border-t border-zinc-100 pt-4">
+        <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
           <p className="text-sm font-medium text-zinc-800">Изменить список навыков</p>
           <div className="mt-2">
             <ExecutorSkillsEditor user={user} embedded />
@@ -161,7 +180,12 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
         <h2 className="text-base font-semibold text-zinc-900">Последние заказы</h2>
         <div className="mt-3">
           {orders.length === 0 ? (
-            <p className="text-sm text-zinc-500">Заказов пока нет</p>
+            <Card className="border-dashed border-zinc-300 bg-zinc-50 py-10 text-center shadow-none">
+              <p className="text-sm font-medium text-zinc-700">Заказов пока нет</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                После назначения исполнителя на заказ здесь появится история работ.
+              </p>
+            </Card>
           ) : (
             <TableWrap>
               <table className="w-full text-left text-sm">
@@ -180,7 +204,7 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
                       <td className={tdClass}>
                         <Link
                           href={`/admin/orders/${o.id}`}
-                          className="font-medium text-blue-600 hover:underline"
+                          className="font-medium text-zinc-900 hover:underline"
                         >
                           {o.title}
                         </Link>

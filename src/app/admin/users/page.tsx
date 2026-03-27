@@ -28,7 +28,7 @@ export default async function UsersPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Исполнители</h1>
         <CreateExecutorDialog />
       </div>
-      <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+      <p className="rounded-xl border border-zinc-200 bg-zinc-100 px-4 py-3 text-sm text-zinc-800">
         Рейтинг подбора: учёт просрочек по завершённым заказам, скорости и прибыли (шкала 0–100).
         Нажмите на строку, чтобы открыть карточку исполнителя.
       </p>
@@ -54,7 +54,7 @@ export default async function UsersPage() {
                   <td className={tdClass}>
                     <Link
                       href={`/admin/users/${u.id}`}
-                      className="font-medium text-blue-600 hover:underline"
+                      className="font-medium text-zinc-900 hover:underline"
                     >
                       {formatUserDisplayName(u)}
                     </Link>
@@ -62,7 +62,7 @@ export default async function UsersPage() {
                   </td>
                   <td className={tdClass}>
                     {u.primarySkill ? (
-                      <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-900 ring-1 ring-blue-200/80">
+                      <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-800 ring-1 ring-zinc-200">
                         {u.primarySkill}
                       </span>
                     ) : (
@@ -80,7 +80,7 @@ export default async function UsersPage() {
                         <p className="text-xs font-semibold text-zinc-800">{score}</p>
                         <div className="mt-1 h-2 rounded-full bg-zinc-100">
                           <div
-                            className="h-2 rounded-full bg-blue-600"
+                            className="h-2 rounded-full bg-zinc-900"
                             style={{ width: `${Math.max(5, Math.min(100, score))}%` }}
                           />
                         </div>
@@ -102,7 +102,7 @@ export default async function UsersPage() {
                   <td className={tdClass}>
                     <Link
                       href={`/admin/users/${u.id}`}
-                      className="inline-flex rounded-md border border-blue-300 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                      className="inline-flex rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
                     >
                       Подробнее
                     </Link>

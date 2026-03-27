@@ -46,7 +46,7 @@ export function OrderFileUpload({ orderId }: { orderId: string }) {
       <div>
         <label className="text-xs font-medium text-zinc-600">Загрузить документ (ТЗ, бриф, референсы…)</label>
         <div className="mt-1 flex items-center gap-3">
-          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-blue-50">
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"

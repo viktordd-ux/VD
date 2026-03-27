@@ -39,7 +39,13 @@ export function ProfitAreaChart({
   return (
     <Card className="p-5">
       {title ? (
-        <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
+          <svg viewBox="0 0 24 24" className="h-4 w-4 text-zinc-500" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 3v18h18" />
+            <path d="M7 15l4-4 3 3 5-6" />
+          </svg>
+          {title}
+        </h3>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {([1, 7, 30] as const).map((r) => (

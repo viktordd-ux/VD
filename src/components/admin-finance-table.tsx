@@ -104,7 +104,7 @@ export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
                 <td className="px-4 py-3">
                   <Link
                     href={`/admin/orders/${o.id}`}
-                    className="font-medium text-blue-600 hover:underline"
+                    className="font-medium text-zinc-900 hover:underline"
                   >
                     {o.title}
                   </Link>
@@ -136,7 +136,7 @@ export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
                         className="w-28 rounded border border-zinc-300 px-2 py-1 text-sm tabular-nums"
                       />
                     </td>
-                    <td className="px-4 py-2 tabular-nums font-semibold text-emerald-800">
+                    <td className="px-4 py-2 tabular-nums font-semibold text-zinc-900">
                       {profit.toFixed(0)}
                     </td>
                     <td className="px-4 py-2 tabular-nums text-zinc-500">{margin}%</td>
@@ -175,7 +175,7 @@ export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
                   <>
                     <td className="px-4 py-3 tabular-nums">{Number(o.budgetClient).toFixed(0)}</td>
                     <td className="px-4 py-3 tabular-nums">{Number(o.budgetExecutor).toFixed(0)}</td>
-                    <td className="px-4 py-3 tabular-nums font-semibold text-emerald-800">
+                    <td className="px-4 py-3 tabular-nums font-semibold text-zinc-900">
                       {Number(o.profit).toFixed(0)}
                     </td>
                     <td className="px-4 py-3 tabular-nums text-zinc-500">{margin}%</td>
@@ -184,7 +184,7 @@ export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
                         <button
                           type="button"
                           onClick={() => startEdit(o)}
-                          className="text-xs font-medium text-blue-600 hover:underline"
+                          className="text-xs font-medium text-zinc-900 hover:underline"
                         >
                           Изменить
                         </button>
@@ -192,7 +192,7 @@ export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
                           type="button"
                           disabled={isBusy}
                           onClick={() => void deleteRow(o.id, o.title)}
-                          className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                          className="text-xs font-medium text-zinc-600 hover:underline disabled:opacity-50"
                         >
                           Удалить
                         </button>

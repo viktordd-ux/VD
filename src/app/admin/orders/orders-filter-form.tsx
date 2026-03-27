@@ -157,7 +157,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
         {FILTER_TABS.map((t) => (
           <label
             key={t.value}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm has-[:checked]:border-blue-600 has-[:checked]:bg-blue-600 has-[:checked]:text-white"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm has-[:checked]:border-zinc-900 has-[:checked]:bg-zinc-900 has-[:checked]:text-white"
           >
             <input
               type="radio"
@@ -220,7 +220,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
         <button
           type="submit"
           disabled={busy}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
         >
           {busy ? "…" : "Применить"}
         </button>
@@ -257,7 +257,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
                 onClick={() => toggleSkill(s)}
                 className={`rounded-full px-3 py-1 text-xs font-medium ${
                   skills.has(s)
-                    ? "bg-blue-600 text-white"
+                    ? "bg-zinc-900 text-white"
                     : "border border-zinc-300 bg-white text-zinc-700"
                 }`}
               >
@@ -278,7 +278,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
               onClick={() => toggleStatus(s.value)}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
                 status.has(s.value)
-                  ? "bg-blue-600 text-white"
+                  ? "bg-zinc-900 text-white"
                   : "border border-zinc-300 bg-white text-zinc-700"
               }`}
             >

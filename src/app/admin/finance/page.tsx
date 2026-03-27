@@ -13,6 +13,12 @@ import { FinanceFilters } from "./finance-filters";
 
 export const dynamic = "force-dynamic";
 
+const rub = new Intl.NumberFormat("ru-RU", {
+  style: "currency",
+  currency: "RUB",
+  maximumFractionDigits: 0,
+});
+
 function rangeStart(period: "day" | "week" | "month"): Date {
   const end = new Date();
   const start = new Date(end);
@@ -177,8 +183,13 @@ export default async function FinancePage({
   };
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Финансы</h1>
+    <div className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-white">
+          <IconWallet />
+        </span>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Финансы</h1>
+      </div>
 
       <FinanceFilters
         key={JSON.stringify(filterInitial)}
@@ -200,53 +211,61 @@ export default async function FinancePage({
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-medium uppercase text-zinc-500">Клиент (всего)</p>
+          <p className="flex items-center gap-2 text-xs font-medium uppercase text-zinc-500">
+            <IconClient /> Клиент (всего)
+          </p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">
-            {totals._sum.budgetClient?.toString() ?? "0"}
+            {rub.format(Number(totals._sum.budgetClient ?? 0))}
           </p>
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-medium uppercase text-zinc-500">Исполнители (всего)</p>
+          <p className="flex items-center gap-2 text-xs font-medium uppercase text-zinc-500">
+            <IconExecutor /> Исполнители (всего)
+          </p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">
-            {totals._sum.budgetExecutor?.toString() ?? "0"}
+            {rub.format(Number(totals._sum.budgetExecutor ?? 0))}
           </p>
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-medium uppercase text-zinc-500">Маржа (всего)</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-emerald-700">
-            {totals._sum.profit?.toString() ?? "0"}
+          <p className="flex items-center gap-2 text-xs font-medium uppercase text-zinc-500">
+            <IconProfit /> Маржа (всего)
+          </p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900">
+            {rub.format(Number(totals._sum.profit ?? 0))}
           </p>
         </div>
       </div>
 
       <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <IconClock />
           Прибыль по завершённым (по дате обновления, без фильтров страницы)
         </h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs text-zinc-500">День</p>
             <p className="mt-1 text-xl font-semibold tabular-nums">
-              {dayP._sum.profit?.toString() ?? "0"}
+              {rub.format(Number(dayP._sum.profit ?? 0))}
             </p>
           </div>
           <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs text-zinc-500">Неделя</p>
             <p className="mt-1 text-xl font-semibold tabular-nums">
-              {weekP._sum.profit?.toString() ?? "0"}
+              {rub.format(Number(weekP._sum.profit ?? 0))}
             </p>
           </div>
           <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs text-zinc-500">Месяц</p>
             <p className="mt-1 text-xl font-semibold tabular-nums">
-              {monthP._sum.profit?.toString() ?? "0"}
+              {rub.format(Number(monthP._sum.profit ?? 0))}
             </p>
           </div>
         </div>
       </div>
 
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <IconExecutor />
           По исполнителям (с учётом фильтров выше)
         </h2>
         <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -266,8 +285,8 @@ export default async function FinancePage({
                   <td className="px-4 py-3 tabular-nums">
                     {row.budgetClient.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 tabular-nums text-emerald-800">
-                    {row.profit.toFixed(2)}
+                  <td className="px-4 py-3 tabular-nums text-zinc-900">
+                    {rub.format(row.profit)}
                   </td>
                   <td className="px-4 py-3 tabular-nums">
                     {row.marginPct !== null ? `${row.marginPct.toFixed(1)}%` : "—"}
@@ -286,7 +305,7 @@ export default async function FinancePage({
         Заказов в базе: {totals._count}.{" "}
         <Link
           href="/admin/orders?lowMargin=1"
-          className="font-medium text-blue-600 hover:underline"
+          className="font-medium text-zinc-900 underline-offset-2 hover:underline"
         >
           Низкая маржа
         </Link>{" "}
@@ -295,7 +314,8 @@ export default async function FinancePage({
 
       <section>
         <div className="mb-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            <IconEdit />
             Редактирование финансов по заказам
           </h2>
           <p className="mt-1 text-xs text-zinc-400">
@@ -316,5 +336,61 @@ export default async function FinancePage({
         />
       </section>
     </div>
+  );
+}
+
+function IconWallet() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 7a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+      <path d="M16 12h4" />
+      <circle cx="16" cy="12" r="1" />
+    </svg>
+  );
+}
+
+function IconClient() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20a8 8 0 0 1 16 0" />
+    </svg>
+  );
+}
+
+function IconExecutor() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M20 8v6M17 11h6" />
+    </svg>
+  );
+}
+
+function IconProfit() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 3v18h18" />
+      <path d="M7 14l4-4 3 3 5-6" />
+    </svg>
+  );
+}
+
+function IconClock() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v6l4 2" />
+    </svg>
+  );
+}
+
+function IconEdit() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
   );
 }

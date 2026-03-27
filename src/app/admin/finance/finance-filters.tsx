@@ -42,7 +42,10 @@ export function FinanceFilters({ executors, initial }: Props) {
       className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/[0.06]"
     >
       <div>
-        <label className="text-xs font-medium text-zinc-500">Период с</label>
+        <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+          <IconCalendar />
+          Период с
+        </label>
         <input
           type="date"
           name="dateFrom"
@@ -51,7 +54,10 @@ export function FinanceFilters({ executors, initial }: Props) {
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-zinc-500">по</label>
+        <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+          <IconCalendar />
+          по
+        </label>
         <input
           type="date"
           name="dateTo"
@@ -60,7 +66,10 @@ export function FinanceFilters({ executors, initial }: Props) {
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-zinc-500">Исполнитель</label>
+        <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+          <IconUser />
+          Исполнитель
+        </label>
         <select
           name="executorId"
           defaultValue={initial.executorId}
@@ -74,22 +83,50 @@ export function FinanceFilters({ executors, initial }: Props) {
           ))}
         </select>
       </div>
-      <label className="flex cursor-pointer items-center gap-2 text-sm">
+      <label className="flex cursor-pointer items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
         <input
           type="checkbox"
           name="lowMargin"
           defaultChecked={initial.lowMargin}
           className="rounded border-zinc-300"
         />
+        <IconAlert />
         Только низкая маржа (&lt; 50%)
       </label>
       <button
         type="submit"
         disabled={busy}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
       >
         {busy ? "…" : "Применить"}
       </button>
     </form>
+  );
+}
+
+function IconCalendar() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M16 3v4M8 3v4M3 11h18" />
+    </svg>
+  );
+}
+
+function IconUser() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20a8 8 0 0 1 16 0" />
+    </svg>
+  );
+}
+
+function IconAlert() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-zinc-600" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 9v4M12 17h.01" />
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+    </svg>
   );
 }

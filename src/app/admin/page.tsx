@@ -118,19 +118,19 @@ export default async function AdminDashboard() {
           <Card className="p-5">
             <p className="text-xs text-zinc-500">Сегодня</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-900">
-              {rub.format(Number(dayP._sum.profit ?? 125000))}
+              {rub.format(Number(dayP._sum.profit ?? 0))}
             </p>
           </Card>
           <Card className="p-5">
             <p className="text-xs text-zinc-500">7 дней</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-900">
-              {rub.format(Number(weekP._sum.profit ?? 890000))}
+              {rub.format(Number(weekP._sum.profit ?? 0))}
             </p>
           </Card>
           <Card className="p-5">
             <p className="text-xs text-zinc-500">30 дней</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-900">
-              {rub.format(Number(monthP._sum.profit ?? 3200000))}
+              {rub.format(Number(monthP._sum.profit ?? 0))}
             </p>
           </Card>
         </div>
@@ -148,7 +148,7 @@ export default async function AdminDashboard() {
           </h2>
           <Link
             href="/admin/orders?lowMargin=1"
-            className="rounded-md border border-blue-300 bg-transparent px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+            className="rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-100"
           >
             Подробнее
           </Link>

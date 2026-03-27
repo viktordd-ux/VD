@@ -36,7 +36,13 @@ export function FinanceMarginBarChart({
   return (
     <Card className="p-5">
       {title ? (
-        <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
+          <svg viewBox="0 0 24 24" className="h-4 w-4 text-zinc-500" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 3v18h18" />
+            <path d="M7 16v-4M12 16V8M17 16v-2" />
+          </svg>
+          {title}
+        </h3>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {([
@@ -86,7 +92,7 @@ export function FinanceMarginBarChart({
                 ];
               }}
             />
-            <Bar dataKey="marginPct" fill="#6366f1" name="marginPct" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="marginPct" fill="#18181b" name="marginPct" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

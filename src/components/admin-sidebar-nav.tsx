@@ -60,7 +60,7 @@ export function AdminSidebarNav() {
             className={cn(
               "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200",
               isOn
-                ? "bg-blue-600 text-white shadow-sm shadow-blue-950/30"
+                ? "bg-black text-white shadow-sm"
                 : "text-slate-100 hover:bg-slate-700/80",
             )}
           >
