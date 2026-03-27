@@ -18,19 +18,19 @@ export const authConfig = {
           token.onboarded = s.onboarded;
         }
       }
-      // Legacy JWTs without `onboarded`: align with DB so middleware/guards work after migrations.
-      if (
-        typeof token.onboarded !== "boolean" &&
-        token.role === "executor" &&
-        token.id &&
-        !user
-      ) {
+      // Invalidate session if user was deleted or deactivated (banned).
+      if (!user && token.id) {
         const { default: prisma } = await import("@/lib/prisma");
         const u = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { onboarded: true },
+          select: { id: true, status: true, onboarded: true },
         });
-        if (u) token.onboarded = u.onboarded;
+        if (!u || u.status !== "active") {
+          return { ...token, exp: 0 };
+        }
+        if (token.role === "executor" && typeof u.onboarded === "boolean") {
+          token.onboarded = u.onboarded;
+        }
       }
       return token;
     },

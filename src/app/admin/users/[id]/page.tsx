@@ -14,6 +14,7 @@ import {
 } from "@/components/table-wrap";
 import { formatUserDisplayName } from "@/lib/user-profile";
 import { userStatusLabel } from "@/lib/ui-labels";
+import { AdminDeleteExecutor } from "@/components/admin-delete-executor";
 import { AdminUserStatusToggle } from "@/components/admin-user-status-toggle";
 import { ExecutorSkillsEditor } from "../ui";
 
@@ -140,10 +141,14 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
             </Badge>
             <Badge tone="neutral">{user.onboarded ? "Онбординг пройден" : "Нужен онбординг"}</Badge>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
             <AdminUserStatusToggle
               userId={user.id}
               currentStatus={user.status}
+            />
+            <AdminDeleteExecutor
+              userId={user.id}
+              displayName={formatUserDisplayName(user)}
             />
           </div>
         </Card>

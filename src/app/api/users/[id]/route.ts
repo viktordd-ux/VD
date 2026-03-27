@@ -6,6 +6,39 @@ import { syncNameFromProfile } from "@/lib/user-profile";
 
 type Params = { params: Promise<{ id: string }> };
 
+export async function DELETE(_req: Request, { params }: Params) {
+  const admin = await requireAdmin();
+  if (admin instanceof NextResponse) return admin;
+  const { id } = await params;
+
+  const existing = await prisma.user.findUnique({ where: { id } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (existing.role !== "executor") {
+    return NextResponse.json(
+      { error: "Безвозвратно удалять можно только учётные записи исполнителей" },
+      { status: 400 },
+    );
+  }
+  if (existing.id === admin.id) {
+    return NextResponse.json({ error: "Нельзя удалить собственную учётную запись" }, { status: 400 });
+  }
+
+  await writeAudit({
+    entityType: "user",
+    entityId: id,
+    actionType: "delete",
+    changedById: admin.id,
+    diff: {
+      deletedEmail: existing.email,
+      deletedName: existing.name,
+    },
+  });
+
+  await prisma.user.delete({ where: { id } });
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function PATCH(req: Request, { params }: Params) {
   const admin = await requireAdmin();
   if (admin instanceof NextResponse) return admin;

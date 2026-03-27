@@ -52,8 +52,12 @@ export function AdminHardDeleteOnlyModal({
               try {
                 await onConfirm();
                 onClose();
-              } catch {
-                alert("Не удалось выполнить операцию");
+              } catch (e) {
+                const msg =
+                  e instanceof Error && e.message.trim()
+                    ? e.message
+                    : "Не удалось выполнить операцию";
+                alert(msg);
               } finally {
                 setLoading(false);
               }
