@@ -1,26 +1,13 @@
+import NextAuth from "next-auth";
+import { authConfig } from "@/auth.config";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
-export async function middleware(req: NextRequest) {
+const { auth } = NextAuth(authConfig);
+
+export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const secret = process.env.AUTH_SECRET;
-
-  let token: Awaited<ReturnType<typeof getToken>> = null;
-  if (secret) {
-    try {
-      token = await getToken({
-        req,
-        secret,
-        secureCookie: process.env.NODE_ENV === "production",
-      });
-    } catch {
-      token = null;
-    }
-  }
-
-  const isLoggedIn = !!token;
-  const role = token?.role as "admin" | "executor" | undefined;
+  const isLoggedIn = !!req.auth;
+  const role = (req.auth?.user as { role?: "admin" | "executor" } | undefined)?.role;
   const isApiAuth = pathname.startsWith("/api/auth");
 
   if (pathname.startsWith("/api") && !isApiAuth) {
@@ -30,14 +17,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isApiAuth) {
-    return NextResponse.next();
-  }
+  if (isApiAuth) return NextResponse.next();
 
   if (pathname === "/login") {
     if (isLoggedIn && role) {
-      const home = role === "admin" ? "/admin" : "/executor";
-      return NextResponse.redirect(new URL(home, req.nextUrl));
+      return NextResponse.redirect(new URL(role === "admin" ? "/admin" : "/executor", req.nextUrl));
     }
     return NextResponse.next();
   }
@@ -55,12 +39,11 @@ export async function middleware(req: NextRequest) {
   }
 
   if (pathname === "/") {
-    const home = role === "admin" ? "/admin" : "/executor";
-    return NextResponse.redirect(new URL(home, req.nextUrl));
+    return NextResponse.redirect(new URL(role === "admin" ? "/admin" : "/executor", req.nextUrl));
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [

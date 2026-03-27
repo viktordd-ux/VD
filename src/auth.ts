@@ -1,11 +1,10 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
+import { authConfig } from "@/auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET,
-  trustHost: true,
-  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 },
+  ...authConfig,
   providers: [
     Credentials({
       name: "credentials",
@@ -34,21 +33,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-      }
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as "admin" | "executor";
-      }
-      return session;
-    },
-  },
-  pages: { signIn: "/login" },
 });
