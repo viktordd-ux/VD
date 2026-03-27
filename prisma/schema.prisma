@@ -6,8 +6,10 @@ generator client {
 // MaxClientsInSessionMode / лимит сессий. Запускайте migrate локально или в CI с прямым URL
 // к БД (Supabase → Connect → Postgres, host db.*.supabase.co:5432, не pooler).
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Миграции и `migrate resolve` идут через DIRECT_URL (Supabase: pooler :5432 session или db.*:5432)
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
