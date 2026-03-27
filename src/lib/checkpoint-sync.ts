@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
+import { orderIsActive } from "@/lib/active-scope";
 
 /**
  * Если все чекпоинты done и заказ в IN_PROGRESS → переводим в REVIEW.
@@ -8,8 +9,8 @@ export async function syncOrderStatusFromCheckpoints(
   orderId: string,
   actorId: string,
 ): Promise<void> {
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, ...orderIsActive },
     include: { checkpoints: true },
   });
   if (!order || order.checkpoints.length === 0) return;

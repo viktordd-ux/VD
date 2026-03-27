@@ -1,11 +1,18 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
+/** Only explicit `true` counts as completed onboarding (undefined/false → must complete). */
+function executorOnboardingDone(onboarded: boolean | undefined) {
+  return onboarded === true;
+}
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
   const role = (req.auth?.user as { role?: "admin" | "executor" } | undefined)?.role;
   const onboarded = (req.auth?.user as { onboarded?: boolean } | undefined)?.onboarded;
+  const executorReady = role === "executor" && executorOnboardingDone(onboarded);
+  const executorNeedsOnboarding = role === "executor" && !executorOnboardingDone(onboarded);
   const isApiAuth = pathname.startsWith("/api/auth");
 
   if (pathname.startsWith("/api") && !isApiAuth) {
@@ -13,8 +20,7 @@ export default auth((req) => {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (
-      role === "executor" &&
-      onboarded === false &&
+      executorNeedsOnboarding &&
       !pathname.startsWith("/api/users/me")
     ) {
       return NextResponse.json(
@@ -29,6 +35,9 @@ export default auth((req) => {
 
   if (pathname === "/login") {
     if (isLoggedIn && role) {
+      if (executorNeedsOnboarding) {
+        return NextResponse.redirect(new URL("/executor/onboarding", req.nextUrl));
+      }
       return NextResponse.redirect(
         new URL(role === "admin" ? "/admin" : "/executor", req.nextUrl),
       );
@@ -40,14 +49,14 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  if (role === "executor" && onboarded === false) {
+  if (executorNeedsOnboarding) {
     if (pathname.startsWith("/executor/onboarding")) {
       return NextResponse.next();
     }
     return NextResponse.redirect(new URL("/executor/onboarding", req.nextUrl));
   }
 
-  if (role === "executor" && onboarded !== false && pathname.startsWith("/executor/onboarding")) {
+  if (executorReady && pathname.startsWith("/executor/onboarding")) {
     return NextResponse.redirect(new URL("/executor", req.nextUrl));
   }
 
@@ -60,6 +69,9 @@ export default auth((req) => {
   }
 
   if (pathname === "/") {
+    if (executorNeedsOnboarding) {
+      return NextResponse.redirect(new URL("/executor/onboarding", req.nextUrl));
+    }
     return NextResponse.redirect(
       new URL(role === "admin" ? "/admin" : "/executor", req.nextUrl),
     );

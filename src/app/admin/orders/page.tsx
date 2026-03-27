@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { EmptyState } from "@/components/empty-state";
@@ -8,6 +9,7 @@ import {
   thClass,
   trClass,
 } from "@/components/table-wrap";
+import { orderIsActive } from "@/lib/active-scope";
 import {
   computeFlags,
   isLowMargin,
@@ -22,6 +24,11 @@ import {
   type OrderWithRelations,
 } from "@/lib/order-list-filters";
 import { OrderRowQuickActions } from "./order-row-actions";
+import {
+  OrdersBulkCheckbox,
+  OrdersBulkProvider,
+  OrdersBulkToolbar,
+} from "./orders-bulk";
 import { QuickCreateOrderButton } from "./quick-create-order";
 import { OrdersFilterForm } from "./orders-filter-form";
 import { OrdersFilterHydration } from "./orders-filter-hydration";
@@ -44,12 +51,12 @@ export default async function OrdersPage({
   const deadlineBefore = sp.deadlineBefore ?? "";
   const skillsMode = sp.skillsMode === "all" ? "all" : "any";
 
-  const where =
+  const where: Prisma.OrderWhereInput =
     filter === "active"
-      ? { status: { not: "DONE" as const } }
+      ? { ...orderIsActive, status: { not: "DONE" } }
       : filter === "done"
-        ? { status: "DONE" as const }
-        : {};
+        ? { ...orderIsActive, status: "DONE" }
+        : { ...orderIsActive };
 
   const executorsForSkills = await prisma.user.findMany({
     where: { role: "executor", status: "active" },
@@ -123,6 +130,7 @@ export default async function OrdersPage({
   }
 
   return (
+    <OrdersBulkProvider>
     <div className="space-y-6">
       <OrdersFilterHydration />
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -141,6 +149,8 @@ export default async function OrdersPage({
         initial={initial}
       />
 
+      <OrdersBulkToolbar />
+
       {orders.length === 0 ? (
         <EmptyState
           title="Нет заказов по выбранным условиям"
@@ -154,6 +164,7 @@ export default async function OrdersPage({
           <table className="w-full min-w-[1000px] text-left text-sm">
             <thead className="border-b border-zinc-100 bg-zinc-50/90">
               <tr>
+                <th className={`${thClass} w-10`} aria-label="Выбор" />
                 <th className={thClass}>Название</th>
                 <th className={thClass}>Клиент</th>
                 <th className={thClass}>Статус</th>
@@ -168,6 +179,9 @@ export default async function OrdersPage({
             <tbody>
               {orders.map((o) => (
                 <tr key={o.id} className={trClass}>
+                  <td className={`${tdClass} align-middle`}>
+                    <OrdersBulkCheckbox orderId={o.id} />
+                  </td>
                   <td className={tdClass}>
                     <Link
                       href={`/admin/orders/${o.id}`}
@@ -205,5 +219,6 @@ export default async function OrdersPage({
         </TableWrap>
       )}
     </div>
+    </OrdersBulkProvider>
   );
 }

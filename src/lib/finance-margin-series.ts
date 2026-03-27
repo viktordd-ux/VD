@@ -1,5 +1,6 @@
 import type { Order } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { orderIsActive } from "@/lib/active-scope";
 
 export type MarginBarPoint = { name: string; marginPct: number; profit: number };
 
@@ -57,6 +58,7 @@ export async function buildMarginSeriesByExecutor(opts: {
   async function loadRange(start: Date, end: Date) {
     const orders = await prisma.order.findMany({
       where: {
+        ...orderIsActive,
         status: "DONE",
         ...execFilter,
         updatedAt: { gte: start, lte: end },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
+import { leadIsActive } from "@/lib/active-scope";
 import { computeProfit } from "@/lib/money";
 
 type Params = { params: Promise<{ id: string }> };
@@ -11,7 +12,7 @@ export async function POST(_req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id } = await params;
 
-  const lead = await prisma.lead.findUnique({ where: { id } });
+  const lead = await prisma.lead.findFirst({ where: { id, ...leadIsActive } });
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const budgetClient = 0;

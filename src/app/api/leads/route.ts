@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
+import { leadIsActive } from "@/lib/active-scope";
 
 export async function GET() {
   const user = await requireAdmin();
   if (user instanceof NextResponse) return user;
 
-  const leads = await prisma.lead.findMany({ orderBy: { createdAt: "desc" } });
+  const leads = await prisma.lead.findMany({
+    where: leadIsActive,
+    orderBy: { createdAt: "desc" },
+  });
   return NextResponse.json(leads);
 }
 

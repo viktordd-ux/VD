@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
+import { orderIsActive } from "@/lib/active-scope";
 import { getExecutorMetrics } from "@/lib/executor-matching";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,7 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
   const [metrics, orders] = await Promise.all([
     getExecutorMetrics(user.id),
     prisma.order.findMany({
-      where: { executorId: user.id },
+      where: { ...orderIsActive, executorId: user.id },
       orderBy: { updatedAt: "desc" },
       take: 25,
       select: {

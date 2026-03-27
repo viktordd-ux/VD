@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireAdmin, requireUser } from "@/lib/api-auth";
+import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 
@@ -11,7 +12,9 @@ export async function GET(_req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
 
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, ...orderIsActive },
+  });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (user.role === "executor" && order.executorId !== user.id) {
     return forbidden();
@@ -28,6 +31,11 @@ export async function POST(req: Request, { params }: Params) {
   const user = await requireAdmin();
   if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
+
+  const orderOk = await prisma.order.findFirst({
+    where: { id: orderId, ...orderIsActive },
+  });
+  if (!orderOk) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = (await req.json()) as {
     title?: string;

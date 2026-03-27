@@ -8,6 +8,7 @@ import {
   buildDescriptionFromTemplate,
   createCheckpointsFromTemplate,
 } from "@/lib/order-template";
+import { orderIsActive } from "@/lib/active-scope";
 
 export async function GET(req: Request) {
   const user = await requireUser();
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
         : {};
 
   let orders = await prisma.order.findMany({
-    where: { ...where, ...statusWhere },
+    where: { ...where, ...statusWhere, ...orderIsActive },
     include: {
       executor: true,
       ...(user.role === "admin" ? { lead: true } : {}),

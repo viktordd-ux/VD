@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { orderIsActive } from "@/lib/active-scope";
 
 export async function GET() {
   const user = await requireAdmin();
@@ -12,6 +13,7 @@ export async function GET() {
   const [overdue, edge, heavyRevisions, bannedExecutors] = await Promise.all([
     prisma.order.findMany({
       where: {
+        ...orderIsActive,
         deadline: { lt: now },
         status: { not: "DONE" },
       },
@@ -21,6 +23,7 @@ export async function GET() {
     }),
     prisma.order.findMany({
       where: {
+        ...orderIsActive,
         deadline: { gte: now, lte: soon },
         status: { not: "DONE" },
       },
@@ -29,7 +32,7 @@ export async function GET() {
       take: 50,
     }),
     prisma.order.findMany({
-      where: { revisionCount: { gt: 2 } },
+      where: { ...orderIsActive, revisionCount: { gt: 2 } },
       include: { executor: true },
       orderBy: { updatedAt: "desc" },
       take: 50,

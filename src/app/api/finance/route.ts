@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { orderIsActive } from "@/lib/active-scope";
 
 function rangeStart(period: "day" | "week" | "month"): Date {
   const end = new Date();
@@ -18,6 +19,7 @@ function rangeStart(period: "day" | "week" | "month"): Date {
 async function profitInPeriod(start: Date, end: Date) {
   return prisma.order.aggregate({
     where: {
+      ...orderIsActive,
       status: "DONE",
       updatedAt: { gte: start, lte: end },
     },
@@ -33,6 +35,7 @@ export async function GET() {
 
   const [totals, byStatus, day, week, month] = await Promise.all([
     prisma.order.aggregate({
+      where: orderIsActive,
       _sum: {
         budgetClient: true,
         budgetExecutor: true,
@@ -42,6 +45,7 @@ export async function GET() {
     }),
     prisma.order.groupBy({
       by: ["status"],
+      where: orderIsActive,
       _sum: {
         profit: true,
       },

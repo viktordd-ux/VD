@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { orderIsActive } from "@/lib/active-scope";
 import { getOrderRiskFlags } from "@/lib/order-risk";
 
 /** Для toast/polling: заказы с флагами тишины по порогам env. */
@@ -9,7 +10,11 @@ export async function GET() {
   if (user instanceof NextResponse) return user;
 
   const orders = await prisma.order.findMany({
-    where: { status: { not: "DONE" }, executorId: { not: null } },
+    where: {
+      ...orderIsActive,
+      status: { not: "DONE" },
+      executorId: { not: null },
+    },
     include: { executor: true, checkpoints: true, files: true },
     take: 300,
     orderBy: { updatedAt: "desc" },

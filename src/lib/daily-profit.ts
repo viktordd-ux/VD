@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { orderIsActive } from "@/lib/active-scope";
 
 /** Серия по календарным дням (UTC date key), прибыль по DONE-заказам по updatedAt. */
 export async function buildDailyProfitSeries(
@@ -12,6 +13,7 @@ export async function buildDailyProfitSeries(
 
   const orders = await prisma.order.findMany({
     where: {
+      ...orderIsActive,
       status: "DONE",
       updatedAt: { gte: start, lte: end },
     },

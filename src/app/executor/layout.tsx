@@ -1,3 +1,4 @@
+import { ExecutorOnboardingGate } from "@/components/executor-onboarding-gate";
 import { ExecutorSidebarNav } from "@/components/executor-sidebar-nav";
 import { SignOutButton } from "@/components/sign-out-button";
 
@@ -8,6 +9,7 @@ export default function ExecutorLayout({
 }) {
   return (
     <div className="flex min-h-full flex-1">
+      <ExecutorOnboardingGate />
       <aside className="flex w-60 flex-col border-r border-zinc-200/90 bg-white shadow-sm shadow-zinc-950/[0.03]">
         <div className="border-b border-zinc-100 px-4 py-4">
           <span className="text-lg font-semibold tracking-tight">

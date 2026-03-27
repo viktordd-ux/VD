@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { orderIsActive } from "@/lib/active-scope";
 import { buildDailyProfitSeries } from "@/lib/daily-profit";
 import { buildMarginSeriesByExecutor } from "@/lib/finance-margin-series";
 import {
@@ -50,6 +51,7 @@ export default async function FinancePage({
   });
 
   const orderWhereDone: Prisma.OrderWhereInput = {
+    ...orderIsActive,
     status: "DONE",
     ...execWhere,
     ...(dateFrom || dateTo
@@ -65,6 +67,7 @@ export default async function FinancePage({
   const [totals, dayP, weekP, monthP, series30profit, doneOrders, users] =
     await Promise.all([
       prisma.order.aggregate({
+        where: orderIsActive,
         _sum: {
           budgetClient: true,
           budgetExecutor: true,
@@ -74,6 +77,7 @@ export default async function FinancePage({
       }),
       prisma.order.aggregate({
         where: {
+          ...orderIsActive,
           status: "DONE",
           updatedAt: { gte: rangeStart("day"), lte: end },
           ...execWhere,
@@ -82,6 +86,7 @@ export default async function FinancePage({
       }),
       prisma.order.aggregate({
         where: {
+          ...orderIsActive,
           status: "DONE",
           updatedAt: { gte: rangeStart("week"), lte: end },
           ...execWhere,
@@ -90,6 +95,7 @@ export default async function FinancePage({
       }),
       prisma.order.aggregate({
         where: {
+          ...orderIsActive,
           status: "DONE",
           updatedAt: { gte: rangeStart("month"), lte: end },
           ...execWhere,

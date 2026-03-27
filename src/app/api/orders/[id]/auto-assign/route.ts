@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { getBestExecutor } from "@/lib/executor-matching";
 import { serializeOrder } from "@/lib/serialize";
@@ -12,8 +13,8 @@ export async function POST(_req: Request, { params }: Params) {
   if (admin instanceof NextResponse) return admin;
   const { id } = await params;
 
-  const existing = await prisma.order.findUnique({
-    where: { id },
+  const existing = await prisma.order.findFirst({
+    where: { id, ...orderIsActive },
     include: { executor: true },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });

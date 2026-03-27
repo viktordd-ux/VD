@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
+import { orderIsActive } from "@/lib/active-scope";
 import { getExecutorMetricsMap } from "@/lib/executor-matching";
 import { getOrderRiskFlags } from "@/lib/order-risk";
 import { AdminCompleteAllCheckpoints } from "@/components/admin-complete-all-checkpoints";
@@ -9,6 +10,7 @@ import { OrderHistoryTabs } from "@/components/order-history-tabs";
 import { OrderRiskBadges } from "@/components/order-risk-badges";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
+import { AdminOrderDelete } from "./admin-order-delete";
 import { AdminOrderForm } from "./ui";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +19,8 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function AdminOrderPage({ params }: Props) {
   const { id } = await params;
-  const order = await prisma.order.findUnique({
-    where: { id },
+  const order = await prisma.order.findFirst({
+    where: { id, ...orderIsActive },
     include: { executor: true, lead: true },
   });
   if (!order) notFound();
@@ -170,6 +172,8 @@ export default async function AdminOrderPage({ params }: Props) {
           )}
         </ul>
       </Card>
+
+      <AdminOrderDelete orderId={id} />
 
       <Card className="p-6">
         <h2 className="text-base font-semibold text-zinc-900">История и аудит</h2>

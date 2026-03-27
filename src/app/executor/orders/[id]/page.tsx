@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
+import { orderIsActive } from "@/lib/active-scope";
 import { ExecutorCheckpoints } from "@/components/executor-checkpoints";
 import { ExecutorOrderToolbar } from "@/components/executor-order-toolbar";
 import { OrderHistoryTabs } from "@/components/order-history-tabs";
@@ -17,10 +18,11 @@ export default async function ExecutorOrderPage({ params }: Props) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   if (session.user.role !== "executor") redirect("/admin");
+  if (session.user.onboarded !== true) redirect("/executor/onboarding");
 
   const { id } = await params;
   const order = await prisma.order.findFirst({
-    where: { id, executorId: session.user.id },
+    where: { id, ...orderIsActive, executorId: session.user.id },
   });
   if (!order) notFound();
 

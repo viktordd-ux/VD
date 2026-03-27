@@ -1,5 +1,6 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
+import { orderIsActive } from "@/lib/active-scope";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
 import { getOrderRiskFlags } from "@/lib/order-risk";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function RisksPage() {
   const [candidates, banned, executors] = await Promise.all([
     prisma.order.findMany({
-      where: { status: { not: "DONE" } },
+      where: { ...orderIsActive, status: { not: "DONE" } },
       include: {
         executor: true,
         checkpoints: true,

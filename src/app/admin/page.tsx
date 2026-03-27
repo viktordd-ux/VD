@@ -1,5 +1,6 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
+import { leadIsActive, orderIsActive } from "@/lib/active-scope";
 import { buildDailyProfitSeries } from "@/lib/daily-profit";
 import { ProfitAreaChartLazy } from "@/components/charts-lazy";
 import { Card } from "@/components/ui/card";
@@ -19,17 +20,24 @@ export default async function AdminDashboard() {
   const end = new Date();
   const [newLeads, activeOrders, overdue, profitSum, dayP, weekP, monthP, series30] =
     await Promise.all([
-      prisma.lead.count({ where: { status: "NEW" } }),
-      prisma.order.count({ where: { status: { not: "DONE" } } }),
+      prisma.lead.count({ where: { status: "NEW", ...leadIsActive } }),
+      prisma.order.count({
+        where: { ...orderIsActive, status: { not: "DONE" } },
+      }),
       prisma.order.count({
         where: {
+          ...orderIsActive,
           deadline: { lt: new Date() },
           status: { not: "DONE" },
         },
       }),
-      prisma.order.aggregate({ _sum: { profit: true } }),
+      prisma.order.aggregate({
+        where: orderIsActive,
+        _sum: { profit: true },
+      }),
       prisma.order.aggregate({
         where: {
+          ...orderIsActive,
           status: "DONE",
           updatedAt: { gte: rangeStart("day"), lte: end },
         },
@@ -37,6 +45,7 @@ export default async function AdminDashboard() {
       }),
       prisma.order.aggregate({
         where: {
+          ...orderIsActive,
           status: "DONE",
           updatedAt: { gte: rangeStart("week"), lte: end },
         },
@@ -44,6 +53,7 @@ export default async function AdminDashboard() {
       }),
       prisma.order.aggregate({
         where: {
+          ...orderIsActive,
           status: "DONE",
           updatedAt: { gte: rangeStart("month"), lte: end },
         },

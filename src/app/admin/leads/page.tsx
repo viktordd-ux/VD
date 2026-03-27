@@ -8,16 +8,22 @@ import {
   thClass,
   trClass,
 } from "@/components/table-wrap";
+import { leadIsActive } from "@/lib/active-scope";
 import { cn } from "@/lib/cn";
 import { leadStatusLabel } from "@/lib/ui-labels";
-import { ConvertLeadButton } from "./ui";
+import { LeadsBulkCheckbox, LeadsBulkProvider, LeadsBulkToolbar } from "./leads-bulk";
+import { ConvertLeadButton, LeadDeleteButton } from "./ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeadsPage() {
-  const leads = await prisma.lead.findMany({ orderBy: { createdAt: "desc" } });
+  const leads = await prisma.lead.findMany({
+    where: leadIsActive,
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
+    <LeadsBulkProvider>
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Лиды</h1>
@@ -30,6 +36,8 @@ export default async function LeadsPage() {
           Новый лид
         </Link>
       </div>
+
+      <LeadsBulkToolbar />
 
       {leads.length === 0 ? (
         <EmptyState
@@ -59,6 +67,9 @@ export default async function LeadsPage() {
             <tbody>
               {leads.map((l) => (
                 <tr key={l.id} className={trClass}>
+                  <td className={`${tdClass} align-middle`}>
+                    <LeadsBulkCheckbox leadId={l.id} />
+                  </td>
                   <td className={`${tdClass} font-medium`}>{l.clientName}</td>
                   <td className={tdClass}>{l.platform}</td>
                   <td className={tdClass}>
@@ -87,7 +98,10 @@ export default async function LeadsPage() {
                     </a>
                   </td>
                   <td className={`${tdClass} text-right`}>
-                    <ConvertLeadButton leadId={l.id} />
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <ConvertLeadButton leadId={l.id} />
+                      <LeadDeleteButton leadId={l.id} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -96,5 +110,6 @@ export default async function LeadsPage() {
         </TableWrap>
       )}
     </div>
+    </LeadsBulkProvider>
   );
 }

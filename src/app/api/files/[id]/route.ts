@@ -3,6 +3,7 @@ import path from "path";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
+import { orderIsActive } from "@/lib/active-scope";
 import { absoluteFilePath } from "@/lib/uploads";
 
 type Params = { params: Promise<{ id: string }> };
@@ -15,7 +16,9 @@ export async function GET(_req: Request, { params }: Params) {
   const file = await prisma.file.findUnique({ where: { id } });
   if (!file) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const order = await prisma.order.findUnique({ where: { id: file.orderId } });
+  const order = await prisma.order.findFirst({
+    where: { id: file.orderId, ...orderIsActive },
+  });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (user.role === "executor" && order.executorId !== user.id) {
     return forbidden();

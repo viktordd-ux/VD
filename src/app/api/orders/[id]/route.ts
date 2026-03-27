@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireAdmin, requireUser } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
+import { hardDeleteOrder, softDeleteOrder } from "@/lib/deletion-ops";
 import { computeProfit } from "@/lib/money";
 import { dispatchNotification } from "@/lib/notifications";
 import { serializeOrder } from "@/lib/serialize";
+import { orderIsActive } from "@/lib/active-scope";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,8 +15,8 @@ export async function GET(_req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id } = await params;
 
-  const order = await prisma.order.findUnique({
-    where: { id },
+  const order = await prisma.order.findFirst({
+    where: { id, ...orderIsActive },
     include: {
       executor: true,
       ...(user.role === "admin" ? { lead: true } : {}),
@@ -29,12 +31,38 @@ export async function GET(_req: Request, { params }: Params) {
   return NextResponse.json(serializeOrder(order, user.role === "admin" ? "admin" : "executor"));
 }
 
+export async function DELETE(req: Request, { params }: Params) {
+  const admin = await requireAdmin();
+  if (admin instanceof NextResponse) return admin;
+  const { id } = await params;
+  const { searchParams } = new URL(req.url);
+  const hard = searchParams.get("hard") === "true";
+
+  try {
+    if (hard) {
+      await hardDeleteOrder(id, admin.id);
+    } else {
+      await softDeleteOrder(id, admin.id);
+    }
+  } catch (e) {
+    const code = (e as { code?: string }).code;
+    if (code === "NOT_FOUND") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    throw e;
+  }
+
+  return NextResponse.json({ ok: true, hard });
+}
+
 export async function PATCH(req: Request, { params }: Params) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
 
-  const existing = await prisma.order.findUnique({ where: { id } });
+  const existing = await prisma.order.findFirst({
+    where: { id, ...orderIsActive },
+  });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (user.role === "executor") {

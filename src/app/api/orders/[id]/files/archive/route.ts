@@ -4,6 +4,7 @@ import JSZip from "jszip";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
+import { orderIsActive } from "@/lib/active-scope";
 import { absoluteFilePath } from "@/lib/uploads";
 
 export const runtime = "nodejs";
@@ -15,7 +16,9 @@ export async function GET(_req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
 
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, ...orderIsActive },
+  });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (user.role === "executor" && order.executorId !== user.id) {
     return forbidden();

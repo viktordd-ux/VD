@@ -1,5 +1,6 @@
 import type { User } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { orderIsActive } from "@/lib/active-scope";
 
 export type ExecutorMetrics = {
   executorId: string;
@@ -100,7 +101,7 @@ export function metricsFromOrders(
 /** Метрики по одному исполнителю (завершённые заказы). */
 export async function getExecutorMetrics(executorId: string): Promise<ExecutorMetrics> {
   const orders = await prisma.order.findMany({
-    where: { executorId, status: "DONE" },
+    where: { ...orderIsActive, executorId, status: "DONE" },
     select: {
       deadline: true,
       updatedAt: true,
@@ -118,7 +119,11 @@ export async function getExecutorMetricsMap(
   if (executorIds.length === 0) return new Map();
 
   const orders = await prisma.order.findMany({
-    where: { status: "DONE", executorId: { in: executorIds } },
+    where: {
+      ...orderIsActive,
+      status: "DONE",
+      executorId: { in: executorIds },
+    },
     select: {
       executorId: true,
       deadline: true,

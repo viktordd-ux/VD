@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AdminDeleteModal } from "@/components/admin-delete-modal";
 
 export function ConvertLeadButton({ leadId }: { leadId: string }) {
   const router = useRouter();
@@ -32,5 +33,45 @@ export function ConvertLeadButton({ leadId }: { leadId: string }) {
     >
       {loading ? "…" : "В заказ"}
     </button>
+  );
+}
+
+export function LeadDeleteButton({ leadId }: { leadId: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-md border border-red-200 bg-white px-2 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50"
+      >
+        Удалить
+      </button>
+      <AdminDeleteModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Удалить лид"
+        softHint="Лид скроется из списка; запись останется в базе."
+        hardHint="Лид будет удалён из базы; связь с заказами будет снята."
+        onSoft={async () => {
+          const res = await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
+          if (!res.ok) {
+            const j = (await res.json().catch(() => ({}))) as { error?: string };
+            alert(j.error ?? "Ошибка");
+            throw new Error("abort");
+          }
+          router.refresh();
+        }}
+        onHard={async () => {
+          const res = await fetch(`/api/leads/${leadId}?hard=true`, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error();
+          router.refresh();
+        }}
+      />
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AdminDeleteModal } from "@/components/admin-delete-modal";
 import { Button } from "@/components/ui/button";
 
 export function OrderRowQuickActions({
@@ -15,6 +16,7 @@ export function OrderRowQuickActions({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   async function run(key: string, fn: () => Promise<void>) {
     setBusy(key);
@@ -108,6 +110,38 @@ export function OrderRowQuickActions({
           {busy === "done" ? "…" : "Завершить"}
         </Button>
       )}
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="border-red-200 text-red-800 hover:bg-red-50"
+        disabled={busy !== null}
+        onClick={() => setDeleteOpen(true)}
+      >
+        Удалить
+      </Button>
+
+      <AdminDeleteModal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Удалить заказ"
+        softHint="Заказ скроется из списков и отчётов; данные останутся в базе."
+        hardHint="Заказ, файлы и этапы будут удалены из базы без восстановления."
+        onSoft={async () => {
+          const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
+          if (!res.ok) throw new Error();
+          router.push("/admin/orders");
+          router.refresh();
+        }}
+        onHard={async () => {
+          const res = await fetch(`/api/orders/${orderId}?hard=true`, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error();
+          router.push("/admin/orders");
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

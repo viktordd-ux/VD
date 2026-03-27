@@ -49,6 +49,7 @@ export function auditEntityLabel(entityType: string): string {
     user: "Пользователь",
     file: "Файл",
     order_template: "Шаблон",
+    bulk: "Массовая операция",
   };
   return map[entityType] ?? entityType;
 }
@@ -59,6 +60,13 @@ export function auditActionLabel(actionType: string): string {
     create: "Создание",
     update: "Изменение",
     delete: "Удаление",
+    delete_order: "Удаление заказа (скрыть)",
+    delete_order_hard: "Удаление заказа (навсегда)",
+    delete_lead: "Удаление лида (скрыть)",
+    delete_lead_hard: "Удаление лида (навсегда)",
+    delete_finance: "Удаление фин. строки (заказ)",
+    finance_adjust: "Корректировка сумм",
+    bulk_delete: "Массовое удаление",
     upload: "Загрузка файла",
     convert_to_order: "Конвертация в заказ",
     create_from_lead: "Создание из лида",

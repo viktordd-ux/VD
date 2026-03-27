@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireAdmin, requireUser } from "@/lib/api-auth";
+import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { dispatchNotification } from "@/lib/notifications";
@@ -15,7 +16,9 @@ export async function PATCH(req: Request, { params }: Params) {
   const existing = await prisma.checkpoint.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const order = await prisma.order.findUnique({ where: { id: existing.orderId } });
+  const order = await prisma.order.findFirst({
+    where: { id: existing.orderId, ...orderIsActive },
+  });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (user.role === "executor") {
@@ -116,6 +119,11 @@ export async function DELETE(_req: Request, { params }: Params) {
 
   const existing = await prisma.checkpoint.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const orderOk = await prisma.order.findFirst({
+    where: { id: existing.orderId, ...orderIsActive },
+  });
+  if (!orderOk) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const orderId = existing.orderId;
   await prisma.checkpoint.delete({ where: { id } });

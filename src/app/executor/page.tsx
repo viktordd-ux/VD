@@ -10,6 +10,7 @@ import {
   trClass,
 } from "@/components/table-wrap";
 import prisma from "@/lib/prisma";
+import { orderIsActive } from "@/lib/active-scope";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +19,14 @@ export default async function ExecutorHome() {
   const session = await auth();
   if (!session?.user) redirect("/login");
   if (session.user.role !== "executor") redirect("/admin");
+  if (session.user.onboarded !== true) redirect("/executor/onboarding");
 
   const orders = await prisma.order.findMany({
-    where: { executorId: session.user.id, status: { not: "DONE" } },
+    where: {
+      ...orderIsActive,
+      executorId: session.user.id,
+      status: { not: "DONE" },
+    },
     orderBy: { deadline: "asc" },
   });
 
