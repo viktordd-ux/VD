@@ -17,6 +17,10 @@ export function OrderFileUpload({ orderId }: { orderId: string }) {
     const fd = new FormData(e.currentTarget);
     const file = fd.get("file") as File | null;
     if (!file || file.size === 0) return;
+    if (file.size > 50 * 1024 * 1024) {
+      toast("Файл слишком большой. Максимум 50 МБ.", "error");
+      return;
+    }
 
     setUploading(true);
     const res = await fetch(`/api/orders/${orderId}/files`, {

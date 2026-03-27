@@ -5,6 +5,8 @@ import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { saveOrderFile } from "@/lib/uploads";
 
+export const maxDuration = 60;
+
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Params) {
