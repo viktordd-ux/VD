@@ -35,29 +35,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const role = auth?.user?.role as "admin" | "executor" | undefined;
-      const pathname = nextUrl.pathname;
-      const isApiAuth = pathname.startsWith("/api/auth");
-
-      if (pathname.startsWith("/api") && !isApiAuth) {
-        return isLoggedIn;
-      }
-      if (isApiAuth) return true;
-      if (pathname === "/login") return true;
-      if (!isLoggedIn) return false;
-      if (pathname.startsWith("/admin") && role !== "admin") {
-        return Response.redirect(new URL("/executor", nextUrl));
-      }
-      if (pathname.startsWith("/executor") && role !== "executor") {
-        return Response.redirect(new URL("/admin", nextUrl));
-      }
-      if (pathname === "/") {
-        return Response.redirect(new URL(role === "admin" ? "/admin" : "/executor", nextUrl));
-      }
-      return true;
-    },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
