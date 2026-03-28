@@ -135,7 +135,8 @@ export function OrderChat({
   const [dockOpen, setDockOpen] = useState(false);
   dockOpenRef.current = dockOpen;
 
-  const [showBadge, setShowBadge] = useState(false);
+  /** Только непрочитанные сообщения (не «проект») — красная точка на чате. */
+  const [showChatUnread, setShowChatUnread] = useState(false);
 
   const currentUserId = session?.user?.id;
   sessionUserIdRef.current = currentUserId;
@@ -149,8 +150,8 @@ export function OrderChat({
       { cache: "no-store" },
     );
     if (!res.ok) return;
-    const data = (await res.json()) as { showBadge?: boolean };
-    setShowBadge(Boolean(data.showBadge));
+    const data = (await res.json()) as { hasUnreadChat?: boolean };
+    setShowChatUnread(Boolean(data.hasUnreadChat));
   }, [orderId]);
 
   const loadMessages = useCallback(async () => {
@@ -202,9 +203,10 @@ export function OrderChat({
   const isDock = variant === "dock";
   const isSidebar = variant === "sidebar";
 
-  /** Открытый dock или видимый блок чата — считаем переписку просмотренной. */
+  /** Открытый dock — переписка просмотрена: точку убираем сразу, затем синхронизация с сервером. */
   useEffect(() => {
     if (!isDock || !dockOpen) return;
+    setShowChatUnread(false);
     void (async () => {
       await fetch(`/api/orders/${encodeURIComponent(orderId)}/read-state`, {
         method: "PATCH",
@@ -227,6 +229,7 @@ export function OrderChat({
         const hit = !!e?.isIntersecting && e.intersectionRatio >= 0.22;
         chatSectionVisibleRef.current = hit;
         if (hit && !prevHit) {
+          setShowChatUnread(false);
           void (async () => {
             await fetch(`/api/orders/${encodeURIComponent(orderId)}/read-state`, {
               method: "PATCH",
@@ -284,11 +287,11 @@ export function OrderChat({
       const fromOther = uid != null && m.senderId !== uid;
       if (!fromOther) return;
       if (variant === "dock" && !dockOpenRef.current) {
-        setShowBadge(true);
+        setShowChatUnread(true);
         return;
       }
       if (variant !== "dock" && !chatSectionVisibleRef.current) {
-        setShowBadge(true);
+        setShowChatUnread(true);
       }
     }
 
@@ -325,6 +328,35 @@ export function OrderChat({
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  /** Пока чат открыт/виден — любое новое входящее сообщение сразу считаем прочитанным. */
+  const lastIncoming = useMemo(() => {
+    if (!currentUserId || messages.length === 0) return null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.senderId !== currentUserId) return m;
+    }
+    return null;
+  }, [messages, currentUserId]);
+
+  useEffect(() => {
+    if (!lastIncoming) return;
+    const viewing =
+      (isDock && dockOpen) || (!isDock && chatSectionVisibleRef.current);
+    if (!viewing) return;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        await fetch(`/api/orders/${encodeURIComponent(orderId)}/read-state`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ markChat: true }),
+        });
+        await fetchUnread();
+        setShowChatUnread(false);
+      })();
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [lastIncoming?.id, isDock, dockOpen, orderId, fetchUnread]);
 
   async function onSend(e: React.FormEvent) {
     e.preventDefault();
@@ -374,25 +406,24 @@ export function OrderChat({
 
   function dockFabButton() {
     return (
-      <button
-        type="button"
-        onClick={() => setDockOpen(true)}
-        className={cn(
-          dockFabPos,
-          "relative flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg shadow-zinc-950/25 ring-2 ring-white/10 transition hover:bg-zinc-800 focus-visible:outline focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
-        )}
-        aria-label={
-          showBadge ? "Открыть чат по заказу — есть непрочитанное" : "Открыть чат по заказу"
-        }
-      >
-        <IconChatBubble className="h-7 w-7" />
-        {showBadge ? (
-          <span
-            className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-zinc-900 bg-red-500"
-            aria-hidden
-          />
-        ) : null}
-      </button>
+      <div className={dockFabPos}>
+        <button
+          type="button"
+          onClick={() => setDockOpen(true)}
+          className="relative flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg shadow-zinc-950/25 ring-2 ring-white/10 transition hover:bg-zinc-800 focus-visible:outline focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2"
+          aria-label={
+            showChatUnread ? "Открыть чат по заказу — есть непрочитанное" : "Открыть чат по заказу"
+          }
+        >
+          <IconChatBubble className="h-7 w-7" />
+          {showChatUnread ? (
+            <span
+              className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-zinc-900 bg-red-500"
+              aria-hidden
+            />
+          ) : null}
+        </button>
+      </div>
     );
   }
 
@@ -466,7 +497,7 @@ export function OrderChat({
         <>
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
             Чат
-            {showBadge ? (
+            {showChatUnread ? (
               <span className="inline-block h-2 w-2 rounded-full bg-red-500" aria-hidden />
             ) : null}
           </h2>
