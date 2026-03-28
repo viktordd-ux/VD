@@ -80,6 +80,7 @@ model User {
   pushSubscriptions PushSubscription[]
   auditLogs        AuditLog[]
   messagesSent     Message[]
+  orderReadStates  OrderUserReadState[]
 
   @@map("users")
 }
@@ -142,6 +143,7 @@ model Order {
   files       File[]
   checkpoints Checkpoint[]
   messages    Message[]
+  userReadStates OrderUserReadState[]
 
   @@index([executorId])
   @@index([status])
@@ -200,6 +202,20 @@ model Message {
   @@index([orderId])
   @@index([orderId, createdAt])
   @@map("messages")
+}
+
+/// Водяные знаки «прочитано»: чат и страница заказа (файлы, этапы, поля) раздельно.
+model OrderUserReadState {
+  userId        String    @map("user_id")
+  orderId       String    @map("order_id")
+  chatReadAt    DateTime? @map("chat_read_at")
+  projectReadAt DateTime? @map("project_read_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@id([userId, orderId])
+  @@map("order_user_read_state")
 }
 
 model AuditLog {

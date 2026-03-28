@@ -7,6 +7,7 @@ import { ExecutorOrderToolbar } from "@/components/executor-order-toolbar";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
 import { displayFileEntryLabel } from "@/lib/uploads";
+import { OrderProjectReadMarker } from "@/components/order-project-read-marker";
 import { OrderChat } from "@/components/order-chat/order-chat";
 import { useExecutorOrder } from "./executor-order-context";
 
@@ -25,6 +26,7 @@ export function ExecutorOrderView({
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
+      <OrderProjectReadMarker orderId={orderId} />
       <Link href="/executor" className="text-sm text-zinc-500 hover:text-zinc-800">
         ← К задачам
       </Link>

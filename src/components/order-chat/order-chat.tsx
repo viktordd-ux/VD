@@ -123,16 +123,35 @@ export function OrderChat({
     "idle" | "subscribed" | "error" | "unconfigured"
   >("idle");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const orderIdRef = useRef(orderId);
   orderIdRef.current = orderId;
+  const dockOpenRef = useRef(false);
+  const sessionUserIdRef = useRef<string | undefined>(undefined);
+  /** Встроенный чат: виден ли блок в viewport (для realtime-бейджа). */
+  const chatSectionVisibleRef = useRef(false);
 
   /** Только для variant=dock: панель по умолчанию свёрнута в FAB */
   const [dockOpen, setDockOpen] = useState(false);
+  dockOpenRef.current = dockOpen;
+
+  const [showBadge, setShowBadge] = useState(false);
 
   const currentUserId = session?.user?.id;
+  sessionUserIdRef.current = currentUserId;
 
   const dockFabPos =
     "fixed right-4 z-40 max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6";
+
+  const fetchUnread = useCallback(async () => {
+    const res = await fetch(
+      `/api/orders/${encodeURIComponent(orderId)}/read-state`,
+      { cache: "no-store" },
+    );
+    if (!res.ok) return;
+    const data = (await res.json()) as { showBadge?: boolean };
+    setShowBadge(Boolean(data.showBadge));
+  }, [orderId]);
 
   const loadMessages = useCallback(async () => {
     setError(null);
@@ -164,6 +183,66 @@ export function OrderChat({
       cancelled = true;
     };
   }, [loadMessages]);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    void fetchUnread();
+    const id = setInterval(() => void fetchUnread(), 30_000);
+    return () => clearInterval(id);
+  }, [status, fetchUnread]);
+
+  useEffect(() => {
+    function onVis() {
+      if (document.visibilityState === "visible") void fetchUnread();
+    }
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [fetchUnread]);
+
+  const isDock = variant === "dock";
+  const isSidebar = variant === "sidebar";
+
+  /** Открытый dock или видимый блок чата — считаем переписку просмотренной. */
+  useEffect(() => {
+    if (!isDock || !dockOpen) return;
+    void (async () => {
+      await fetch(`/api/orders/${encodeURIComponent(orderId)}/read-state`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markChat: true }),
+      });
+      await fetchUnread();
+    })();
+  }, [isDock, dockOpen, orderId, fetchUnread]);
+
+  /** Встроенный чат: отметка при появлении в зоне видимости. */
+  useEffect(() => {
+    if (isDock) return;
+    const el = cardRef.current;
+    if (!el) return;
+    let prevHit = false;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0];
+        const hit = !!e?.isIntersecting && e.intersectionRatio >= 0.22;
+        chatSectionVisibleRef.current = hit;
+        if (hit && !prevHit) {
+          void (async () => {
+            await fetch(`/api/orders/${encodeURIComponent(orderId)}/read-state`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ markChat: true }),
+            });
+            await fetchUnread();
+          })();
+        }
+        prevHit = hit;
+      },
+      { threshold: [0, 0.15, 0.25, 0.5] },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [isDock, orderId, fetchUnread]);
 
   useEffect(() => {
     if (!orderId || typeof orderId !== "string") return;
@@ -201,6 +280,16 @@ export function OrderChat({
         return;
       }
       setMessages((prev) => mergeMessages(prev, m));
+      const uid = sessionUserIdRef.current;
+      const fromOther = uid != null && m.senderId !== uid;
+      if (!fromOther) return;
+      if (variant === "dock" && !dockOpenRef.current) {
+        setShowBadge(true);
+        return;
+      }
+      if (variant !== "dock" && !chatSectionVisibleRef.current) {
+        setShowBadge(true);
+      }
     }
 
     const channel = supabase
@@ -229,7 +318,7 @@ export function OrderChat({
       devLog("removeChannel", `order-messages:${orderId}`);
       void supabase.removeChannel(channel);
     };
-  }, [orderId, supabase]);
+  }, [orderId, supabase, variant]);
 
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -266,8 +355,6 @@ export function OrderChat({
     setInput("");
   }
 
-  const isDock = variant === "dock";
-  const isSidebar = variant === "sidebar";
   const tallMessages = isSidebar || isDock;
 
   function dockShell(node: ReactNode) {
@@ -292,11 +379,19 @@ export function OrderChat({
         onClick={() => setDockOpen(true)}
         className={cn(
           dockFabPos,
-          "flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg shadow-zinc-950/25 ring-2 ring-white/10 transition hover:bg-zinc-800 focus-visible:outline focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
+          "relative flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg shadow-zinc-950/25 ring-2 ring-white/10 transition hover:bg-zinc-800 focus-visible:outline focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
         )}
-        aria-label="Открыть чат по заказу"
+        aria-label={
+          showBadge ? "Открыть чат по заказу — есть непрочитанное" : "Открыть чат по заказу"
+        }
       >
         <IconChatBubble className="h-7 w-7" />
+        {showBadge ? (
+          <span
+            className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-zinc-900 bg-red-500"
+            aria-hidden
+          />
+        ) : null}
       </button>
     );
   }
@@ -305,7 +400,7 @@ export function OrderChat({
     if (isDock && !dockOpen) {
       return dockFabButton();
     }
-    return dockShell(
+    const loadingCard = (
       <Card
         className={cn(
           "p-4 md:p-6",
@@ -327,7 +422,10 @@ export function OrderChat({
           </div>
         )}
         <p className="text-sm text-zinc-500">Загрузка чата…</p>
-      </Card>,
+      </Card>
+    );
+    return dockShell(
+      isDock ? loadingCard : <div ref={cardRef} className="w-full">{loadingCard}</div>,
     );
   }
 
@@ -335,7 +433,7 @@ export function OrderChat({
     return dockFabButton();
   }
 
-  return dockShell(
+  const chatCard = (
     <Card
       className={cn(
         "flex flex-col p-4 md:p-6",
@@ -366,8 +464,11 @@ export function OrderChat({
         </div>
       ) : (
         <>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <h2 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
             Чат
+            {showBadge ? (
+              <span className="inline-block h-2 w-2 rounded-full bg-red-500" aria-hidden />
+            ) : null}
           </h2>
           <p className="mt-1 text-xs text-zinc-500">
             Переписка по заказу между студией и исполнителем.
@@ -469,6 +570,10 @@ export function OrderChat({
           {sending ? "…" : "Отправить"}
         </Button>
       </form>
-    </Card>,
+    </Card>
+  );
+
+  return dockShell(
+    isDock ? chatCard : <div ref={cardRef} className="w-full">{chatCard}</div>,
   );
 }

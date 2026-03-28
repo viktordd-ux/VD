@@ -12,6 +12,7 @@ import { AdminOrderHistoryTabs } from "@/components/admin-order/admin-order-hist
 import { AdminOrderSummaryCard } from "@/components/admin-order/admin-order-summary-card";
 import { Card } from "@/components/ui/card";
 import { AdminOrderDelete } from "./admin-order-delete";
+import { OrderProjectReadMarker } from "@/components/order-project-read-marker";
 import { OrderChat } from "@/components/order-chat/order-chat";
 import { AdminOrderForm } from "./ui";
 
@@ -60,6 +61,7 @@ export default async function AdminOrderPage({ params }: Props) {
       initialCheckpoints={checkpoints}
       initialFiles={files}
     >
+      <OrderProjectReadMarker orderId={id} />
       <AdminOrderRealtime
         orderId={id}
         supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
