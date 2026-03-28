@@ -49,14 +49,16 @@ export async function GET(req: Request) {
   return NextResponse.json({ messages: rows.map(serializeMessage) });
 }
 
-/** POST /api/messages — { order_id, text } */
+/** POST /api/messages — { order_id, text }; время created_at только из БД (@default(now())). */
 export async function POST(req: Request) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
 
-  const body = (await req.json()) as { order_id?: string; text?: string };
-  const orderId = typeof body.order_id === "string" ? body.order_id.trim() : "";
+  const body = (await req.json()) as Record<string, unknown>;
+  const orderId =
+    typeof body.order_id === "string" ? body.order_id.trim() : "";
   const textRaw = typeof body.text === "string" ? body.text.trim() : "";
+  // createdAt / created_at с клиента не используются
   if (!orderId) {
     return NextResponse.json({ error: "order_id required" }, { status: 400 });
   }

@@ -3,7 +3,12 @@
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { parseCheckpointFromApiJson } from "@/lib/order-client-deserialize";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
+import {
+  ORDER_SYNC_EVENTS,
+  orderSyncChannelName,
+} from "@/lib/order-sync-broadcast";
 import {
   parseCheckpointRowFromSupabase,
   parseFileRowFromSupabase,
@@ -162,6 +167,83 @@ export function ExecutorOrderRealtime({
     setOrder,
     setCheckpoints,
     setFiles,
+    bumpHistory,
+  ]);
+
+  /** Мгновенная синхронизация этапов с админки (Supabase Broadcast), если postgres_changes задерживается. */
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient({ supabaseUrl, supabaseAnonKey });
+    if (!supabase) return;
+
+    const syncCh = supabase
+      .channel(orderSyncChannelName(orderId))
+      .on(
+        "broadcast",
+        { event: ORDER_SYNC_EVENTS.checkpointCreated },
+        ({ payload }) => {
+          const p = payload as { checkpoint?: Record<string, unknown> };
+          if (!p.checkpoint) return;
+          const c = parseCheckpointFromApiJson(p.checkpoint);
+          setCheckpoints((prev) => {
+            if (prev.some((x) => x.id === c.id)) {
+              return sortCheckpointsForUi(
+                prev.map((x) => (x.id === c.id ? c : x)),
+              );
+            }
+            return sortCheckpointsForUi([...prev, c]);
+          });
+          bumpHistory();
+        },
+      )
+      .on(
+        "broadcast",
+        { event: ORDER_SYNC_EVENTS.checkpointUpdated },
+        ({ payload }) => {
+          const p = payload as { checkpoint?: Record<string, unknown> };
+          if (!p.checkpoint) return;
+          const c = parseCheckpointFromApiJson(p.checkpoint);
+          setCheckpoints((prev) =>
+            sortCheckpointsForUi(
+              prev.map((x) => (x.id === c.id ? c : x)),
+            ),
+          );
+          bumpHistory();
+        },
+      )
+      .on(
+        "broadcast",
+        { event: ORDER_SYNC_EVENTS.checkpointDeleted },
+        ({ payload }) => {
+          const p = payload as { id?: string };
+          const id = p.id;
+          if (!id) return;
+          setCheckpoints((prev) => prev.filter((x) => x.id !== id));
+          bumpHistory();
+        },
+      )
+      .on(
+        "broadcast",
+        { event: ORDER_SYNC_EVENTS.checkpointsRefresh },
+        async () => {
+          const res = await fetch(`/api/orders/${orderId}/checkpoints`, {
+            cache: "no-store",
+          });
+          if (!res.ok) return;
+          const raw = (await res.json()) as Record<string, unknown>[];
+          setCheckpoints(raw.map((x) => parseCheckpointFromApiJson(x)));
+          bumpHistory();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(syncCh);
+    };
+  }, [
+    orderId,
+    supabaseUrl,
+    supabaseAnonKey,
+    setCheckpoints,
     bumpHistory,
   ]);
 

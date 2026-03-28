@@ -1,5 +1,6 @@
 import type { Message, MessageRole } from "@prisma/client";
 
+/** createdAt — всегда ISO 8601 из сервера (БД). */
 export type MessageDto = {
   id: string;
   orderId: string;

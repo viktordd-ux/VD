@@ -26,6 +26,10 @@ import {
   parseCheckpointFromApiJson,
   parseAdminOrderFromApiJson,
 } from "@/lib/order-client-deserialize";
+import {
+  ORDER_SYNC_EVENTS,
+  broadcastOrderSync,
+} from "@/lib/order-sync-broadcast";
 import { useAdminOrder } from "@/components/admin-order/admin-order-context";
 
 function dueInputValue(d: Date | string | null | undefined): string {
@@ -148,7 +152,19 @@ function SortableRow({
   );
 }
 
-export function AdminCheckpointsPanel({ orderId }: { orderId: string }) {
+export function AdminCheckpointsPanel({
+  orderId,
+  supabaseUrl,
+  supabaseAnonKey,
+}: {
+  orderId: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+}) {
+  const syncOpts = { supabaseUrl, supabaseAnonKey };
+  function syncBroadcast(event: string, payload: Record<string, unknown>) {
+    broadcastOrderSync(orderId, syncOpts, event, payload);
+  }
   const { checkpoints: items, setCheckpoints, setOrder, bumpHistory } = useAdminOrder();
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -192,6 +208,7 @@ export function AdminCheckpointsPanel({ orderId }: { orderId: string }) {
       if (list) setCheckpoints(list);
       return;
     }
+    syncBroadcast(ORDER_SYNC_EVENTS.checkpointsRefresh, {});
     bumpHistory();
   }
 
@@ -241,10 +258,10 @@ export function AdminCheckpointsPanel({ orderId }: { orderId: string }) {
       setCheckpoints((prev) => prev.filter((c) => c.id !== tempId));
       return;
     }
-    const created = parseCheckpointFromApiJson(
-      (await res.json()) as Record<string, unknown>,
-    );
+    const raw = (await res.json()) as Record<string, unknown>;
+    const created = parseCheckpointFromApiJson(raw);
     setCheckpoints((prev) => prev.map((c) => (c.id === tempId ? created : c)));
+    syncBroadcast(ORDER_SYNC_EVENTS.checkpointCreated, { checkpoint: raw });
     e.currentTarget.reset();
     await fetchOrderIfNeeded();
     bumpHistory();
@@ -294,6 +311,9 @@ export function AdminCheckpointsPanel({ orderId }: { orderId: string }) {
     };
     const updated = parseCheckpointFromApiJson(body.checkpoint);
     setCheckpoints((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    syncBroadcast(ORDER_SYNC_EVENTS.checkpointUpdated, {
+      checkpoint: body.checkpoint,
+    });
     if (body.order?.status) {
       setOrder((o) => ({ ...o, status: body.order!.status as typeof o.status }));
     }
@@ -312,6 +332,7 @@ export function AdminCheckpointsPanel({ orderId }: { orderId: string }) {
       setCheckpoints(prevSnap);
       return;
     }
+    syncBroadcast(ORDER_SYNC_EVENTS.checkpointDeleted, { id });
     await fetchOrderIfNeeded();
     bumpHistory();
   }

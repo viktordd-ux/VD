@@ -94,7 +94,11 @@ export default async function AdminOrderPage({ params }: Props) {
             <AdminCompleteAllCheckpoints orderId={id} />
           </div>
           <div className="mt-4">
-            <AdminCheckpointsPanel orderId={id} />
+            <AdminCheckpointsPanel
+              orderId={id}
+              supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
+              supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
+            />
           </div>
         </Card>
 

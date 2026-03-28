@@ -13,6 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { MessageDto } from "@/lib/message-serialize";
+import {
+  normalizeCreatedAt,
+  normalizeMessageDto,
+} from "@/lib/message-normalize";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 
 const devLog = (...args: unknown[]) => {
@@ -21,62 +25,11 @@ const devLog = (...args: unknown[]) => {
   }
 };
 
-function pickRow(row: Record<string, unknown>, snake: string, camel: string) {
-  const a = row[snake];
-  const b = row[camel];
-  if (a !== undefined && a !== null) return a;
-  if (b !== undefined && b !== null) return b;
-  return undefined;
-}
-
-function parseMessageFromRealtime(
-  row: Record<string, unknown>,
-): MessageDto | null {
-  const id = pickRow(row, "id", "id");
-  const orderId = pickRow(row, "order_id", "orderId");
-  const senderId = pickRow(row, "sender_id", "senderId");
-  const role = pickRow(row, "role", "role");
-  const text = pickRow(row, "text", "text");
-  const rawCreated = pickRow(row, "created_at", "createdAt");
-
-  const idStr = id != null ? String(id) : null;
-  const orderIdStr = orderId != null ? String(orderId) : null;
-  const senderIdStr = senderId != null ? String(senderId) : null;
-  const textStr = text != null ? String(text) : null;
-
-  if (!idStr || !orderIdStr || !senderIdStr || !textStr) return null;
-  if (role !== "admin" && role !== "executor") return null;
-
-  let createdAt: string;
-  if (typeof rawCreated === "string") {
-    const d = new Date(rawCreated);
-    createdAt = Number.isNaN(d.getTime()) ? rawCreated : d.toISOString();
-  } else if (rawCreated instanceof Date) {
-    createdAt = rawCreated.toISOString();
-  } else if (typeof rawCreated === "number") {
-    createdAt = new Date(rawCreated).toISOString();
-  } else {
-    return null;
-  }
-
-  return {
-    id: idStr,
-    orderId: orderIdStr,
-    senderId: senderIdStr,
-    role,
-    text: textStr,
-    createdAt,
-  };
-}
-
-/** Единый порядок: createdAt по возрастанию; при равенстве времени — id (стабильность). */
+/** Единый порядок: только normalizeCreatedAt; при равенстве — id. */
 function sortMessagesStable(list: MessageDto[]): MessageDto[] {
   return [...list].sort((a, b) => {
-    const ta = new Date(a.createdAt).getTime();
-    const tb = new Date(b.createdAt).getTime();
-    const na = Number.isNaN(ta) ? 0 : ta;
-    const nb = Number.isNaN(tb) ? 0 : tb;
-    if (na !== nb) return na - nb;
+    const na = normalizeCreatedAt(a.createdAt) - normalizeCreatedAt(b.createdAt);
+    if (na !== 0) return na;
     return a.id.localeCompare(b.id);
   });
 }
@@ -142,9 +95,12 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
       setMessages([]);
       return;
     }
-    const data = (await res.json()) as { messages?: MessageDto[] };
+    const data = (await res.json()) as { messages?: unknown[] };
     const raw = Array.isArray(data.messages) ? data.messages : [];
-    setMessages(mergeMessages([], raw));
+    const list = raw
+      .map((x) => normalizeMessageDto(x))
+      .filter((m): m is MessageDto => m != null);
+    setMessages(mergeMessages([], list));
   }, [orderId]);
 
   useEffect(() => {
@@ -188,7 +144,8 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
 
       const row = payload.new as Record<string, unknown> | null;
       if (!row) return;
-      const m = parseMessageFromRealtime(row);
+      // Время только из БД: payload.new.created_at (Realtime postgres_changes)
+      const m = normalizeMessageDto(row);
       if (!m || m.orderId !== orderIdRef.current) {
         devLog("строка пропущена", { parsed: m, expectedOrderId: orderIdRef.current });
         return;
@@ -251,9 +208,10 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
       }
       return;
     }
-    const data = (await res.json()) as { message?: MessageDto };
-    if (data.message) {
-      setMessages((prev) => mergeMessages(prev, data.message!));
+    const data = (await res.json()) as { message?: unknown };
+    const added = normalizeMessageDto(data.message);
+    if (added) {
+      setMessages((prev) => mergeMessages(prev, added));
     }
     setInput("");
   }
