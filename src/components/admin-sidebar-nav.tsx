@@ -67,7 +67,7 @@ export function AdminSidebarNav() {
       clearInterval(id);
       window.removeEventListener("vd:order-unread-changed", onChatUnreadEvent);
     };
-  }, [pathname]);
+  }, []);
 
   function active(href: string): boolean {
     if (href === "/admin") return pathname === "/admin";

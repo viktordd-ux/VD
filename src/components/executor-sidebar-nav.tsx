@@ -63,7 +63,7 @@ export function ExecutorSidebarNav() {
       clearInterval(id);
       window.removeEventListener("vd:order-unread-changed", onChatUnreadEvent);
     };
-  }, [pathname]);
+  }, []);
 
   return (
     <nav className="flex flex-1 flex-col gap-0.5 p-2">

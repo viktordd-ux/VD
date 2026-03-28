@@ -21,5 +21,7 @@ declare module "next-auth/jwt" {
     id?: string;
     role?: "admin" | "executor";
     onboarded?: boolean;
+    /** После первой попытки синхронизации onboarded из БД (старые JWT) — не дергать Prisma на каждый запрос. */
+    executorOnboardedChecked?: boolean;
   }
 }

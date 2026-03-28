@@ -10,7 +10,7 @@ export const authConfig = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
-        token.onboarded = user.onboarded;
+        token.onboarded = user.onboarded === true;
       }
       if (trigger === "update" && session) {
         const s = session as { onboarded?: boolean };
@@ -18,23 +18,28 @@ export const authConfig = {
           token.onboarded = s.onboarded;
         }
       }
-      // Только для исполнителей: подтянуть onboarded из БД для старых JWT (без блокировки админа и без падения при сбое БД).
+      // Старые JWT без onboarded: один запрос к БД на сессию, не на каждый вызов jwt (иначе каждая навигация + middleware ждут Prisma).
       if (
-        typeof token.onboarded !== "boolean" &&
         token.role === "executor" &&
         token.id &&
-        !user
+        !user &&
+        typeof token.onboarded !== "boolean" &&
+        !token.executorOnboardedChecked
       ) {
+        token.executorOnboardedChecked = true;
         try {
           const { default: prisma } = await import("@/lib/prisma");
           const u = await prisma.user.findUnique({
             where: { id: token.id as string },
             select: { onboarded: true },
           });
-          if (u) token.onboarded = u.onboarded;
+          token.onboarded = u?.onboarded === true;
         } catch {
-          // Не инвалидируем сессию при временной ошибке БД (важно для Vercel / cold start).
+          token.onboarded = false;
         }
+      }
+      if (token.role === "executor" && typeof token.onboarded !== "boolean") {
+        token.onboarded = false;
       }
       return token;
     },

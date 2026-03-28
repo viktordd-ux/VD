@@ -37,37 +37,39 @@ export default async function ExecutorEarningsPage() {
     order: orderForExecutor,
   };
 
-  const allAgg = await prisma.checkpoint.aggregate({
-    where: allWhere,
-    _sum: { paymentAmount: true },
-    _count: true,
-  });
-  const weekAgg = await prisma.checkpoint.aggregate({
-    where: {
-      payoutReleasedAt: { gte: weekAgo, lte: now },
-      order: orderForExecutor,
-    },
-    _sum: { paymentAmount: true },
-  });
-  const monthAgg = await prisma.checkpoint.aggregate({
-    where: {
-      payoutReleasedAt: { gte: monthAgo, lte: now },
-      order: orderForExecutor,
-    },
-    _sum: { paymentAmount: true },
-  });
-  const recentCp = await prisma.checkpoint.findMany({
-    where: allWhere,
-    orderBy: { payoutReleasedAt: "desc" },
-    take: 20,
-    select: {
-      id: true,
-      title: true,
-      paymentAmount: true,
-      payoutReleasedAt: true,
-      order: { select: { id: true, title: true } },
-    },
-  });
+  const [allAgg, weekAgg, monthAgg, recentCp] = await Promise.all([
+    prisma.checkpoint.aggregate({
+      where: allWhere,
+      _sum: { paymentAmount: true },
+      _count: true,
+    }),
+    prisma.checkpoint.aggregate({
+      where: {
+        payoutReleasedAt: { gte: weekAgo, lte: now },
+        order: orderForExecutor,
+      },
+      _sum: { paymentAmount: true },
+    }),
+    prisma.checkpoint.aggregate({
+      where: {
+        payoutReleasedAt: { gte: monthAgo, lte: now },
+        order: orderForExecutor,
+      },
+      _sum: { paymentAmount: true },
+    }),
+    prisma.checkpoint.findMany({
+      where: allWhere,
+      orderBy: { payoutReleasedAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        title: true,
+        paymentAmount: true,
+        payoutReleasedAt: true,
+        order: { select: { id: true, title: true } },
+      },
+    }),
+  ]);
 
   const totalAll = Number(allAgg._sum.paymentAmount ?? 0);
   const totalWeek = Number(weekAgg._sum.paymentAmount ?? 0);
