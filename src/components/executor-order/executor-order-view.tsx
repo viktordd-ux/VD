@@ -7,7 +7,6 @@ import { ExecutorOrderToolbar } from "@/components/executor-order-toolbar";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
 import { displayFileEntryLabel } from "@/lib/uploads";
-import { ExecutorOrderHistoryTabs } from "./executor-order-history-tabs";
 import { OrderChat } from "@/components/order-chat/order-chat";
 import { useExecutorOrder } from "./executor-order-context";
 
@@ -135,18 +134,6 @@ export function ExecutorOrderView({
           </ul>
         </Card>
       )}
-
-      <Card className="p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          История и аудит
-        </h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Хронология и записи аудита по этому заказу.
-        </p>
-        <div className="mt-3">
-          <ExecutorOrderHistoryTabs orderId={orderId} />
-        </div>
-      </Card>
 
       <ExecutorOrderPanel orderId={order.id} />
     </div>
