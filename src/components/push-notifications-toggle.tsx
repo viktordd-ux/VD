@@ -75,7 +75,6 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
         return;
       }
       try {
-        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
         await navigator.serviceWorker.ready;
         if (cancelled) return;
         setSupported(true);
@@ -83,7 +82,7 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
         if (cancelled) return;
         setSupported(false);
         setUnsupportedHint(
-          "Не удалось зарегистрировать сервис-воркер. Нужен HTTPS; в приватном режиме Safari push отключён. Откройте сайт с иконки на главном экране, не из Safari.",
+          "Не удалось дождаться сервис-воркера. Нужен HTTPS; в приватном режиме Safari push отключён. Откройте сайт с иконки на главном экране, не из Safari.",
         );
       }
     })();
@@ -135,8 +134,7 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
     }
     const { publicKey } = (await vapidRes.json()) as { publicKey: string };
 
-    const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-    await reg.update();
+    const reg = await navigator.serviceWorker.ready;
 
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,

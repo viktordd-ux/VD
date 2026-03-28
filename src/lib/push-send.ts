@@ -6,8 +6,15 @@ export type WebPushPayload = { title: string; body: string; url?: string };
 
 let vapidConfigured = false;
 
+function vapidPublicKey(): string | undefined {
+  const k =
+    process.env.VAPID_PUBLIC_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  return k || undefined;
+}
+
 function ensureVapidConfigured(): boolean {
-  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const publicKey = vapidPublicKey();
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   if (!publicKey || !privateKey) return false;
   if (!vapidConfigured) {
@@ -22,7 +29,7 @@ function ensureVapidConfigured(): boolean {
 }
 
 export function isWebPushConfigured(): boolean {
-  return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
+  return Boolean(vapidPublicKey() && process.env.VAPID_PRIVATE_KEY);
 }
 
 export async function sendPushNotification(
