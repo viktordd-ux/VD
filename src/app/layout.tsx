@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "V|D — студия",
+  title: "VD App",
   description: "Внутренняя ERP студии V|D",
   manifest: "/manifest.json",
   icons: {
@@ -21,18 +21,19 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "VD App",
     statusBarStyle: "default",
+    title: "VD App",
   },
 };
 
-/** Без pinch-zoom на телефоне — интерфейс под фиксированный масштаб. */
+/** Без pinch-zoom на телефоне; `viewportFit: cover` — safe area / «как приложение» на iPhone. */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
   themeColor: "#000000",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

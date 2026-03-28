@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
+import { pushLogServer, vapidPublicFingerprint } from "@/lib/push-debug";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,25 @@ export async function POST(req: Request) {
     );
   }
 
+  const pub =
+    process.env.VAPID_PUBLIC_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  pushLogServer(
+    "subscribe POST",
+    "userId=",
+    user.id,
+    "endpointHost=",
+    (() => {
+      try {
+        return new URL(endpoint).host;
+      } catch {
+        return "?";
+      }
+    })(),
+    "vapidPublicFingerprint=",
+    pub ? vapidPublicFingerprint(pub) : "(no public key env)",
+  );
+
   try {
     await prisma.pushSubscription.upsert({
       where: { endpoint },
@@ -53,6 +73,7 @@ export async function POST(req: Request) {
       where: { id: user.id },
       data: { pushEnabled: true },
     });
+    pushLogServer("subscribe saved", "userId=", user.id, "endpoint upsert ok");
   } catch (e) {
     console.error("[push/subscribe]", e);
     if (e instanceof Prisma.PrismaClientKnownRequestError) {

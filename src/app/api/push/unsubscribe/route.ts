@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
+import { pushLogServer } from "@/lib/push-debug";
 
 export const runtime = "nodejs";
 
@@ -24,11 +25,12 @@ export async function POST(req: Request) {
   }
 
   if (body.all === true) {
-    await prisma.pushSubscription.deleteMany({ where: { userId: user.id } });
+    const n = await prisma.pushSubscription.deleteMany({ where: { userId: user.id } });
     await prisma.user.update({
       where: { id: user.id },
       data: { pushEnabled: false },
     });
+    pushLogServer("unsubscribe all", "userId=", user.id, "deleted=", n.count);
     return NextResponse.json({ ok: true });
   }
 
@@ -41,9 +43,10 @@ export async function POST(req: Request) {
     );
   }
 
-  await prisma.pushSubscription.deleteMany({
+  const del = await prisma.pushSubscription.deleteMany({
     where: { userId: user.id, endpoint },
   });
+  pushLogServer("unsubscribe one", "userId=", user.id, "deleted=", del.count);
 
   const remaining = await prisma.pushSubscription.count({
     where: { userId: user.id },

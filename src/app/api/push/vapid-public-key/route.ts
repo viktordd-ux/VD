@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { vapidPublicFingerprint } from "@/lib/push-debug";
 
 /** Публичный VAPID-ключ для PushManager.subscribe (без секрета). */
 export async function GET() {
@@ -11,5 +12,10 @@ export async function GET() {
       { status: 503 },
     );
   }
-  return NextResponse.json({ publicKey: publicKey.trim() });
+  const trimmed = publicKey.trim();
+  return NextResponse.json({
+    publicKey: trimmed,
+    /** Совпадает с логами сервера при PUSH_DEBUG (subscribe / send). */
+    publicKeyFingerprint: vapidPublicFingerprint(trimmed),
+  });
 }

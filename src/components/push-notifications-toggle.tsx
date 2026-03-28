@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { pushLogClient } from "@/lib/push-debug-client";
+import { isIOS, isPWA } from "@/lib/pwa";
 
 type Status = "idle" | "loading" | "error" | "success";
 
@@ -67,6 +69,17 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
     let cancelled = false;
     (async () => {
       if (typeof window === "undefined") return;
+
+      if (isIOS() && !isPWA()) {
+        if (!cancelled) {
+          setSupported(false);
+          setUnsupportedHint(
+            "Установите приложение на экран домой, чтобы получать уведомления (нужен iOS 16.4+ в режиме «Домой»).",
+          );
+        }
+        return;
+      }
+
       if (!("serviceWorker" in navigator)) {
         if (!cancelled) {
           setSupported(false);
@@ -75,11 +88,17 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
         return;
       }
       try {
-        await navigator.serviceWorker.ready;
+        const reg = await navigator.serviceWorker.ready;
+        pushLogClient("serviceWorker.ready", {
+          scope: reg.scope,
+          state: reg.active?.state,
+          scriptURL: reg.active?.scriptURL,
+        });
         if (cancelled) return;
         setSupported(true);
-      } catch {
+      } catch (e) {
         if (cancelled) return;
+        pushLogClient("serviceWorker.ready failed", e);
         setSupported(false);
         setUnsupportedHint(
           "Не удалось дождаться сервис-воркера. Нужен HTTPS; в приватном режиме Safari push отключён. Откройте сайт с иконки на главном экране, не из Safari.",
@@ -107,6 +126,11 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
   const enable = useCallback(async () => {
     setStatus("idle");
     setMessage(null);
+    if (isIOS() && !isPWA()) {
+      setStatus("error");
+      setMessage("Установите приложение на экран домой, чтобы получать уведомления");
+      return;
+    }
     // iOS Safari / PWA: глобал `Notification` не всегда в scope как идентификатор — только через globalThis
     const NotificationCtor = globalThis.Notification;
     if (
@@ -119,7 +143,10 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
       );
       return;
     }
+    const permBefore = NotificationCtor.permission;
+    pushLogClient("Notification.permission before request", permBefore);
     const perm = await NotificationCtor.requestPermission();
+    pushLogClient("Notification.permission after request", perm);
     if (perm !== "granted") {
       setStatus("error");
       setMessage("Разрешите уведомления в настройках браузера");
@@ -128,20 +155,29 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
 
     const vapidRes = await fetch("/api/push/vapid-public-key");
     if (!vapidRes.ok) {
+      pushLogClient("vapid-public-key HTTP error", vapidRes.status);
       setStatus("error");
       setMessage("Push не настроен на сервере (VAPID)");
       return;
     }
-    const { publicKey } = (await vapidRes.json()) as { publicKey: string };
+    const vapidJson = (await vapidRes.json()) as {
+      publicKey: string;
+      publicKeyFingerprint?: string;
+    };
+    pushLogClient("vapid public key fingerprint (compare with server PUSH_DEBUG logs)", vapidJson.publicKeyFingerprint);
 
     const reg = await navigator.serviceWorker.ready;
+    pushLogClient("pushManager.subscribe …", { scope: reg.scope });
 
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
+      applicationServerKey: urlBase64ToUint8Array(vapidJson.publicKey),
     });
 
     const subJson = sub.toJSON();
+    pushLogClient("PushSubscription created", {
+      endpointHost: subJson.endpoint ? new URL(subJson.endpoint).host : null,
+    });
     if (!subJson.endpoint || !subJson.keys?.p256dh || !subJson.keys?.auth) {
       setStatus("error");
       setMessage("Не удалось создать подписку");
@@ -167,11 +203,13 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
         if (save.status === 401) detail = "Сессия истекла — войдите снова";
         else if (save.status === 403) detail = "Нет доступа (профиль или роль)";
       }
+      pushLogClient("POST /api/push/subscribe failed", save.status, detail);
       setStatus("error");
       setMessage(detail);
       return;
     }
 
+    pushLogClient("POST /api/push/subscribe ok");
     setPushEnabled(true);
     setStatus("success");
     setMessage(null);
@@ -182,15 +220,19 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
     setStatus("idle");
     setMessage(null);
     try {
-      await fetch("/api/push/unsubscribe", {
+      const u = await fetch("/api/push/unsubscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ all: true }),
       });
+      pushLogClient("POST /api/push/unsubscribe", u.ok, u.status);
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
+      const had = Boolean(sub);
       if (sub) await sub.unsubscribe();
-    } catch {
+      pushLogClient("pushManager subscription removed locally", had);
+    } catch (e) {
+      pushLogClient("disable error, retrying unsubscribe API", e);
       await fetch("/api/push/unsubscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -214,6 +256,7 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
         await enable();
       }
     } catch (e) {
+      pushLogClient("toggle error", e);
       setStatus("error");
       setMessage(e instanceof Error ? e.message : "Ошибка");
     } finally {

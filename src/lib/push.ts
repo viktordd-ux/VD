@@ -1,5 +1,6 @@
 import type { WebPushPayload } from "@/lib/push-send";
 import { sendPushToUser } from "@/lib/push-send";
+import { pushLogServer } from "@/lib/push-debug";
 
 /**
  * Отправка Web Push одному пользователю (все его подписки в БД).
@@ -9,5 +10,6 @@ export async function sendPush(
   userId: string,
   payload: WebPushPayload,
 ): Promise<void> {
+  pushLogServer("sendPush()", "userId=", userId, "title=", payload.title);
   await sendPushToUser(userId, payload);
 }

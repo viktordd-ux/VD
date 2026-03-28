@@ -4,6 +4,7 @@ const CACHE_NAME = "vd-pwa-v1";
 const PRECACHE_URLS = ["/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
+  console.log("[sw] install", CACHE_NAME);
   event.waitUntil(
     caches
       .open(CACHE_NAME)
@@ -14,6 +15,7 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  console.log("[sw] activate");
   event.waitUntil(
     caches
       .keys()
@@ -34,6 +36,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
+  console.log("PUSH RECEIVED", event);
   let data = { title: "VD App", body: "", url: "/" };
   try {
     if (event.data) {
@@ -44,8 +47,8 @@ self.addEventListener("push", (event) => {
         url: typeof parsed.url === "string" ? parsed.url : "/",
       };
     }
-  } catch {
-    // ignore
+  } catch (e) {
+    console.warn("[sw] push payload parse error", e);
   }
 
   const rel = data.url && data.url.startsWith("/") ? data.url : "/";
