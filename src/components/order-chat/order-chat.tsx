@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { MessageDto } from "@/lib/message-serialize";
+import { formatChatMessageTime } from "@/lib/chat-display-time";
 import {
   normalizeCreatedAt,
   normalizeMessageDto,
@@ -266,12 +267,7 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
         ) : (
           messages.map((m) => {
             const mine = currentUserId && m.senderId === currentUserId;
-            const timeLabel = new Date(m.createdAt).toLocaleString("ru-RU", {
-              day: "2-digit",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            });
+            const timeLabel = formatChatMessageTime(m.createdAt);
             return (
               <div
                 key={m.id}
