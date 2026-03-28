@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/components/toast-provider";
+import { postFormDataWithProgress } from "@/lib/upload-form-xhr";
 
 export function OrderFileUpload({
   orderId,
@@ -18,6 +19,7 @@ export function OrderFileUpload({
   const formRef = useRef<HTMLFormElement>(null);
   const linkFormRef = useRef<HTMLFormElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [linkSaving, setLinkSaving] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
 
@@ -32,25 +34,30 @@ export function OrderFileUpload({
     }
 
     setUploading(true);
-    const res = await fetch(`/api/orders/${orderId}/files`, {
-      method: "POST",
-      body: fd,
-      cache: "no-store",
-    });
-    setUploading(false);
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      toast(body?.error ?? "Ошибка загрузки файла", "error");
-      return;
+    setUploadProgress(0);
+    try {
+      const { ok, body } = await postFormDataWithProgress(
+        `/api/orders/${orderId}/files`,
+        fd,
+        (pct) => setUploadProgress(pct),
+      );
+      if (!ok) {
+        const err = body as { error?: string };
+        toast(err?.error ?? "Ошибка загрузки файла", "error");
+        return;
+      }
+      const fileJson = body as Record<string, unknown>;
+      formRef.current?.reset();
+      setFileName(null);
+      toast("Файл загружен", "success");
+      if (onUploaded) onUploaded(fileJson);
+      else router.refresh();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Ошибка загрузки файла", "error");
+    } finally {
+      setUploading(false);
+      setUploadProgress(null);
     }
-
-    const fileJson = (await res.json()) as Record<string, unknown>;
-    formRef.current?.reset();
-    setFileName(null);
-    toast("Файл загружен", "success");
-    if (onUploaded) onUploaded(fileJson);
-    else router.refresh();
   }
 
   async function onAddLink(e: React.FormEvent<HTMLFormElement>) {
@@ -66,16 +73,33 @@ export function OrderFileUpload({
     }
 
     setLinkSaving(true);
-    const res = await fetch(`/api/orders/${orderId}/files`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        externalUrl,
-        linkTitle: linkTitle || undefined,
-        comment: comment || undefined,
-      }),
-      cache: "no-store",
-    });
+    const controller = new AbortController();
+    const abortTimer = window.setTimeout(() => controller.abort(), 60_000);
+    let res: Response;
+    try {
+      res = await fetch(`/api/orders/${orderId}/files`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          externalUrl,
+          linkTitle: linkTitle || undefined,
+          comment: comment || undefined,
+        }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(abortTimer);
+      setLinkSaving(false);
+      toast(
+        err instanceof Error && err.name === "AbortError"
+          ? "Сохранение слишком долгое (таймаут 1 мин)"
+          : "Не удалось сохранить ссылку",
+        "error",
+      );
+      return;
+    }
+    clearTimeout(abortTimer);
     setLinkSaving(false);
 
     if (!res.ok) {
@@ -142,6 +166,17 @@ export function OrderFileUpload({
             className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
         </div>
+        {uploadProgress !== null && (
+          <div className="space-y-1">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
+              <div
+                className="h-full rounded-full bg-zinc-900 transition-[width] duration-150"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="text-xs tabular-nums text-zinc-500">{uploadProgress}%</p>
+          </div>
+        )}
         <Button type="submit" variant="primary" size="md" disabled={uploading || !fileName}>
           {uploading ? "Загружаю…" : "Загрузить"}
         </Button>

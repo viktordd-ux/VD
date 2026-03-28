@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
@@ -99,13 +99,15 @@ export async function POST(req: Request, { params }: Params) {
       console.error("[files/link] Audit error (non-fatal):", err);
     }
 
-    if (user.role === "admin" && order.executorId) {
-      notifyExecutorChatMessage(order.executorId);
-      pushNotifyExecutorOrderFile(order.executorId, order.title, orderId);
-    }
-    if (user.role === "executor") {
-      pushNotifyAdminsNewFile(order.title, orderId);
-    }
+    after(() => {
+      if (user.role === "admin" && order.executorId) {
+        notifyExecutorChatMessage(order.executorId);
+        pushNotifyExecutorOrderFile(order.executorId, order.title, orderId);
+      }
+      if (user.role === "executor") {
+        pushNotifyAdminsNewFile(order.title, orderId);
+      }
+    });
 
     revalidateOrderViews(orderId);
     return NextResponse.json(row);
@@ -164,13 +166,15 @@ export async function POST(req: Request, { params }: Params) {
     console.error("[files/upload] Audit write error (non-fatal):", err);
   }
 
-  if (user.role === "admin" && order.executorId) {
-    notifyExecutorChatMessage(order.executorId);
-    pushNotifyExecutorOrderFile(order.executorId, order.title, orderId);
-  }
-  if (user.role === "executor") {
-    pushNotifyAdminsNewFile(order.title, orderId);
-  }
+  after(() => {
+    if (user.role === "admin" && order.executorId) {
+      notifyExecutorChatMessage(order.executorId);
+      pushNotifyExecutorOrderFile(order.executorId, order.title, orderId);
+    }
+    if (user.role === "executor") {
+      pushNotifyAdminsNewFile(order.title, orderId);
+    }
+  });
 
   revalidateOrderViews(orderId);
   return NextResponse.json(row);
