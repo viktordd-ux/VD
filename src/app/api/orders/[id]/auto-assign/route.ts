@@ -6,6 +6,7 @@ import { writeAudit } from "@/lib/audit";
 import { getBestExecutor } from "@/lib/executor-matching";
 import { serializeOrder } from "@/lib/serialize";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
+import { pushNotifyExecutorAssigned } from "@/lib/push-notify";
 import { notifyExecutorOrderAssigned } from "@/lib/telegram-notify";
 
 type Params = { params: Promise<{ id: string }> };
@@ -48,6 +49,7 @@ export async function POST(_req: Request, { params }: Params) {
 
   if (best.id !== existing.executorId) {
     notifyExecutorOrderAssigned(updated.executorId, updated.title);
+    pushNotifyExecutorAssigned(updated.executorId, updated.title, id);
   }
 
   revalidateOrderViews(id);

@@ -24,6 +24,7 @@ export function serializeUserForList(u: User | null): SerializedUser | null {
     skills: u.skills,
     primarySkill: u.primarySkill,
     onboarded: u.onboarded,
+    pushEnabled: u.pushEnabled,
     createdAt: u.createdAt.toISOString(),
     updatedAt: u.updatedAt.toISOString(),
   };

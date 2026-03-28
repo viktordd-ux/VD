@@ -17,6 +17,7 @@ const userPublicSelect = {
   skills: true,
   primarySkill: true,
   onboarded: true,
+  pushEnabled: true,
   createdAt: true,
   updatedAt: true,
 } as const;

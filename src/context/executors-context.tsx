@@ -100,6 +100,7 @@ export function userStubFromExecutorCache(e: ExecutorCacheEntry): User {
     skills: e.skills,
     primarySkill: e.primarySkill,
     onboarded: true,
+    pushEnabled: false,
     createdAt: new Date(0),
     updatedAt: new Date(0),
   };

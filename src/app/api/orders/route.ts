@@ -10,6 +10,7 @@ import {
 } from "@/lib/order-template";
 import { orderIsActive } from "@/lib/active-scope";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
+import { pushNotifyExecutorAssigned } from "@/lib/push-notify";
 import { notifyExecutorOrderAssigned } from "@/lib/telegram-notify";
 
 export async function GET(req: Request) {
@@ -141,6 +142,7 @@ export async function POST(req: Request) {
 
   if (order.executorId) {
     notifyExecutorOrderAssigned(order.executorId, order.title);
+    pushNotifyExecutorAssigned(order.executorId, order.title, order.id);
   }
 
   revalidateOrderViews(order.id);

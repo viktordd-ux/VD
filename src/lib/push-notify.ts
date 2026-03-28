@@ -62,6 +62,19 @@ export function pushNotifyAdminsNewFile(orderTitle: string, orderId: string): vo
   });
 }
 
+export function pushNotifyExecutorOrderFile(
+  executorId: string | null,
+  orderTitle: string,
+  orderId: string,
+): void {
+  if (!executorId) return;
+  void sendPushToUser(executorId, {
+    title: "Новый файл",
+    body: `Заказ «${orderTitle}»`,
+    url: orderPushUrlForExecutor(orderId),
+  });
+}
+
 export function pushNotifyExecutorDeadlineTomorrow(
   executorId: string | null,
   orderTitle: string,

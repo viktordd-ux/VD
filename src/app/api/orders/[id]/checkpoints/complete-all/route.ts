@@ -5,6 +5,10 @@ import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { dispatchNotification } from "@/lib/notifications";
+import {
+  pushNotifyAdminsCheckpointsBulk,
+  pushNotifyExecutorCheckpointsBulkAccepted,
+} from "@/lib/push-notify";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
@@ -84,6 +88,14 @@ export async function PATCH(_req: Request, { params }: Params) {
     audience: "admin",
     event: "checkpoints_complete_all",
   });
+
+  if (updated > 0) {
+    if (!isAdmin) {
+      pushNotifyAdminsCheckpointsBulk(order.title, orderId, updated);
+    } else if (order.executorId) {
+      pushNotifyExecutorCheckpointsBulkAccepted(order.executorId, order.title, orderId);
+    }
+  }
 
   revalidateOrderViews(orderId);
   return NextResponse.json({

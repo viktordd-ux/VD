@@ -3,6 +3,10 @@ import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
 import { serializeMessage } from "@/lib/message-serialize";
+import {
+  pushNotifyAdminsNewChatMessage,
+  pushNotifyExecutorChatMessage,
+} from "@/lib/push-notify";
 import { notifyExecutorChatMessage } from "@/lib/telegram-notify";
 
 const MAX_LEN = 8000;
@@ -10,7 +14,7 @@ const MAX_LEN = 8000;
 async function loadOrderForChat(orderId: string) {
   return prisma.order.findFirst({
     where: { id: orderId, ...orderIsActive },
-    select: { id: true, executorId: true },
+    select: { id: true, executorId: true, title: true },
   });
 }
 
@@ -93,6 +97,10 @@ export async function POST(req: Request) {
 
   if (user.role === "admin" && order.executorId) {
     notifyExecutorChatMessage(order.executorId);
+    pushNotifyExecutorChatMessage(order.executorId, order.title, orderId);
+  }
+  if (user.role === "executor") {
+    pushNotifyAdminsNewChatMessage(order.title, orderId);
   }
 
   return NextResponse.json({ message: serializeMessage(created) });

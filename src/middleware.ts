@@ -13,6 +13,15 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  if (
+    pathname === "/sw.js" ||
+    pathname === "/manifest.json" ||
+    pathname === "/icon-192.png" ||
+    pathname === "/icon-512.png"
+  ) {
+    return NextResponse.next();
+  }
+
   const isLoggedIn = !!req.auth;
   const role = (req.auth?.user as { role?: "admin" | "executor" } | undefined)?.role;
   const onboarded = (req.auth?.user as { onboarded?: boolean } | undefined)?.onboarded;

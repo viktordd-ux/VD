@@ -7,6 +7,10 @@ import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
 import { dispatchNotification } from "@/lib/notifications";
+import {
+  pushNotifyAdminsCheckpointReview,
+  pushNotifyExecutorCheckpointAccepted,
+} from "@/lib/push-notify";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -88,6 +92,7 @@ export async function PATCH(req: Request, { params }: Params) {
         audience: "admin",
         event: "checkpoint_done",
       });
+      pushNotifyAdminsCheckpointReview(order.title, existing.orderId);
     }
 
     const orderRow = await prisma.order.findUnique({
@@ -159,6 +164,7 @@ export async function PATCH(req: Request, { params }: Params) {
       audience: "admin",
       event: "checkpoint_done",
     });
+    pushNotifyExecutorCheckpointAccepted(order.executorId, order.title, existing.orderId);
   }
 
   const orderRow = await prisma.order.findUnique({

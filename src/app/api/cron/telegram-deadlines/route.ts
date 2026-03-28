@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
 import {
+  pushNotifyExecutorDeadlineTomorrow,
+  pushNotifyExecutorOrderOverdue,
+} from "@/lib/push-notify";
+import {
   notifyExecutorDeadlineTomorrow,
   notifyExecutorOrderOverdue,
 } from "@/lib/telegram-notify";
@@ -58,12 +62,14 @@ export async function GET(req: Request) {
 
     if (deadlineIsTomorrow(dl, now)) {
       notifyExecutorDeadlineTomorrow(o.executorId, o.title);
+      pushNotifyExecutorDeadlineTomorrow(o.executorId, o.title, o.id);
       tomorrowCount++;
       continue;
     }
 
     if (dl.getTime() < now.getTime()) {
       notifyExecutorOrderOverdue(o.executorId, o.title);
+      pushNotifyExecutorOrderOverdue(o.executorId, o.title, o.id);
       overdueCount++;
     }
   }

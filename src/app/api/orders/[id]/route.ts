@@ -8,6 +8,11 @@ import { dispatchNotification } from "@/lib/notifications";
 import { serializeOrder } from "@/lib/serialize";
 import { orderIsActive } from "@/lib/active-scope";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
+import {
+  pushNotifyAdminsLowMargin,
+  pushNotifyAdminsOrderReview,
+  pushNotifyExecutorAssigned,
+} from "@/lib/push-notify";
 import { notifyExecutorOrderAssigned } from "@/lib/telegram-notify";
 
 type Params = { params: Promise<{ id: string }> };
@@ -105,6 +110,7 @@ export async function PATCH(req: Request, { params }: Params) {
       audience: "admin",
       event: "order_submit_review",
     });
+    pushNotifyAdminsOrderReview(updated.title, id);
     revalidateOrderViews(id);
     return NextResponse.json(serializeOrder(updated, "executor"));
   }
@@ -184,6 +190,7 @@ export async function PATCH(req: Request, { params }: Params) {
     updated.executorId !== existing.executorId
   ) {
     notifyExecutorOrderAssigned(updated.executorId, updated.title);
+    pushNotifyExecutorAssigned(updated.executorId, updated.title, id);
   }
 
   const bc = Number(updated.budgetClient);
@@ -195,6 +202,7 @@ export async function PATCH(req: Request, { params }: Params) {
       audience: "admin",
       event: "low_margin",
     });
+    pushNotifyAdminsLowMargin(updated.title, id);
   }
 
   revalidateOrderViews(id);

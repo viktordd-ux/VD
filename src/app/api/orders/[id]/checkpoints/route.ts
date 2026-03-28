@@ -5,6 +5,7 @@ import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
+import { pushNotifyExecutorNewCheckpoint } from "@/lib/push-notify";
 import { notifyExecutorNewCheckpoint } from "@/lib/telegram-notify";
 
 type Params = { params: Promise<{ id: string }> };
@@ -75,6 +76,7 @@ export async function POST(req: Request, { params }: Params) {
   await syncOrderStatusFromCheckpoints(orderId, user.id);
 
   notifyExecutorNewCheckpoint(orderOk.executorId, orderOk.title);
+  pushNotifyExecutorNewCheckpoint(orderOk.executorId, orderOk.title, orderId);
 
   revalidateOrderViews(orderId);
   return NextResponse.json(cp);

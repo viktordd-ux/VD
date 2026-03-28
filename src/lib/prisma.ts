@@ -5,15 +5,33 @@ import { PrismaClient } from "@prisma/client";
  * иначе исчерпывается пул Supabase (MaxClientsInSessionMode / too many connections).
  * Кэшируем на globalThis и в production.
  *
- * P2024 (pool timeout): при connection_limit=1 не запускайте много prisma-запросов в
- * Promise.all — сериализуйте await. В DATABASE_URL для pooler можно добавить
- * pool_timeout=20 (сек.) при необходимости.
+ * P2024: при connection_limit=1 не используйте Promise.all с кучей prisma-запросов.
+ * Плюс поднимаем pool_timeout (по умолчанию у Prisma 10 с), если в URL не задано.
  */
+function prismaDatabaseUrl(): string | undefined {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return undefined;
+  try {
+    const u = new URL(raw);
+    if (!u.searchParams.has("pool_timeout")) {
+      u.searchParams.set("pool_timeout", "30");
+    }
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
+    datasources: {
+      db: {
+        url: prismaDatabaseUrl() ?? process.env.DATABASE_URL,
+      },
+    },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 

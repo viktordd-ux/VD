@@ -5,6 +5,10 @@ import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { normalizeExternalUrl, saveOrderFile } from "@/lib/uploads";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
+import {
+  pushNotifyAdminsNewFile,
+  pushNotifyExecutorOrderFile,
+} from "@/lib/push-notify";
 import { notifyExecutorChatMessage } from "@/lib/telegram-notify";
 
 export const maxDuration = 60;
@@ -97,6 +101,10 @@ export async function POST(req: Request, { params }: Params) {
 
     if (user.role === "admin" && order.executorId) {
       notifyExecutorChatMessage(order.executorId);
+      pushNotifyExecutorOrderFile(order.executorId, order.title, orderId);
+    }
+    if (user.role === "executor") {
+      pushNotifyAdminsNewFile(order.title, orderId);
     }
 
     revalidateOrderViews(orderId);
@@ -158,6 +166,10 @@ export async function POST(req: Request, { params }: Params) {
 
   if (user.role === "admin" && order.executorId) {
     notifyExecutorChatMessage(order.executorId);
+    pushNotifyExecutorOrderFile(order.executorId, order.title, orderId);
+  }
+  if (user.role === "executor") {
+    pushNotifyAdminsNewFile(order.title, orderId);
   }
 
   revalidateOrderViews(orderId);

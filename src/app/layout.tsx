@@ -11,6 +11,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "V|D — студия",
   description: "Внутренняя ERP студии V|D",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "V|D",
+    statusBarStyle: "default",
+  },
 };
 
 /** Без pinch-zoom на телефоне — интерфейс под фиксированный масштаб. */
