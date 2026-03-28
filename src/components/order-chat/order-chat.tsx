@@ -6,28 +6,63 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { MessageDto } from "@/lib/message-serialize";
-import { getSupabaseBrowserClient } from "@/lib/supabase-client";
+import {
+  getSupabaseBrowserClient,
+  isSupabaseRealtimeConfigured,
+} from "@/lib/supabase-client";
+
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log("[OrderChat]", ...args);
+  }
+};
+
+function pickRow(row: Record<string, unknown>, snake: string, camel: string) {
+  const a = row[snake];
+  const b = row[camel];
+  if (a !== undefined && a !== null) return a;
+  if (b !== undefined && b !== null) return b;
+  return undefined;
+}
 
 function parseMessageFromRealtime(
   row: Record<string, unknown>,
 ): MessageDto | null {
-  const id = row.id != null ? String(row.id) : null;
-  const orderId = row.order_id != null ? String(row.order_id) : null;
-  const senderId = row.sender_id != null ? String(row.sender_id) : null;
-  const role = row.role;
-  const text = row.text != null ? String(row.text) : null;
-  const rawCreated = row.created_at;
-  if (!id || !orderId || !senderId || !text) return null;
+  const id = pickRow(row, "id", "id");
+  const orderId = pickRow(row, "order_id", "orderId");
+  const senderId = pickRow(row, "sender_id", "senderId");
+  const role = pickRow(row, "role", "role");
+  const text = pickRow(row, "text", "text");
+  const rawCreated = pickRow(row, "created_at", "createdAt");
+
+  const idStr = id != null ? String(id) : null;
+  const orderIdStr = orderId != null ? String(orderId) : null;
+  const senderIdStr = senderId != null ? String(senderId) : null;
+  const textStr = text != null ? String(text) : null;
+
+  if (!idStr || !orderIdStr || !senderIdStr || !textStr) return null;
   if (role !== "admin" && role !== "executor") return null;
+
   let createdAt: string;
   if (typeof rawCreated === "string") {
-    createdAt = rawCreated;
+    const d = new Date(rawCreated);
+    createdAt = Number.isNaN(d.getTime()) ? rawCreated : d.toISOString();
   } else if (rawCreated instanceof Date) {
     createdAt = rawCreated.toISOString();
+  } else if (typeof rawCreated === "number") {
+    createdAt = new Date(rawCreated).toISOString();
   } else {
     return null;
   }
-  return { id, orderId, senderId, role, text, createdAt };
+
+  return {
+    id: idStr,
+    orderId: orderIdStr,
+    senderId: senderIdStr,
+    role,
+    text: textStr,
+    createdAt,
+  };
 }
 
 function mergeById(prev: MessageDto[], incoming: MessageDto): MessageDto[] {
@@ -44,7 +79,12 @@ export function OrderChat({ orderId }: { orderId: string }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<
+    "idle" | "subscribed" | "error" | "unconfigured"
+  >("idle");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const orderIdRef = useRef(orderId);
+  orderIdRef.current = orderId;
 
   const currentUserId = session?.user?.id;
 
@@ -76,35 +116,64 @@ export function OrderChat({ orderId }: { orderId: string }) {
   }, [loadMessages]);
 
   useEffect(() => {
+    if (!orderId || typeof orderId !== "string") return;
+
+    if (!isSupabaseRealtimeConfigured()) {
+      devLog("Realtime отключён: нет NEXT_PUBLIC_SUPABASE_URL или NEXT_PUBLIC_SUPABASE_ANON_KEY");
+      setRealtimeStatus("unconfigured");
+      return;
+    }
+
     const supabase = getSupabaseBrowserClient();
-    if (!supabase) return;
+    if (!supabase) {
+      setRealtimeStatus("unconfigured");
+      return;
+    }
+
+    setRealtimeStatus("idle");
+
+    const filter = `order_id=eq.${orderId}`;
+    devLog("подписка postgres_changes", { orderId, filter, table: "messages" });
 
     function onInsert(
       payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
     ) {
+      devLog("событие realtime", payload.eventType, payload);
       if (payload.eventType !== "INSERT") return;
       const row = payload.new as Record<string, unknown> | null;
       if (!row) return;
       const m = parseMessageFromRealtime(row);
-      if (!m || m.orderId !== orderId) return;
+      if (!m || m.orderId !== orderIdRef.current) {
+        devLog("строка пропущена", { parsed: m, expectedOrderId: orderIdRef.current });
+        return;
+      }
       setMessages((prev) => mergeById(prev, m));
     }
 
     const channel = supabase
-      .channel(`order-messages-${orderId}`)
+      .channel(`order-messages:${orderId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `order_id=eq.${orderId}`,
+          filter,
         },
         onInsert,
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        devLog("subscribe status", status, err ?? "");
+        if (status === "SUBSCRIBED") {
+          setRealtimeStatus("subscribed");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRealtimeStatus("error");
+          devLog("ошибка канала", status, err);
+        }
+      });
 
     return () => {
+      devLog("removeChannel", `order-messages:${orderId}`);
       void supabase.removeChannel(channel);
     };
   }, [orderId]);
@@ -157,6 +226,22 @@ export function OrderChat({ orderId }: { orderId: string }) {
       <p className="mt-1 text-xs text-zinc-500">
         Переписка по заказу между студией и исполнителем.
       </p>
+
+      {realtimeStatus === "unconfigured" && (
+        <p className="mt-2 text-xs text-amber-800">
+          Мгновенные обновления выключены: задайте в окружении{" "}
+          <code className="rounded bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_URL</code> и{" "}
+          <code className="rounded bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
+          и пересоберите приложение.
+        </p>
+      )}
+      {realtimeStatus === "error" && (
+        <p className="mt-2 text-xs text-amber-800">
+          Не удалось подключить Realtime. В Supabase:{" "}
+          <strong>Database → Publications</strong> или <strong>Replication</strong> — включите
+          таблицу <code className="rounded bg-amber-100 px-1">messages</code> для Realtime.
+        </p>
+      )}
 
       {error && (
         <p className="mt-2 text-sm text-red-700" role="alert">
