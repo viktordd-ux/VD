@@ -323,11 +323,19 @@ export function OrderChat({
     };
   }, [orderId, supabase, variant]);
 
+  /** Вниз к последнему сообщению: при смене ленты, после загрузки и при открытии dock (раньше messages не менялся — оставался скролл сверху). */
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [messages]);
+    const scrollToBottom = () => {
+      el.scrollTop = el.scrollHeight;
+    };
+    scrollToBottom();
+    requestAnimationFrame(() => {
+      scrollToBottom();
+      requestAnimationFrame(scrollToBottom);
+    });
+  }, [messages, loading, dockOpen]);
 
   /** Пока чат открыт/виден — любое новое входящее сообщение сразу считаем прочитанным. */
   const lastIncoming = useMemo(() => {
