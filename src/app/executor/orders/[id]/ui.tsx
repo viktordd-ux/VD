@@ -1,40 +1,43 @@
 "use client";
 
-import type { OrderStatus } from "@prisma/client";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { OrderFileUpload } from "@/components/order-file-upload";
+import { useExecutorOrder } from "@/components/executor-order/executor-order-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAppToast } from "@/components/toast-provider";
+import { parseExecutorOrderFromApiJson, parseFileFromApiJson } from "@/lib/order-client-deserialize";
+import { useState } from "react";
 
-export function ExecutorOrderPanel({
-  orderId,
-  status,
-}: {
-  orderId: string;
-  status: OrderStatus;
-}) {
-  const router = useRouter();
+export function ExecutorOrderPanel({ orderId }: { orderId: string }) {
+  const { order, setOrder, setFiles, bumpHistory } = useExecutorOrder();
   const toast = useAppToast();
   const [loading, setLoading] = useState(false);
 
+  function onFileUploaded(fileJson: Record<string, unknown>) {
+    const f = parseFileFromApiJson(fileJson);
+    setFiles((prev) => [f, ...prev]);
+    bumpHistory();
+  }
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (status !== "IN_PROGRESS") return;
+    if (order.status !== "IN_PROGRESS") return;
     setLoading(true);
     const res = await fetch(`/api/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "REVIEW" }),
+      cache: "no-store",
     });
     setLoading(false);
     if (!res.ok) {
       toast("Не удалось сдать работу", "error");
       return;
     }
+    const data = (await res.json()) as Record<string, unknown>;
+    setOrder((prev) => parseExecutorOrderFromApiJson(data, prev));
     toast("Работа сдана на проверку.", "success");
-    router.refresh();
+    bumpHistory();
   }
 
   return (
@@ -46,7 +49,7 @@ export function ExecutorOrderPanel({
         <p className="mt-1 text-xs text-zinc-500">
           Загрузите файл или добавьте ссылку на материал (Google Drive, Figma и т.д.).
         </p>
-        <OrderFileUpload orderId={orderId} />
+        <OrderFileUpload orderId={orderId} onUploaded={onFileUploaded} />
       </Card>
 
       <Card className="hidden p-4 md:block md:p-6">
@@ -61,7 +64,7 @@ export function ExecutorOrderPanel({
             type="submit"
             variant="primary"
             size="md"
-            disabled={loading || status !== "IN_PROGRESS"}
+            disabled={loading || order.status !== "IN_PROGRESS"}
             className="mt-4 bg-emerald-700 hover:bg-emerald-800 disabled:cursor-not-allowed"
           >
             {loading ? "…" : "Сдать на проверку"}
@@ -76,7 +79,7 @@ export function ExecutorOrderPanel({
         <button
           type="submit"
           form="executor-submit-form"
-          disabled={loading || status !== "IN_PROGRESS"}
+          disabled={loading || order.status !== "IN_PROGRESS"}
           className="flex min-h-11 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? "…" : "Сдать на проверку"}

@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { generatePassword } from "@/lib/generate-password";
+import { getExecutorMetricsMap } from "@/lib/executor-matching";
+import { revalidateAdminUsers } from "@/lib/revalidate-app";
 
 export async function POST(req: Request) {
   const admin = await requireAdmin();
@@ -71,6 +73,7 @@ export async function POST(req: Request) {
     },
   });
 
+  revalidateAdminUsers(created.id);
   return NextResponse.json({
     id: created.id,
     email: created.email,
@@ -103,6 +106,7 @@ export async function GET(req: Request) {
       status: true,
       phone: true,
       telegram: true,
+      telegramId: true,
       skills: true,
       primarySkill: true,
       onboarded: true,
@@ -111,5 +115,17 @@ export async function GET(req: Request) {
     },
   });
 
-  return NextResponse.json(users);
+  const metrics = await getExecutorMetricsMap(users.map((u) => u.id));
+  const enriched = users.map((u) => {
+    const m = metrics.get(u.id);
+    return {
+      ...u,
+      rating: m?.rating ?? 0,
+      completedOrders: m?.completedOrders ?? 0,
+      latePercent: m?.latePercent ?? 0,
+      avgResponseTime: m?.avgResponseTime ?? null,
+    };
+  });
+
+  return NextResponse.json(enriched);
 }

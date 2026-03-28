@@ -1,10 +1,11 @@
 "use client";
 
-import type { Checkpoint } from "@prisma/client";
-import { useRouter } from "next/navigation";
+import type { CheckpointStatus } from "@prisma/client";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { useExecutorOrder } from "@/components/executor-order/executor-order-context";
 import { useAppToast } from "@/components/toast-provider";
+import { parseCheckpointFromApiJson } from "@/lib/order-client-deserialize";
 import { checkpointStatusLabel } from "@/lib/ui-labels";
 
 const rub = new Intl.NumberFormat("ru-RU", {
@@ -25,27 +26,39 @@ function dueLabel(d: Date | string | null | undefined): string {
   });
 }
 
-export function ExecutorCheckpoints({
-  checkpoints,
-}: {
-  checkpoints: Checkpoint[];
-}) {
-  const router = useRouter();
+export function ExecutorCheckpoints() {
+  const { checkpoints, setCheckpoints, setOrder, bumpHistory } = useExecutorOrder();
   const toast = useAppToast();
   const [busy, setBusy] = useState<string | null>(null);
 
   async function setStatus(id: string, status: "pending" | "awaiting_approval") {
+    const prev = checkpoints;
+    setCheckpoints((list) =>
+      list.map((c) => (c.id === id ? { ...c, status } : c)),
+    );
+
     setBusy(id);
     const res = await fetch(`/api/checkpoints/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
+      cache: "no-store",
     });
     setBusy(null);
     if (!res.ok) {
+      setCheckpoints(prev);
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       toast(err.error ?? "Не удалось обновить этап", "error");
       return;
+    }
+    const body = (await res.json()) as {
+      checkpoint: Record<string, unknown>;
+      order: { status: string } | null;
+    };
+    const updated = parseCheckpointFromApiJson(body.checkpoint);
+    setCheckpoints((list) => list.map((c) => (c.id === id ? updated : c)));
+    if (body.order?.status) {
+      setOrder((o) => ({ ...o, status: body.order!.status as typeof o.status }));
     }
     toast(
       status === "awaiting_approval"
@@ -53,7 +66,7 @@ export function ExecutorCheckpoints({
         : "Изменения сохранены",
       "success",
     );
-    router.refresh();
+    bumpHistory();
   }
 
   return (
@@ -87,7 +100,7 @@ export function ExecutorCheckpoints({
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={badgeTone}>{checkpointStatusLabel[c.status]}</Badge>
+                <Badge tone={badgeTone}>{checkpointStatusLabel[c.status as CheckpointStatus]}</Badge>
                 {c.status === "pending" && (
                   <button
                     type="button"

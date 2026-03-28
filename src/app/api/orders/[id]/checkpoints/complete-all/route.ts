@@ -5,6 +5,7 @@ import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { dispatchNotification } from "@/lib/notifications";
+import { revalidateOrderViews } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -35,6 +36,7 @@ export async function PATCH(_req: Request, { params }: Params) {
       where: { id: orderId },
       select: { status: true },
     });
+    revalidateOrderViews(orderId);
     return NextResponse.json({
       ok: true,
       updated: 0,
@@ -83,6 +85,7 @@ export async function PATCH(_req: Request, { params }: Params) {
     event: "checkpoints_complete_all",
   });
 
+  revalidateOrderViews(orderId);
   return NextResponse.json({
     ok: true,
     updated,

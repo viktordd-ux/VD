@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { leadIsActive } from "@/lib/active-scope";
 import { computeProfit } from "@/lib/money";
+import { revalidateAdminLeads, revalidateOrderViews } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -55,5 +56,7 @@ export async function POST(_req: Request, { params }: Params) {
     diff: { orderId: order.id, lead: leadUpdated },
   });
 
+  revalidateOrderViews(order.id);
+  revalidateAdminLeads();
   return NextResponse.json({ order, lead: leadUpdated });
 }

@@ -1,27 +1,20 @@
 "use client";
 
 import type { OrderStatus } from "@prisma/client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useExecutorOrder } from "@/components/executor-order/executor-order-context";
 import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/components/toast-provider";
+import { parseCheckpointFromApiJson } from "@/lib/order-client-deserialize";
 import { orderStatusLabel } from "@/lib/ui-labels";
 
-export function ExecutorOrderToolbar({
-  orderId,
-  status,
-  hasCheckpoints,
-}: {
-  orderId: string;
-  status: string;
-  hasCheckpoints: boolean;
-}) {
-  const router = useRouter();
+export function ExecutorOrderToolbar({ orderId }: { orderId: string }) {
+  const { order, setOrder, checkpoints, setCheckpoints, bumpHistory } = useExecutorOrder();
   const toast = useAppToast();
   const [busy, setBusy] = useState(false);
 
   async function completeAll() {
-    if (!hasCheckpoints) return;
+    if (checkpoints.length === 0) return;
     if (
       !confirm(
         "Сдать все этапы в статусе «Ожидает» на проверку администратору? Заказ перейдёт на проверку только после принятия всех этапов админом.",
@@ -30,10 +23,10 @@ export function ExecutorOrderToolbar({
       return;
     }
     setBusy(true);
-    const res = await fetch(
-      `/api/orders/${orderId}/checkpoints/complete-all`,
-      { method: "PATCH" },
-    );
+    const res = await fetch(`/api/orders/${orderId}/checkpoints/complete-all`, {
+      method: "PATCH",
+      cache: "no-store",
+    });
     setBusy(false);
     if (!res.ok) {
       toast("Не удалось завершить этапы", "error");
@@ -50,7 +43,15 @@ export function ExecutorOrderToolbar({
         : "Нет этапов в статусе «Ожидает» для отправки",
       "success",
     );
-    router.refresh();
+    if (st) {
+      setOrder((o) => ({ ...o, status: st }));
+    }
+    const cpRes = await fetch(`/api/orders/${orderId}/checkpoints`, { cache: "no-store" });
+    if (cpRes.ok) {
+      const raw = (await cpRes.json()) as Record<string, unknown>[];
+      setCheckpoints(raw.map((x) => parseCheckpointFromApiJson(x)));
+    }
+    bumpHistory();
   }
 
   return (
@@ -61,7 +62,7 @@ export function ExecutorOrderToolbar({
       >
         Скачать все файлы (ZIP)
       </a>
-      {status === "IN_PROGRESS" && hasCheckpoints && (
+      {order.status === "IN_PROGRESS" && checkpoints.length > 0 && (
         <Button
           type="button"
           variant="primary"

@@ -13,6 +13,7 @@ const userPublicSelect = {
   status: true,
   phone: true,
   telegram: true,
+  telegramId: true,
   skills: true,
   primarySkill: true,
   onboarded: true,
@@ -71,6 +72,7 @@ export async function PATCH(req: Request) {
     lastName: string;
     phone: string | null;
     telegram: string | null;
+    telegramId: string | null;
     skills: string[];
     primarySkill: string;
     onboarded: boolean;
@@ -98,6 +100,26 @@ export async function PATCH(req: Request) {
         ? null
         : String(body.telegram).trim()
       : undefined;
+  const telegramId =
+    body.telegramId !== undefined
+      ? body.telegramId === null || body.telegramId === ""
+        ? null
+        : String(body.telegramId).trim()
+      : undefined;
+  if (telegramId !== undefined) {
+    if (existing.role !== "executor") {
+      return NextResponse.json(
+        { error: "Telegram ID доступен только исполнителям" },
+        { status: 400 },
+      );
+    }
+    if (telegramId !== null && !/^-?\d+$/.test(telegramId)) {
+      return NextResponse.json(
+        { error: "Telegram ID — число (например из @userinfobot)" },
+        { status: 400 },
+      );
+    }
+  }
   const primarySkill =
     body.primarySkill !== undefined ? String(body.primarySkill).trim() : undefined;
   const onboarded = body.onboarded;
@@ -148,6 +170,7 @@ export async function PATCH(req: Request) {
       ...(name !== undefined ? { name } : {}),
       ...(phone !== undefined ? { phone } : {}),
       ...(telegram !== undefined ? { telegram } : {}),
+      ...(telegramId !== undefined ? { telegramId } : {}),
       ...(skills !== undefined ? { skills } : {}),
       ...(primarySkill !== undefined ? { primarySkill } : {}),
       ...(onboarded !== undefined ? { onboarded } : {}),

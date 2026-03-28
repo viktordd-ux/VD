@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { syncNameFromProfile } from "@/lib/user-profile";
+import { revalidateAdminUsers } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -36,6 +37,7 @@ export async function DELETE(_req: Request, { params }: Params) {
 
   await prisma.user.delete({ where: { id } });
 
+  revalidateAdminUsers();
   return NextResponse.json({ ok: true });
 }
 
@@ -53,6 +55,7 @@ export async function PATCH(req: Request, { params }: Params) {
     lastName: string;
     phone: string | null;
     telegram: string | null;
+    telegramId: string | null;
     status: "active" | "banned";
     skills: string[];
     primarySkill: string;
@@ -92,6 +95,26 @@ export async function PATCH(req: Request, { params }: Params) {
         ? null
         : String(body.telegram).trim()
       : undefined;
+  const telegramId =
+    body.telegramId !== undefined
+      ? body.telegramId === null || body.telegramId === ""
+        ? null
+        : String(body.telegramId).trim()
+      : undefined;
+  if (telegramId !== undefined) {
+    if (existing.role !== "executor") {
+      return NextResponse.json(
+        { error: "Telegram ID только для исполнителей" },
+        { status: 400 },
+      );
+    }
+    if (telegramId !== null && !/^-?\d+$/.test(telegramId)) {
+      return NextResponse.json(
+        { error: "Telegram ID — число (например из @userinfobot)" },
+        { status: 400 },
+      );
+    }
+  }
   const primarySkill =
     body.primarySkill !== undefined ? String(body.primarySkill).trim() : undefined;
 
@@ -138,6 +161,7 @@ export async function PATCH(req: Request, { params }: Params) {
       ...(lastName !== undefined ? { lastName } : {}),
       ...(phone !== undefined ? { phone } : {}),
       ...(telegram !== undefined ? { telegram } : {}),
+      ...(telegramId !== undefined ? { telegramId } : {}),
       ...(skills !== undefined ? { skills } : {}),
       ...(primarySkill !== undefined ? { primarySkill } : {}),
       ...(body.onboarded !== undefined ? { onboarded: body.onboarded } : {}),
@@ -152,6 +176,7 @@ export async function PATCH(req: Request, { params }: Params) {
       status: true,
       phone: true,
       telegram: true,
+      telegramId: true,
       skills: true,
       primarySkill: true,
       onboarded: true,
@@ -166,5 +191,6 @@ export async function PATCH(req: Request, { params }: Params) {
     diff: { before: existing, after: updated },
   });
 
+  revalidateAdminUsers(id);
   return NextResponse.json(updated);
 }

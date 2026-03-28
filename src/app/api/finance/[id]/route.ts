@@ -6,6 +6,7 @@ import { hardDeleteOrder, softDeleteOrder } from "@/lib/deletion-ops";
 import { computeProfit } from "@/lib/money";
 import { recalculateFinance } from "@/lib/recalculate-finance";
 import { orderIsActive } from "@/lib/active-scope";
+import { revalidateAdminFinance, revalidateOrderViews } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -31,6 +32,8 @@ export async function DELETE(req: Request, { params }: Params) {
     throw e;
   }
 
+  revalidateOrderViews(id);
+  revalidateAdminFinance();
   return NextResponse.json({ ok: true, hard });
 }
 
@@ -94,6 +97,8 @@ export async function PATCH(req: Request, { params }: Params) {
 
   await recalculateFinance();
 
+  revalidateOrderViews(id);
+  revalidateAdminFinance();
   return NextResponse.json({
     id: updated.id,
     budgetClient: updated.budgetClient.toString(),

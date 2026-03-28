@@ -51,6 +51,11 @@ enum CheckpointStatus {
   done
 }
 
+enum MessageRole {
+  admin
+  executor
+}
+
 model User {
   id           String     @id @default(cuid())
   name         String
@@ -62,6 +67,8 @@ model User {
   status       UserStatus
   phone        String?    @map("phone")
   telegram     String?    @map("telegram")
+  // Числовой chat_id в Telegram (для бота), не путать с @username
+  telegramId   String?    @map("telegram_id")
   skills       String[]   @default([])
   primarySkill String     @default("") @map("primary_skill")
   onboarded    Boolean    @default(false) @map("onboarded")
@@ -70,6 +77,7 @@ model User {
 
   ordersAsExecutor Order[]    @relation("OrderExecutor")
   auditLogs        AuditLog[]
+  messagesSent     Message[]
 
   @@map("users")
 }
@@ -131,6 +139,7 @@ model Order {
   lead        Lead?        @relation(fields: [leadId], references: [id])
   files       File[]
   checkpoints Checkpoint[]
+  messages    Message[]
 
   @@index([executorId])
   @@index([status])
@@ -173,6 +182,22 @@ model Checkpoint {
   @@index([orderId])
   @@index([orderId, position])
   @@map("checkpoints")
+}
+
+model Message {
+  id        String      @id @default(uuid()) @db.Uuid
+  orderId   String      @map("order_id")
+  senderId  String      @map("sender_id")
+  role      MessageRole
+  text      String      @db.Text
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender User  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([orderId, createdAt])
+  @@map("messages")
 }
 
 model AuditLog {

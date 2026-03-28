@@ -1,6 +1,7 @@
 import { AdminSilenceAlerts } from "@/components/admin-silence-alerts";
 import { AdminSidebarNav } from "@/components/admin-sidebar-nav";
 import { ResponsiveAppShell } from "@/components/responsive-app-shell";
+import { ExecutorsProvider } from "@/context/executors-context";
 
 export default function AdminLayout({
   children,
@@ -9,8 +10,10 @@ export default function AdminLayout({
 }) {
   return (
     <ResponsiveAppShell variant="admin" sidebarNav={<AdminSidebarNav />}>
-      <AdminSilenceAlerts />
-      {children}
+      <ExecutorsProvider>
+        <AdminSilenceAlerts />
+        {children}
+      </ExecutorsProvider>
     </ResponsiveAppShell>
   );
 }

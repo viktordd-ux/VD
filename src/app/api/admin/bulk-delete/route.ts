@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { hardDeleteLead, hardDeleteOrder, softDeleteLead, softDeleteOrder } from "@/lib/deletion-ops";
+import { revalidateAdminBulk } from "@/lib/revalidate-app";
 
 type Body = {
   type: "orders" | "leads" | "finance";
@@ -71,5 +72,6 @@ export async function POST(req: Request) {
     },
   });
 
+  revalidateAdminBulk();
   return NextResponse.json({ ok, failed, hard });
 }

@@ -9,6 +9,8 @@ import {
   createCheckpointsFromTemplate,
 } from "@/lib/order-template";
 import { orderIsActive } from "@/lib/active-scope";
+import { revalidateOrderViews } from "@/lib/revalidate-app";
+import { notifyExecutorOrderAssigned } from "@/lib/telegram-notify";
 
 export async function GET(req: Request) {
   const user = await requireUser();
@@ -137,5 +139,10 @@ export async function POST(req: Request) {
     diff: { after: order },
   });
 
+  if (order.executorId) {
+    notifyExecutorOrderAssigned(order.executorId, order.title);
+  }
+
+  revalidateOrderViews(order.id);
   return NextResponse.json(serializeOrder(order, "admin"));
 }

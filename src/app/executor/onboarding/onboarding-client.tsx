@@ -46,6 +46,7 @@ export function OnboardingClient({ skillOptions }: Props) {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [telegram, setTelegram] = useState("");
+  const [telegramId, setTelegramId] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [primarySkill, setPrimarySkill] = useState("");
   const [customTag, setCustomTag] = useState("");
@@ -67,6 +68,7 @@ export function OnboardingClient({ skillOptions }: Props) {
       lastName?: string;
       phone?: string | null;
       telegram?: string | null;
+      telegramId?: string | null;
       skills?: string[];
       primarySkill?: string;
     };
@@ -74,6 +76,7 @@ export function OnboardingClient({ skillOptions }: Props) {
     if (u.lastName) setLastName(u.lastName);
     if (u.phone) setPhone(u.phone);
     if (u.telegram) setTelegram(u.telegram);
+    if (u.telegramId) setTelegramId(u.telegramId);
     if (u.skills?.length) setSkills(u.skills);
     if (u.primarySkill) setPrimarySkill(u.primarySkill);
   }, []);
@@ -138,6 +141,7 @@ export function OnboardingClient({ skillOptions }: Props) {
         lastName: lastName.trim(),
         phone: phone.trim() || null,
         telegram: telegram.trim() || null,
+        telegramId: telegramId.trim() || null,
         skills,
         primarySkill: primarySkill.trim(),
         onboarded: true,
@@ -234,6 +238,22 @@ export function OnboardingClient({ skillOptions }: Props) {
                 placeholder="@username"
                 className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-zinc-700">
+                Telegram ID для уведомлений (необязательно)
+              </label>
+              <input
+                value={telegramId}
+                onChange={(e) => setTelegramId(e.target.value)}
+                placeholder="Число из @userinfobot"
+                inputMode="numeric"
+                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 font-mono text-base md:min-h-0 md:py-2 md:text-sm"
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Чтобы бот мог писать вам в личку. Откройте @userinfobot в Telegram и вставьте сюда ваш
+                id.
+              </p>
             </div>
           </div>
         )}
@@ -332,6 +352,10 @@ export function OnboardingClient({ skillOptions }: Props) {
               <div>
                 <dt className="text-xs text-zinc-500">Telegram</dt>
                 <dd>{telegram || "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">Telegram ID (бот)</dt>
+                <dd className="font-mono">{telegramId || "—"}</dd>
               </div>
               <div>
                 <dt className="text-xs text-zinc-500">Навыки</dt>

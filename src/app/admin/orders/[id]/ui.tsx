@@ -1,27 +1,29 @@
 "use client";
 
-import type { Order, User, Lead } from "@prisma/client";
+import type { User } from "@prisma/client";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AdminAutoAssignButton } from "@/components/admin-auto-assign";
+import { useAdminOrder } from "@/components/admin-order/admin-order-context";
+import { useExecutors } from "@/context/executors-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { parseAdminOrderFromApiJson } from "@/lib/order-client-deserialize";
 import { leadStatusLabel, orderStatusLabel } from "@/lib/ui-labels";
 
 type ExecutorOption = Pick<User, "id" | "name" | "email" | "skills">;
 
-type OrderWith = Order & { executor: User | null; lead: Lead | null };
-
 export function AdminOrderForm({
-  order,
   executors,
-  executorScores,
+  executorStats,
 }: {
-  order: OrderWith;
   executors: ExecutorOption[];
-  executorScores: Record<string, number>;
+  executorStats: Record<
+    string,
+    { rating: number; completedOrders: number; latePercent: number }
+  >;
 }) {
-  const router = useRouter();
+  const { order, setOrder, bumpHistory } = useAdminOrder();
+  const { refresh: refreshExecutors } = useExecutors();
   const [loading, setLoading] = useState(false);
   const [skillTag, setSkillTag] = useState("");
 
@@ -64,7 +66,10 @@ export function AdminOrderForm({
       alert("Ошибка сохранения");
       return;
     }
-    router.refresh();
+    const data = (await res.json()) as Record<string, unknown>;
+    setOrder(parseAdminOrderFromApiJson(data));
+    bumpHistory();
+    void refreshExecutors();
   }
 
   const dl = order.deadline ? order.deadline.toISOString().slice(0, 16) : "";
@@ -80,7 +85,12 @@ export function AdminOrderForm({
   const labelClass = "text-sm font-medium text-zinc-700 md:text-xs";
 
   return (
-    <form id="admin-order-edit-form" onSubmit={onSubmit} className="space-y-4 pb-24 lg:pb-0">
+    <form
+      id="admin-order-edit-form"
+      onSubmit={onSubmit}
+      className="space-y-4 pb-24 lg:pb-0"
+      key={order.updatedAt.toISOString()}
+    >
       <Card className="space-y-4 p-4 md:p-6">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
         Данные заказа
@@ -208,12 +218,18 @@ export function AdminOrderForm({
             className={`${fieldClass}`}
           >
             <option value="">—</option>
-            {filteredExecutors.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} · рейтинг {executorScores[u.id] ?? "—"}
-                {u.skills.length ? ` · ${u.skills.join(", ")}` : ""}
-              </option>
-            ))}
+            {filteredExecutors.map((u) => {
+              const st = executorStats[u.id];
+              const metricsLabel = st
+                ? `⭐ ${st.rating.toFixed(0)} · ${st.completedOrders} зак. · проср. ${st.latePercent.toFixed(0)}%`
+                : "—";
+              return (
+                <option key={u.id} value={u.id}>
+                  {u.name} · {metricsLabel}
+                  {u.skills.length ? ` · ${u.skills.join(", ")}` : ""}
+                </option>
+              );
+            })}
           </select>
           <div className="mt-2 [&_button]:w-full [&_button]:sm:w-auto">
             <AdminAutoAssignButton orderId={order.id} />

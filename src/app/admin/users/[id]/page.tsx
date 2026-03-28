@@ -84,28 +84,38 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
         </div>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Рейтинг
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">{metrics.score}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums">
+            ⭐ {metrics.rating.toFixed(0)}
+          </p>
         </Card>
         <Card className="p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Просрочки (доля)
           </p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">
-            {metrics.overduePct.toFixed(1)}%
+            {metrics.latePercent.toFixed(1)}%
           </p>
         </Card>
         <Card className="p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            Средняя скорость
+            Завершено заказов
           </p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">
-            {metrics.avgDaysToComplete != null
-              ? `${metrics.avgDaysToComplete.toFixed(1)} дн.`
+            {metrics.completedOrders}
+          </p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Средний срок (часы)
+          </p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums">
+            {metrics.avgResponseTime != null
+              ? `${metrics.avgResponseTime.toFixed(1)} ч`
               : "—"}
           </p>
         </Card>
@@ -130,6 +140,14 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
             <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
               <dt className="text-xs font-medium uppercase text-zinc-500">Telegram</dt>
               <dd className="mt-1 text-sm font-medium text-zinc-900">{user.telegram?.trim() || "—"}</dd>
+            </div>
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 sm:col-span-2">
+              <dt className="text-xs font-medium uppercase text-zinc-500">
+                Telegram ID (уведомления бота)
+              </dt>
+              <dd className="mt-1 font-mono text-sm font-medium text-zinc-900">
+                {user.telegramId?.trim() || "—"}
+              </dd>
             </div>
           </dl>
         </Card>

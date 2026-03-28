@@ -1,6 +1,7 @@
 "use client";
 
 import type { Checkpoint } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import {
   DndContext,
   type DragEndEvent,
@@ -19,9 +20,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { checkpointStatusLabel } from "@/lib/ui-labels";
+import {
+  parseCheckpointFromApiJson,
+  parseAdminOrderFromApiJson,
+} from "@/lib/order-client-deserialize";
+import { useAdminOrder } from "@/components/admin-order/admin-order-context";
 
 function dueInputValue(d: Date | string | null | undefined): string {
   if (!d) return "";
@@ -143,15 +148,8 @@ function SortableRow({
   );
 }
 
-export function AdminCheckpointsPanel({
-  orderId,
-  initial,
-}: {
-  orderId: string;
-  initial: Checkpoint[];
-}) {
-  const router = useRouter();
-  const [items, setItems] = useState(initial);
+export function AdminCheckpointsPanel({ orderId }: { orderId: string }) {
+  const { checkpoints: items, setCheckpoints, setOrder, bumpHistory } = useAdminOrder();
   const [busy, setBusy] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -166,13 +164,20 @@ export function AdminCheckpointsPanel({
     }),
   );
 
-  async function refresh() {
-    const res = await fetch(`/api/orders/${orderId}/checkpoints`);
-    if (res.ok) {
-      const data = (await res.json()) as Checkpoint[];
-      setItems(data);
-    }
-    router.refresh();
+  async function fetchCheckpointList(): Promise<Checkpoint[] | null> {
+    const res = await fetch(`/api/orders/${orderId}/checkpoints`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const raw = (await res.json()) as Record<string, unknown>[];
+    return raw.map((x) => parseCheckpointFromApiJson(x));
+  }
+
+  async function fetchOrderIfNeeded() {
+    const res = await fetch(`/api/orders/${orderId}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const j = (await res.json()) as Record<string, unknown>;
+    setOrder(parseAdminOrderFromApiJson(j));
   }
 
   async function persistReorder(orderedIds: string[]) {
@@ -183,8 +188,11 @@ export function AdminCheckpointsPanel({
     });
     if (!res.ok) {
       alert("Не удалось сохранить порядок этапов");
-      await refresh();
+      const list = await fetchCheckpointList();
+      if (list) setCheckpoints(list);
+      return;
     }
+    bumpHistory();
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -194,7 +202,7 @@ export function AdminCheckpointsPanel({
     const newIndex = items.findIndex((i) => i.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
     const next = arrayMove(items, oldIndex, newIndex);
-    setItems(next);
+    setCheckpoints(next);
     void persistReorder(next.map((c) => c.id));
   }
 
@@ -203,6 +211,20 @@ export function AdminCheckpointsPanel({
     const fd = new FormData(e.currentTarget);
     const title = String(fd.get("title"));
     const due = fd.get("dueDate") ? String(fd.get("dueDate")) : null;
+    const tempId = `optimistic-${Date.now()}`;
+    const optimistic: Checkpoint = {
+      id: tempId,
+      orderId,
+      title,
+      dueDate: due ? new Date(due) : null,
+      status: "pending",
+      paymentAmount: new Prisma.Decimal(0),
+      payoutReleasedAt: null,
+      position: items.length,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    setCheckpoints((prev) => [...prev, optimistic]);
     setBusy("new");
     const res = await fetch(`/api/orders/${orderId}/checkpoints`, {
       method: "POST",
@@ -216,10 +238,16 @@ export function AdminCheckpointsPanel({
     setBusy(null);
     if (!res.ok) {
       alert("Не удалось добавить");
+      setCheckpoints((prev) => prev.filter((c) => c.id !== tempId));
       return;
     }
+    const created = parseCheckpointFromApiJson(
+      (await res.json()) as Record<string, unknown>,
+    );
+    setCheckpoints((prev) => prev.map((c) => (c.id === tempId ? created : c)));
     e.currentTarget.reset();
-    await refresh();
+    await fetchOrderIfNeeded();
+    bumpHistory();
   }
 
   async function saveRow(
@@ -231,6 +259,23 @@ export function AdminCheckpointsPanel({
       paymentAmount: number;
     }>,
   ) {
+    const prevSnap = items;
+    setCheckpoints((prev) =>
+      prev.map((c) => {
+        if (c.id !== id) return c;
+        const next = { ...c };
+        if (patch.title !== undefined) next.title = patch.title;
+        if (patch.dueDate !== undefined) {
+          next.dueDate = patch.dueDate ? new Date(patch.dueDate) : null;
+        }
+        if (patch.status !== undefined) next.status = patch.status;
+        if (patch.paymentAmount !== undefined) {
+          next.paymentAmount = new Prisma.Decimal(patch.paymentAmount);
+        }
+        return next;
+      }),
+    );
+
     setBusy(id);
     const res = await fetch(`/api/checkpoints/${id}`, {
       method: "PATCH",
@@ -240,21 +285,35 @@ export function AdminCheckpointsPanel({
     setBusy(null);
     if (!res.ok) {
       alert("Ошибка сохранения");
+      setCheckpoints(prevSnap);
       return;
     }
-    await refresh();
+    const body = (await res.json()) as {
+      checkpoint: Record<string, unknown>;
+      order: { status: string } | null;
+    };
+    const updated = parseCheckpointFromApiJson(body.checkpoint);
+    setCheckpoints((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    if (body.order?.status) {
+      setOrder((o) => ({ ...o, status: body.order!.status as typeof o.status }));
+    }
+    bumpHistory();
   }
 
   async function remove(id: string) {
     if (!confirm("Удалить этот этап?")) return;
+    const prevSnap = items;
+    setCheckpoints((prev) => prev.filter((c) => c.id !== id));
     setBusy(id);
     const res = await fetch(`/api/checkpoints/${id}`, { method: "DELETE" });
     setBusy(null);
     if (!res.ok) {
       alert("Ошибка удаления");
+      setCheckpoints(prevSnap);
       return;
     }
-    await refresh();
+    await fetchOrderIfNeeded();
+    bumpHistory();
   }
 
   return (
@@ -303,7 +362,7 @@ export function AdminCheckpointsPanel({
           <ul className="space-y-3">
             {items.map((c) => (
               <SortableRow
-                key={c.id}
+                key={`${c.id}-${c.updatedAt.toISOString()}`}
                 c={c}
                 busy={busy}
                 onSave={saveRow}

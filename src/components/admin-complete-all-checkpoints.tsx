@@ -1,25 +1,20 @@
 "use client";
 
 import type { OrderStatus } from "@prisma/client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAdminOrder } from "@/components/admin-order/admin-order-context";
 import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/components/toast-provider";
+import { parseCheckpointFromApiJson } from "@/lib/order-client-deserialize";
 import { orderStatusLabel } from "@/lib/ui-labels";
 
-export function AdminCompleteAllCheckpoints({
-  orderId,
-  hasCheckpoints,
-}: {
-  orderId: string;
-  hasCheckpoints: boolean;
-}) {
-  const router = useRouter();
+export function AdminCompleteAllCheckpoints({ orderId }: { orderId: string }) {
+  const { checkpoints, setCheckpoints, setOrder, bumpHistory } = useAdminOrder();
   const toast = useAppToast();
   const [busy, setBusy] = useState(false);
 
   async function completeAll() {
-    if (!hasCheckpoints) return;
+    if (checkpoints.length === 0) return;
     if (
       !confirm(
         "Принять все незавершённые этапы? Для каждого будет зафиксирована выплата по указанной сумме этапа.",
@@ -28,10 +23,10 @@ export function AdminCompleteAllCheckpoints({
       return;
     }
     setBusy(true);
-    const res = await fetch(
-      `/api/orders/${orderId}/checkpoints/complete-all`,
-      { method: "PATCH" },
-    );
+    const res = await fetch(`/api/orders/${orderId}/checkpoints/complete-all`, {
+      method: "PATCH",
+      cache: "no-store",
+    });
     setBusy(false);
     if (!res.ok) {
       toast("Ошибка массового завершения", "error");
@@ -48,10 +43,20 @@ export function AdminCompleteAllCheckpoints({
         : "Все этапы уже приняты",
       "success",
     );
-    router.refresh();
+    if (st) {
+      setOrder((o) => ({ ...o, status: st }));
+    }
+    const cpRes = await fetch(`/api/orders/${orderId}/checkpoints`, {
+      cache: "no-store",
+    });
+    if (cpRes.ok) {
+      const raw = (await cpRes.json()) as Record<string, unknown>[];
+      setCheckpoints(raw.map((x) => parseCheckpointFromApiJson(x)));
+    }
+    bumpHistory();
   }
 
-  if (!hasCheckpoints) return null;
+  if (checkpoints.length === 0) return null;
 
   return (
     <Button

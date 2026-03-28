@@ -131,3 +131,40 @@ export function sortOrders(
   });
   return copy;
 }
+
+/** Снимок фильтров страницы /admin/orders (для realtime — те же правила, что на сервере). */
+export type AdminOrderListViewSnapshot = {
+  filter: "active" | "done" | "all";
+  lowMargin: boolean;
+  skillsFilter: string[];
+  statusFilter: string[];
+  riskFilter: string[];
+  deadlineAfter: string;
+  deadlineBefore: string;
+  skillsMode: "any" | "all";
+};
+
+export function matchesAdminOrderListView(
+  o: OrderWithRelations,
+  s: AdminOrderListViewSnapshot,
+): boolean {
+  if (o.deletedAt) return false;
+  if (s.filter === "active" && o.status === "DONE") return false;
+  if (s.filter === "done" && o.status !== "DONE") return false;
+  if (s.lowMargin && !isLowMargin(o)) return false;
+  if (s.skillsFilter.length && !matchesSkills(o.executor, s.skillsFilter, s.skillsMode)) {
+    return false;
+  }
+  if (s.statusFilter.length && !matchesStatus(o, s.statusFilter)) return false;
+  if (s.riskFilter.length) {
+    const flags = computeFlags(o);
+    if (!matchesRiskFilters(flags, s.riskFilter)) return false;
+  }
+  if (!matchesDeadlineRange(o, s.deadlineAfter, s.deadlineBefore)) return false;
+  return true;
+}
+
+/** Главная исполнителя: только незавершённые задачи. */
+export function matchesExecutorHomeOrder(o: OrderWithRelations): boolean {
+  return o.status !== "DONE";
+}

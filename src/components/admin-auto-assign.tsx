@@ -1,22 +1,28 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAdminOrder } from "@/components/admin-order/admin-order-context";
 import { Button } from "@/components/ui/button";
+import { parseAdminOrderFromApiJson } from "@/lib/order-client-deserialize";
 
 export function AdminAutoAssignButton({ orderId }: { orderId: string }) {
-  const router = useRouter();
+  const { setOrder, bumpHistory } = useAdminOrder();
   const [loading, setLoading] = useState(false);
 
   async function onClick() {
     setLoading(true);
-    const res = await fetch(`/api/orders/${orderId}/auto-assign`, { method: "POST" });
+    const res = await fetch(`/api/orders/${orderId}/auto-assign`, {
+      method: "POST",
+      cache: "no-store",
+    });
     setLoading(false);
     if (!res.ok) {
       alert((await res.json().catch(() => ({}))).error ?? "Не удалось назначить");
       return;
     }
-    router.refresh();
+    const data = (await res.json()) as Record<string, unknown>;
+    setOrder(parseAdminOrderFromApiJson(data));
+    bumpHistory();
   }
 
   return (

@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  formatExecutorMetricsLine,
+  useExecutorsOptional,
+} from "@/context/executors-context";
 
 type Exec = { id: string; name: string; email: string; skills: string[] };
 
@@ -19,6 +23,7 @@ export function RiskOrderActions({
   currentExecutorId: string | null;
 }) {
   const router = useRouter();
+  const executorsCtx = useExecutorsOptional();
   const [open, setOpen] = useState<"deadline" | "executor" | null>(null);
   const [loading, setLoading] = useState(false);
   const [newDl, setNewDl] = useState(
@@ -113,11 +118,16 @@ export function RiskOrderActions({
             className="min-h-11 w-full max-w-none rounded-lg border border-zinc-300 px-3 py-2 text-base sm:max-w-[200px] sm:min-h-0 sm:py-1 sm:text-xs"
           >
             <option value="">—</option>
-            {executors.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
+            {executors.map((e) => {
+              const entry = executorsCtx?.getEntry(e.id);
+              return (
+                <option key={e.id} value={e.id}>
+                  {entry
+                    ? `${e.name} · ${formatExecutorMetricsLine(entry)}`
+                    : e.name}
+                </option>
+              );
+            })}
           </select>
           <button
             type="button"

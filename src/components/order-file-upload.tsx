@@ -5,7 +5,14 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/components/toast-provider";
 
-export function OrderFileUpload({ orderId }: { orderId: string }) {
+export function OrderFileUpload({
+  orderId,
+  onUploaded,
+}: {
+  orderId: string;
+  /** Если задан — после успеха вызывается вместо router.refresh (локальный state). */
+  onUploaded?: (fileJson: Record<string, unknown>) => void;
+}) {
   const router = useRouter();
   const toast = useAppToast();
   const formRef = useRef<HTMLFormElement>(null);
@@ -28,6 +35,7 @@ export function OrderFileUpload({ orderId }: { orderId: string }) {
     const res = await fetch(`/api/orders/${orderId}/files`, {
       method: "POST",
       body: fd,
+      cache: "no-store",
     });
     setUploading(false);
 
@@ -37,10 +45,12 @@ export function OrderFileUpload({ orderId }: { orderId: string }) {
       return;
     }
 
+    const fileJson = (await res.json()) as Record<string, unknown>;
     formRef.current?.reset();
     setFileName(null);
     toast("Файл загружен", "success");
-    router.refresh();
+    if (onUploaded) onUploaded(fileJson);
+    else router.refresh();
   }
 
   async function onAddLink(e: React.FormEvent<HTMLFormElement>) {
@@ -64,6 +74,7 @@ export function OrderFileUpload({ orderId }: { orderId: string }) {
         linkTitle: linkTitle || undefined,
         comment: comment || undefined,
       }),
+      cache: "no-store",
     });
     setLinkSaving(false);
 
@@ -73,9 +84,11 @@ export function OrderFileUpload({ orderId }: { orderId: string }) {
       return;
     }
 
+    const fileJson = (await res.json()) as Record<string, unknown>;
     linkFormRef.current?.reset();
     toast("Ссылка добавлена", "success");
-    router.refresh();
+    if (onUploaded) onUploaded(fileJson);
+    else router.refresh();
   }
 
   return (

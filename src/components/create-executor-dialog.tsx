@@ -4,7 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CredentialsModal } from "@/components/credentials-modal";
 
-export function CreateExecutorDialog() {
+export function CreateExecutorDialog({
+  onCreated,
+}: {
+  /** После успешного создания (например refetch списка без полного router.refresh). */
+  onCreated?: () => void;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -47,7 +52,8 @@ export function CreateExecutorDialog() {
     setOpen(false);
     e.currentTarget.reset();
     setModal({ email: data.email, password: data.generated_password });
-    router.refresh();
+    onCreated?.();
+    if (!onCreated) router.refresh();
   }
 
   return (

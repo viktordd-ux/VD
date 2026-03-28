@@ -7,6 +7,8 @@ import { computeProfit } from "@/lib/money";
 import { dispatchNotification } from "@/lib/notifications";
 import { serializeOrder } from "@/lib/serialize";
 import { orderIsActive } from "@/lib/active-scope";
+import { revalidateOrderViews } from "@/lib/revalidate-app";
+import { notifyExecutorOrderAssigned } from "@/lib/telegram-notify";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -52,6 +54,7 @@ export async function DELETE(req: Request, { params }: Params) {
     throw e;
   }
 
+  revalidateOrderViews(id);
   return NextResponse.json({ ok: true, hard });
 }
 
@@ -102,6 +105,7 @@ export async function PATCH(req: Request, { params }: Params) {
       audience: "admin",
       event: "order_submit_review",
     });
+    revalidateOrderViews(id);
     return NextResponse.json(serializeOrder(updated, "executor"));
   }
 
@@ -174,6 +178,14 @@ export async function PATCH(req: Request, { params }: Params) {
     diff: { before: existing, after: updated },
   });
 
+  if (
+    body.executorId !== undefined &&
+    updated.executorId &&
+    updated.executorId !== existing.executorId
+  ) {
+    notifyExecutorOrderAssigned(updated.executorId, updated.title);
+  }
+
   const bc = Number(updated.budgetClient);
   if (bc > 0 && Number(updated.profit) / bc < 0.5) {
     void dispatchNotification({
@@ -185,5 +197,6 @@ export async function PATCH(req: Request, { params }: Params) {
     });
   }
 
+  revalidateOrderViews(id);
   return NextResponse.json(serializeOrder(updated, "admin"));
 }

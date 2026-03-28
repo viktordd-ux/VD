@@ -4,6 +4,8 @@ import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { normalizeExternalUrl, saveOrderFile } from "@/lib/uploads";
+import { revalidateOrderViews } from "@/lib/revalidate-app";
+import { notifyExecutorChatMessage } from "@/lib/telegram-notify";
 
 export const maxDuration = 60;
 
@@ -93,6 +95,11 @@ export async function POST(req: Request, { params }: Params) {
       console.error("[files/link] Audit error (non-fatal):", err);
     }
 
+    if (user.role === "admin" && order.executorId) {
+      notifyExecutorChatMessage(order.executorId);
+    }
+
+    revalidateOrderViews(orderId);
     return NextResponse.json(row);
   }
 
@@ -149,5 +156,10 @@ export async function POST(req: Request, { params }: Params) {
     console.error("[files/upload] Audit write error (non-fatal):", err);
   }
 
+  if (user.role === "admin" && order.executorId) {
+    notifyExecutorChatMessage(order.executorId);
+  }
+
+  revalidateOrderViews(orderId);
   return NextResponse.json(row);
 }

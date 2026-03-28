@@ -37,7 +37,14 @@ type CpRow = {
 
 type Tab = "all" | "checkpoints" | "audit";
 
-export function OrderHistoryTabs({ orderId }: { orderId: string }) {
+export function OrderHistoryTabs({
+  orderId,
+  historyVersion,
+}: {
+  orderId: string;
+  /** Инкремент при мутациях заказа — перезапрос хронологии без router.refresh. */
+  historyVersion?: number;
+}) {
   const [tab, setTab] = useState<Tab>("all");
   const [loading, setLoading] = useState(true);
   const [audit, setAudit] = useState<AuditRow[]>([]);
@@ -45,9 +52,11 @@ export function OrderHistoryTabs({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     (async () => {
       const res = await fetch(
         `/api/orders/${encodeURIComponent(orderId)}/audit/history`,
+        { cache: "no-store" },
       );
       if (!res.ok) {
         setLoading(false);
@@ -66,7 +75,7 @@ export function OrderHistoryTabs({ orderId }: { orderId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [orderId]);
+  }, [orderId, historyVersion]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "all", label: "Вся хронология" },

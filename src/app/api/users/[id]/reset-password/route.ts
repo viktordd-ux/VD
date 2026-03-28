@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { generatePassword } from "@/lib/generate-password";
+import { revalidateAdminUsers } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -39,6 +40,7 @@ export async function POST(_req: Request, { params }: Params) {
     diff: { email: existing.email, name: existing.name },
   });
 
+  revalidateAdminUsers(id);
   return NextResponse.json({
     id: existing.id,
     email: existing.email,

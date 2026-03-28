@@ -5,6 +5,7 @@ import { forbidden, requireAdmin, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
 import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
+import { revalidateOrderViews } from "@/lib/revalidate-app";
 import { dispatchNotification } from "@/lib/notifications";
 
 type Params = { params: Promise<{ id: string }> };
@@ -93,6 +94,7 @@ export async function PATCH(req: Request, { params }: Params) {
       where: { id: existing.orderId },
       select: { status: true },
     });
+    revalidateOrderViews(existing.orderId);
     return NextResponse.json({
       checkpoint: updated,
       order: orderRow ? { status: orderRow.status } : null,
@@ -163,6 +165,7 @@ export async function PATCH(req: Request, { params }: Params) {
     where: { id: existing.orderId },
     select: { status: true },
   });
+  revalidateOrderViews(existing.orderId);
   return NextResponse.json({
     checkpoint: updated,
     order: orderRow ? { status: orderRow.status } : null,
@@ -195,5 +198,6 @@ export async function DELETE(_req: Request, { params }: Params) {
 
   await syncOrderStatusFromCheckpoints(orderId, admin.id);
 
+  revalidateOrderViews(orderId);
   return NextResponse.json({ ok: true });
 }
