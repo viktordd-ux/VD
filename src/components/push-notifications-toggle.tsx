@@ -108,7 +108,19 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
   const enable = useCallback(async () => {
     setStatus("idle");
     setMessage(null);
-    const perm = await Notification.requestPermission();
+    // iOS Safari / PWA: глобал `Notification` не всегда в scope как идентификатор — только через globalThis
+    const NotificationCtor = globalThis.Notification;
+    if (
+      typeof NotificationCtor === "undefined" ||
+      typeof NotificationCtor.requestPermission !== "function"
+    ) {
+      setStatus("error");
+      setMessage(
+        "API уведомлений недоступен. Откройте сайт по HTTPS, с иконки на главном экране (iOS 16.4+).",
+      );
+      return;
+    }
+    const perm = await NotificationCtor.requestPermission();
     if (perm !== "granted") {
       setStatus("error");
       setMessage("Разрешите уведомления в настройках браузера");
