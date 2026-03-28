@@ -2,6 +2,7 @@
 
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useSession } from "next-auth/react";
+import type { ReactNode } from "react";
 import {
   useCallback,
   useEffect,
@@ -63,7 +64,7 @@ export type OrderChatProps = {
   supabaseUrl?: string;
   supabaseAnonKey?: string;
   /** Узкая колонка слева: выше область сообщений, скролл только внутри чата */
-  variant?: "default" | "sidebar";
+  variant?: "default" | "sidebar" | "dock";
 };
 
 export function OrderChat({
@@ -225,25 +226,49 @@ export function OrderChat({
     setInput("");
   }
 
-  if (status === "loading") {
+  const isDock = variant === "dock";
+  const isSidebar = variant === "sidebar";
+  const tallMessages = isSidebar || isDock;
+
+  function dockShell(node: ReactNode) {
+    if (!isDock) return node;
     return (
-      <Card
+      <div
         className={cn(
-          "p-4 md:p-6",
-          variant === "sidebar" && "flex min-h-[12rem] flex-col lg:max-h-[calc(100dvh-2rem)]",
+          "fixed right-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col",
+          "h-[min(38rem,55dvh)] max-h-[min(38rem,55dvh)]",
+          "max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))]",
+          "lg:bottom-6",
         )}
       >
-        <p className="text-sm text-zinc-500">Загрузка чата…</p>
-      </Card>
+        {node}
+      </div>
     );
   }
 
-  return (
+  if (status === "loading") {
+    return dockShell(
+      <Card
+        className={cn(
+          "p-4 md:p-6",
+          isSidebar && "flex min-h-[12rem] flex-col lg:max-h-[calc(100dvh-2rem)]",
+          isDock &&
+            "flex min-h-0 flex-1 flex-col overflow-hidden shadow-2xl ring-1 ring-zinc-200/80",
+        )}
+      >
+        <p className="text-sm text-zinc-500">Загрузка чата…</p>
+      </Card>,
+    );
+  }
+
+  return dockShell(
     <Card
       className={cn(
         "flex flex-col p-4 md:p-6",
-        variant === "sidebar" &&
+        isSidebar &&
           "min-h-[18rem] max-h-[min(32rem,70vh)] lg:min-h-0 lg:max-h-[calc(100dvh-2rem)] lg:overflow-hidden",
+        isDock &&
+          "min-h-0 flex-1 flex-col overflow-hidden shadow-2xl ring-1 ring-zinc-200/80",
       )}
     >
       <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
@@ -279,9 +304,7 @@ export function OrderChat({
         ref={scrollRef}
         className={cn(
           "mt-4 flex min-h-[10rem] flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-lg border border-zinc-100 bg-zinc-50/80 p-3",
-          variant === "sidebar"
-            ? "min-h-0 flex-1"
-            : "max-h-[min(24rem,50vh)]",
+          tallMessages ? "min-h-0 flex-1" : "max-h-[min(24rem,50vh)]",
         )}
       >
         {loading ? (
@@ -349,6 +372,6 @@ export function OrderChat({
           {sending ? "…" : "Отправить"}
         </Button>
       </form>
-    </Card>
+    </Card>,
   );
 }

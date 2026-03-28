@@ -65,7 +65,7 @@ export default async function AdminOrderPage({ params }: Props) {
         supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
         supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
       />
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-[40rem]">
         <Link
           href="/admin/orders"
           className="inline-flex min-h-11 items-center text-base text-zinc-500 hover:text-zinc-800 md:min-h-0 md:text-sm"
@@ -73,63 +73,55 @@ export default async function AdminOrderPage({ params }: Props) {
           ← К списку заказов
         </Link>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(280px,36%)_minmax(0,1fr)] lg:items-start lg:gap-8">
-          <div className="order-1 min-w-0 lg:col-start-2 lg:row-start-1">
-            <AdminOrderSummaryCard />
-          </div>
+        <div className="mt-6 flex min-w-0 flex-col gap-4 lg:gap-5">
+          <AdminOrderSummaryCard />
 
-          <aside className="order-2 flex w-full min-w-0 flex-col lg:col-start-1 lg:row-start-1 lg:[grid-row:1/-1]">
-            <div className="w-full lg:sticky lg:top-4 lg:z-10">
-              <OrderChat
-                orderId={id}
-                variant="sidebar"
-                supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
-                supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
-              />
-            </div>
-          </aside>
+          <AdminOrderForm executors={executors} executorStats={executorStats} />
 
-          <div className="order-3 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-2 lg:gap-5">
-            <AdminOrderForm executors={executors} executorStats={executorStats} />
-
-            <div className="grid gap-4 2xl:grid-cols-2 2xl:items-start 2xl:gap-4">
-              <Card className="p-4 md:p-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-base font-semibold text-zinc-900">Этапы</h2>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Когда все этапы выполнены при статусе «В работе», заказ переходит на проверку.
-                    </p>
-                  </div>
-                  <AdminCompleteAllCheckpoints orderId={id} />
-                </div>
-                <div className="mt-4">
-                  <AdminCheckpointsPanel
-                    orderId={id}
-                    supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
-                    supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
-                  />
-                </div>
-              </Card>
-
-              <Card className="p-4 md:p-6">
-                <AdminOrderFilesSection orderId={id} />
-              </Card>
-            </div>
-
-            <AdminOrderDelete orderId={id} />
-
+          <div className="grid gap-4 2xl:grid-cols-2 2xl:items-start 2xl:gap-4">
             <Card className="p-4 md:p-6">
-              <h2 className="text-base font-semibold text-zinc-900">История и аудит</h2>
-              <p className="mt-1 text-xs text-zinc-500">
-                Хронология изменений, этапов и записей аудита по заказу.
-              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-zinc-900">Этапы</h2>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Когда все этапы выполнены при статусе «В работе», заказ переходит на проверку.
+                  </p>
+                </div>
+                <AdminCompleteAllCheckpoints orderId={id} />
+              </div>
               <div className="mt-4">
-                <AdminOrderHistoryTabs orderId={id} />
+                <AdminCheckpointsPanel
+                  orderId={id}
+                  supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
+                  supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
+                />
               </div>
             </Card>
+
+            <Card className="p-4 md:p-6">
+              <AdminOrderFilesSection orderId={id} />
+            </Card>
           </div>
+
+          <AdminOrderDelete orderId={id} />
+
+          <Card className="p-4 md:p-6">
+            <h2 className="text-base font-semibold text-zinc-900">История и аудит</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Хронология изменений, этапов и записей аудита по заказу.
+            </p>
+            <div className="mt-4">
+              <AdminOrderHistoryTabs orderId={id} />
+            </div>
+          </Card>
         </div>
+
+        <OrderChat
+          orderId={id}
+          variant="dock"
+          supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
+          supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
+        />
       </div>
     </AdminOrderProvider>
   );
