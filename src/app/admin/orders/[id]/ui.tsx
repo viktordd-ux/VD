@@ -12,6 +12,15 @@ import { leadStatusLabel, orderStatusLabel } from "@/lib/ui-labels";
 
 type ExecutorOption = Pick<User, "id" | "name" | "email" | "skills">;
 
+/** В <option> длинные навыки раздувают нативный список на всю ширину экрана. */
+const EXECUTOR_OPTION_MAX_CHARS = 96;
+
+function truncateOptionLabel(text: string, maxLen: number) {
+  const t = text.trim();
+  if (t.length <= maxLen) return t;
+  return `${t.slice(0, Math.max(0, maxLen - 1))}…`;
+}
+
 export function AdminOrderForm({
   executors,
   executorStats,
@@ -203,7 +212,7 @@ export function AdminOrderForm({
             <option value="DONE">{orderStatusLabel.DONE}</option>
           </select>
         </div>
-        <div>
+        <div className="min-w-0">
           <label className={labelClass}>Исполнитель</label>
           <input
             type="search"
@@ -215,7 +224,7 @@ export function AdminOrderForm({
           <select
             name="executorId"
             defaultValue={order.executorId ?? ""}
-            className={`${fieldClass}`}
+            className={`${fieldClass} max-w-full min-w-0 truncate`}
           >
             <option value="">—</option>
             {filteredExecutors.map((u) => {
@@ -223,10 +232,16 @@ export function AdminOrderForm({
               const metricsLabel = st
                 ? `⭐ ${st.rating.toFixed(0)} · ${st.completedOrders} зак. · проср. ${st.latePercent.toFixed(0)}%`
                 : "—";
+              const fullLabel = `${u.name} · ${metricsLabel}${
+                u.skills.length ? ` · ${u.skills.join(", ")}` : ""
+              }`;
+              const shortLabel = truncateOptionLabel(
+                fullLabel,
+                EXECUTOR_OPTION_MAX_CHARS,
+              );
               return (
-                <option key={u.id} value={u.id}>
-                  {u.name} · {metricsLabel}
-                  {u.skills.length ? ` · ${u.skills.join(", ")}` : ""}
+                <option key={u.id} value={u.id} title={fullLabel}>
+                  {shortLabel}
                 </option>
               );
             })}

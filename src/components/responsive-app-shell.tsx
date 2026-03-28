@@ -61,18 +61,12 @@ export function ResponsiveAppShell({
       </aside>
 
       <div
-        className={cn(
-          "fixed inset-0 z-50 md:hidden",
-          open ? "pointer-events-auto" : "pointer-events-none",
-        )}
+        className={cn("fixed inset-0 z-50 md:hidden", open ? "block" : "hidden")}
         aria-hidden={!open}
       >
         <button
           type="button"
-          className={cn(
-            "absolute inset-0 z-40 bg-black/40 transition-opacity",
-            open ? "opacity-100" : "opacity-0",
-          )}
+          className="absolute inset-0 z-40 bg-black/40 transition-opacity opacity-100"
           onClick={() => setOpen(false)}
           aria-label="Закрыть меню"
         />

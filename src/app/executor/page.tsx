@@ -1,5 +1,4 @@
 import { auth } from "@/auth";
-import { ExecutorChangePassword } from "@/components/executor-change-password";
 import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
 import { redirect } from "next/navigation";
@@ -31,10 +30,6 @@ export default async function ExecutorHome() {
         initialSerialized={serializeExecutorHomeOrders(orders)}
         userId={session.user.id}
       />
-
-      <div id="password" className="scroll-mt-8">
-        <ExecutorChangePassword />
-      </div>
     </div>
   );
 }
