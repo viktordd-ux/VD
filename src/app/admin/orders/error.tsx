@@ -18,33 +18,49 @@ export default function AdminOrdersError({
   reset: () => void;
 }) {
   const msg = error.message ?? "";
-  const pool = isConnectionPoolError(msg);
+  const poolLikely = isConnectionPoolError(msg);
   const dev = process.env.NODE_ENV === "development";
-
-  const hint = dev
-    ? msg
-    : pool
-      ? "База не успела выдать соединение из пула (часто на Vercel + Supabase pooler). Подождите и нажмите «Попробовать снова» или проверьте DATABASE_URL и лимиты пула."
-      : "Не удалось выполнить запрос к базе. Частые причины: не применены миграции после деплоя; таймаут пула соединений (P2024) при нагрузке; сеть или недоступность Postgres.";
 
   return (
     <div className="mx-auto max-w-lg rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
       <h1 className="text-lg font-semibold text-zinc-900">Не удалось загрузить заказы</h1>
-      <p className="mt-2 text-sm text-zinc-600">{hint}</p>
-      {!pool ? (
-        <p className="mt-3 text-xs text-zinc-500">
-          Если только что деплоили: выполните локально или в CI с прямым URL к Postgres (не pooler):{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5">npx prisma migrate deploy</code>
+
+      {dev ? (
+        <p className="mt-2 whitespace-pre-wrap break-words font-mono text-xs text-zinc-700">
+          {msg}
         </p>
       ) : (
-        <p className="mt-3 text-xs text-zinc-500">
-          Для пула в URL обычно добавляют <code className="rounded bg-zinc-100 px-1">pool_timeout</code> и
-          используют Transaction pooler Supabase (порт 6543). Миграции через pooler не гоняют — только{" "}
-          <code className="rounded bg-zinc-100 px-1">DIRECT_URL</code>.
+        <p className="mt-2 text-sm text-zinc-600">
+          Запрос к базе не выполнился. Ниже — две частые причины; в production текст ошибки
+          часто скрыт, поэтому показываем обе.
         </p>
       )}
+
+      <div className="mt-4 space-y-3 border-t border-zinc-100 pt-4 text-xs text-zinc-600">
+        <div>
+          <p className="font-semibold text-zinc-800">
+            1. Пул соединений (P2024){poolLikely ? " — похоже на ваш случай" : ""}
+          </p>
+          <p className="mt-1">
+            На Vercel + Supabase часто таймаут пула. Проверьте{" "}
+            <code className="rounded bg-zinc-100 px-1">DATABASE_URL</code> (transaction pooler,
+            порт 6543), параметр{" "}
+            <code className="rounded bg-zinc-100 px-1">pool_timeout</code>, нажмите «Попробовать
+            снова» через минуту.
+          </p>
+        </div>
+        <div>
+          <p className="font-semibold text-zinc-800">2. Миграции не накатились</p>
+          <p className="mt-1">
+            С прямым URL к Postgres (не pooler), из{" "}
+            <code className="rounded bg-zinc-100 px-1">DIRECT_URL</code>:{" "}
+            <code className="rounded bg-zinc-100 px-1">npx prisma migrate deploy</code>
+          </p>
+        </div>
+      </div>
+
       {error.digest ? (
-        <p className="mt-2 font-mono text-xs text-zinc-400">Digest: {error.digest}</p>
+        <p className="mt-4 font-mono text-xs text-zinc-400">Digest: {error.digest}</p>
       ) : null}
       <button
         type="button"
