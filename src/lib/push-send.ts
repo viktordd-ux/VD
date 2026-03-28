@@ -67,9 +67,7 @@ export async function sendPushToUser(
   });
   if (!user?.pushEnabled || user.pushSubscriptions.length === 0) return;
 
-  for (const sub of user.pushSubscriptions) {
-    await sendPushNotification(sub, payload);
-  }
+  await Promise.all(user.pushSubscriptions.map((sub) => sendPushNotification(sub, payload)));
 }
 
 export async function sendPushToAllAdmins(payload: WebPushPayload): Promise<void> {
@@ -79,7 +77,5 @@ export async function sendPushToAllAdmins(payload: WebPushPayload): Promise<void
     where: { role: "admin", pushEnabled: true },
     select: { id: true },
   });
-  for (const a of admins) {
-    await sendPushToUser(a.id, payload);
-  }
+  await Promise.all(admins.map((a) => sendPushToUser(a.id, payload)));
 }

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
@@ -95,13 +95,16 @@ export async function POST(req: Request) {
     },
   });
 
-  if (user.role === "admin" && order.executorId) {
-    notifyExecutorChatMessage(order.executorId);
-    pushNotifyExecutorChatMessage(order.executorId, order.title, orderId);
-  }
-  if (user.role === "executor") {
-    pushNotifyAdminsNewChatMessage(order.title, orderId);
-  }
+  /** Push/Telegram делают сеть и Prisma — не блокируют ответ клиенту (иначе на Vercel fetch ждёт конца фоновых await). */
+  after(() => {
+    if (user.role === "admin" && order.executorId) {
+      notifyExecutorChatMessage(order.executorId);
+      pushNotifyExecutorChatMessage(order.executorId, order.title, orderId);
+    }
+    if (user.role === "executor") {
+      pushNotifyAdminsNewChatMessage(order.title, orderId);
+    }
+  });
 
   return NextResponse.json({ message: serializeMessage(created) });
 }

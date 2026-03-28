@@ -300,7 +300,19 @@ export function OrderChat({
         devLog("строка пропущена", { parsed: m, expectedOrderId: orderIdRef.current });
         return;
       }
-      setMessages((prev) => mergeMessages(prev, m));
+      setMessages((prev) => {
+        const uid = sessionUserIdRef.current;
+        if (uid != null && m.senderId === uid) {
+          const pending = prev.find(
+            (x) =>
+              x.id.startsWith("pending:") && x.senderId === uid && x.text === m.text,
+          );
+          if (pending) {
+            return mergeMessages(removeMessageById(prev, pending.id), m);
+          }
+        }
+        return mergeMessages(prev, m);
+      });
       const uid = sessionUserIdRef.current;
       const fromOther = uid != null && m.senderId !== uid;
       if (!fromOther) return;
@@ -391,29 +403,53 @@ export function OrderChat({
     e.preventDefault();
     const text = input.trim();
     if (!text || sending || !currentUserId) return;
+    const role = session?.user?.role;
+    if (role !== "admin" && role !== "executor") return;
+
     setSending(true);
     setError(null);
-    const res = await fetch("/api/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ order_id: orderId, text }),
-    });
-    setSending(false);
-    if (!res.ok) {
-      if (res.status === 403) {
-        setError("Нельзя писать в этот заказ");
-      } else {
-        const err = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(err.error ?? "Не удалось отправить");
-      }
-      return;
-    }
-    const data = (await res.json()) as { message?: unknown };
-    const added = normalizeMessageDto(data.message);
-    if (added) {
-      setMessages((prev) => mergeMessages(prev, added));
-    }
+
+    const optimisticId = `pending:${crypto.randomUUID()}`;
+    const optimistic: MessageDto = {
+      id: optimisticId,
+      orderId,
+      senderId: currentUserId,
+      role,
+      text,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => mergeMessages(prev, optimistic));
     setInput("");
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId, text }),
+      });
+      if (!res.ok) {
+        setMessages((prev) => removeMessageById(prev, optimisticId));
+        if (res.status === 403) {
+          setError("Нельзя писать в этот заказ");
+        } else {
+          const err = (await res.json().catch(() => ({}))) as { error?: string };
+          setError(err.error ?? "Не удалось отправить");
+        }
+        return;
+      }
+      const data = (await res.json()) as { message?: unknown };
+      const added = normalizeMessageDto(data.message);
+      if (added) {
+        setMessages((prev) => {
+          const without = removeMessageById(prev, optimisticId);
+          return mergeMessages(without, added);
+        });
+      } else {
+        setMessages((prev) => removeMessageById(prev, optimisticId));
+      }
+    } finally {
+      setSending(false);
+    }
   }
 
   const tallMessages = isSidebar || isDock;
