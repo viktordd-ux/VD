@@ -43,17 +43,23 @@ export function parseOrderRowFromSupabase(row: Record<string, unknown>): Order |
 
 export function parseCheckpointRowFromSupabase(row: Record<string, unknown>): Checkpoint | null {
   if (!row?.id) return null;
+  const orderId = row.order_id ?? row.orderId;
+  const dueRaw = row.due_date ?? row.dueDate;
+  const payRaw = row.payment_amount ?? row.paymentAmount;
+  const payoutRaw = row.payout_released_at ?? row.payoutReleasedAt;
+  const createdRaw = row.created_at ?? row.createdAt;
+  const updatedRaw = row.updated_at ?? row.updatedAt;
   return {
     id: String(row.id),
-    orderId: String(row.order_id ?? ""),
+    orderId: String(orderId ?? ""),
     title: String(row.title ?? ""),
     status: row.status as Checkpoint["status"],
-    dueDate: asDate(row.due_date),
-    paymentAmount: dec(row.payment_amount),
-    payoutReleasedAt: asDate(row.payout_released_at),
+    dueDate: asDate(dueRaw),
+    paymentAmount: dec(payRaw),
+    payoutReleasedAt: asDate(payoutRaw),
     position: Number(row.position ?? 0),
-    createdAt: asDate(row.created_at) ?? new Date(),
-    updatedAt: asDate(row.updated_at) ?? new Date(),
+    createdAt: asDate(createdRaw) ?? new Date(),
+    updatedAt: asDate(updatedRaw) ?? new Date(),
   };
 }
 

@@ -2,7 +2,14 @@
 
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { MessageDto } from "@/lib/message-serialize";
@@ -107,7 +114,7 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
   const [realtimeStatus, setRealtimeStatus] = useState<
     "idle" | "subscribed" | "error" | "unconfigured"
   >("idle");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const orderIdRef = useRef(orderId);
   orderIdRef.current = orderId;
 
@@ -203,9 +210,11 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
     };
   }, [orderId, supabase]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages]);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [sortedMessages]);
 
   async function onSend(e: React.FormEvent) {
     e.preventDefault();
@@ -274,14 +283,16 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
         </p>
       )}
 
-      <div className="mt-4 flex max-h-[min(24rem,50vh)] min-h-[10rem] flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-zinc-100 bg-zinc-50/80 p-3">
+      <div
+        ref={scrollRef}
+        className="mt-4 flex max-h-[min(24rem,50vh)] min-h-[10rem] flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-lg border border-zinc-100 bg-zinc-50/80 p-3"
+      >
         {loading ? (
           <p className="text-sm text-zinc-500">Загрузка сообщений…</p>
         ) : sortedMessages.length === 0 ? (
           <p className="text-sm text-zinc-500">Пока нет сообщений. Напишите первым.</p>
         ) : (
-          <div className="mt-auto flex min-h-0 w-full flex-col gap-2">
-          {sortedMessages.map((m) => {
+          sortedMessages.map((m) => {
             const mine = currentUserId && m.senderId === currentUserId;
             const timeLabel = new Date(m.createdAt).toLocaleString("ru-RU", {
               day: "2-digit",
@@ -319,9 +330,7 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
                 </div>
               </div>
             );
-          })}
-          <div ref={bottomRef} aria-hidden className="h-0 shrink-0" />
-          </div>
+          })
         )}
       </div>
 

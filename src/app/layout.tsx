@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -11,6 +11,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "V|D — студия",
   description: "Внутренняя ERP студии V|D",
+};
+
+/** Без pinch-zoom на телефоне — интерфейс под фиксированный масштаб. */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
