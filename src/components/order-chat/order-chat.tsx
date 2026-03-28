@@ -418,7 +418,7 @@ export function OrderChat({
           <IconChatBubble className="h-7 w-7" />
           {showChatUnread ? (
             <span
-              className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-zinc-900 bg-red-500"
+              className="absolute -right-0.5 -top-0.5 h-[30px] w-[30px] rounded-full border-2 border-zinc-900 bg-red-500"
               aria-hidden
             />
           ) : null}
@@ -498,7 +498,7 @@ export function OrderChat({
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
             Чат
             {showChatUnread ? (
-              <span className="inline-block h-2 w-2 rounded-full bg-red-500" aria-hidden />
+              <span className="inline-block h-6 w-6 rounded-full bg-red-500" aria-hidden />
             ) : null}
           </h2>
           <p className="mt-1 text-xs text-zinc-500">
