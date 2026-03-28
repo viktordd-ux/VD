@@ -12,6 +12,7 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/cn";
 import type { MessageDto } from "@/lib/message-serialize";
 import { formatChatMessageTime } from "@/lib/chat-display-time";
 import {
@@ -61,9 +62,16 @@ export type OrderChatProps = {
   orderId: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+  /** Узкая колонка слева: выше область сообщений, скролл только внутри чата */
+  variant?: "default" | "sidebar";
 };
 
-export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatProps) {
+export function OrderChat({
+  orderId,
+  supabaseUrl,
+  supabaseAnonKey,
+  variant = "default",
+}: OrderChatProps) {
   const { data: session, status } = useSession();
   const supabase = useMemo(
     () => getSupabaseBrowserClient({ supabaseUrl, supabaseAnonKey }),
@@ -219,14 +227,25 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
 
   if (status === "loading") {
     return (
-      <Card className="p-4 md:p-6">
+      <Card
+        className={cn(
+          "p-4 md:p-6",
+          variant === "sidebar" && "flex min-h-[12rem] flex-col lg:max-h-[calc(100dvh-2rem)]",
+        )}
+      >
         <p className="text-sm text-zinc-500">Загрузка чата…</p>
       </Card>
     );
   }
 
   return (
-    <Card className="flex flex-col p-4 md:p-6">
+    <Card
+      className={cn(
+        "flex flex-col p-4 md:p-6",
+        variant === "sidebar" &&
+          "min-h-[18rem] max-h-[min(32rem,70vh)] lg:min-h-0 lg:max-h-[calc(100dvh-2rem)] lg:h-[calc(100dvh-2rem)]",
+      )}
+    >
       <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
         Чат
       </h2>
@@ -258,7 +277,12 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
 
       <div
         ref={scrollRef}
-        className="mt-4 flex max-h-[min(24rem,50vh)] min-h-[10rem] flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-lg border border-zinc-100 bg-zinc-50/80 p-3"
+        className={cn(
+          "mt-4 flex min-h-[10rem] flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-lg border border-zinc-100 bg-zinc-50/80 p-3",
+          variant === "sidebar"
+            ? "min-h-0 flex-1"
+            : "max-h-[min(24rem,50vh)]",
+        )}
       >
         {loading ? (
           <p className="text-sm text-zinc-500">Загрузка сообщений…</p>
