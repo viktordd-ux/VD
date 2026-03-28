@@ -1,16 +1,54 @@
 import type { MessageDto } from "@/lib/message-serialize";
 
-/** Число мс для сортировки; NaN/невалид → 0 (дальше порядок по id). */
-export function normalizeCreatedAt(value: unknown): number {
-  const date = new Date(value as string | number | Date);
-  const time = date.getTime();
-  return Number.isNaN(time) ? 0 : time;
+/**
+ * Один момент времени в мс (UTC). Realtime/Postgres часто отдают строку без смещения
+ * (`2026-03-28T12:32:00`). `new Date(...)` в браузере трактует это как **локальное** время
+ * устройства → на разных TZ получаются разные UTC и «разъезд» на 3 ч. Наивные даты
+ * из БД считаем **UTC** (как timestamptz/сессия на Supabase).
+ */
+export function parseMessageTimestampToMs(value: unknown): number {
+  if (value == null) return NaN;
+  if (value instanceof Date) {
+    const t = value.getTime();
+    return Number.isNaN(t) ? NaN : t;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value < 1e12 ? value * 1000 : value;
+  }
+  if (typeof value !== "string") return NaN;
+  const s = value.trim();
+  if (!s) return NaN;
+
+  if (/Z$/i.test(s)) {
+    const t = Date.parse(s);
+    return Number.isNaN(t) ? NaN : t;
+  }
+  if (/[+-]\d{2}:?\d{2}$/.test(s)) {
+    const t = Date.parse(s);
+    return Number.isNaN(t) ? NaN : t;
+  }
+
+  const naive = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2}(\.\d+)?)$/.exec(s);
+  if (naive) {
+    const t = Date.parse(`${naive[1]}T${naive[2]}Z`);
+    return Number.isNaN(t) ? NaN : t;
+  }
+
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? NaN : t;
 }
 
-/** Единый формат на клиенте: ISO-строка из значения БД/API/Realtime. */
+/** Число мс для сортировки; NaN/невалид → 0 (дальше порядок по id). */
+export function normalizeCreatedAt(value: unknown): number {
+  const ms = parseMessageTimestampToMs(value);
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+/** Единый формат на клиенте: ISO-строка (UTC) из значения БД/API/Realtime. */
 export function toIsoCreatedAt(value: unknown): string {
-  const t = normalizeCreatedAt(value);
-  return new Date(t).toISOString();
+  const ms = parseMessageTimestampToMs(value);
+  if (Number.isNaN(ms)) return new Date(0).toISOString();
+  return new Date(ms).toISOString();
 }
 
 /**
@@ -42,7 +80,9 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
       ? o.created_at
       : o.createdAt;
   if (rawTime === undefined || rawTime === null) return null;
-  const createdAt = toIsoCreatedAt(rawTime);
+  const ms = parseMessageTimestampToMs(rawTime);
+  if (Number.isNaN(ms)) return null;
+  const createdAt = new Date(ms).toISOString();
   return {
     id,
     orderId,
