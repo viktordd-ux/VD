@@ -59,6 +59,40 @@ function removeMessageById(prev: MessageDto[], id: string): MessageDto[] {
   return sortMessagesStable(Array.from(map.values()));
 }
 
+function IconChatBubble({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function IconChevronDown({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
 export type OrderChatProps = {
   orderId: string;
   supabaseUrl?: string;
@@ -92,7 +126,13 @@ export function OrderChat({
   const orderIdRef = useRef(orderId);
   orderIdRef.current = orderId;
 
+  /** Только для variant=dock: панель по умолчанию свёрнута в FAB */
+  const [dockOpen, setDockOpen] = useState(false);
+
   const currentUserId = session?.user?.id;
+
+  const dockFabPos =
+    "fixed right-4 z-40 max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6";
 
   const loadMessages = useCallback(async () => {
     setError(null);
@@ -235,10 +275,9 @@ export function OrderChat({
     return (
       <div
         className={cn(
-          "fixed right-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col",
+          dockFabPos,
+          "flex w-[min(22rem,calc(100vw-2rem))] flex-col",
           "h-[min(38rem,55dvh)] max-h-[min(38rem,55dvh)]",
-          "max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))]",
-          "lg:bottom-6",
         )}
       >
         {node}
@@ -246,7 +285,26 @@ export function OrderChat({
     );
   }
 
+  function dockFabButton() {
+    return (
+      <button
+        type="button"
+        onClick={() => setDockOpen(true)}
+        className={cn(
+          dockFabPos,
+          "flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg shadow-zinc-950/25 ring-2 ring-white/10 transition hover:bg-zinc-800 focus-visible:outline focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
+        )}
+        aria-label="Открыть чат по заказу"
+      >
+        <IconChatBubble className="h-7 w-7" />
+      </button>
+    );
+  }
+
   if (status === "loading") {
+    if (isDock && !dockOpen) {
+      return dockFabButton();
+    }
     return dockShell(
       <Card
         className={cn(
@@ -256,9 +314,25 @@ export function OrderChat({
             "flex min-h-0 flex-1 flex-col overflow-hidden shadow-2xl ring-1 ring-zinc-200/80",
         )}
       >
+        {isDock && (
+          <div className="-mt-1 mb-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setDockOpen(false)}
+              className="shrink-0 rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+              aria-label="Свернуть чат"
+            >
+              <IconChevronDown className="h-5 w-5" />
+            </button>
+          </div>
+        )}
         <p className="text-sm text-zinc-500">Загрузка чата…</p>
       </Card>,
     );
+  }
+
+  if (isDock && !dockOpen) {
+    return dockFabButton();
   }
 
   return dockShell(
@@ -271,12 +345,35 @@ export function OrderChat({
           "min-h-0 flex-1 flex-col overflow-hidden shadow-2xl ring-1 ring-zinc-200/80",
       )}
     >
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-        Чат
-      </h2>
-      <p className="mt-1 text-xs text-zinc-500">
-        Переписка по заказу между студией и исполнителем.
-      </p>
+      {isDock ? (
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              Чат
+            </h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Переписка по заказу между студией и исполнителем.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDockOpen(false)}
+            className="shrink-0 rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+            aria-label="Свернуть чат"
+          >
+            <IconChevronDown className="h-5 w-5" />
+          </button>
+        </div>
+      ) : (
+        <>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Чат
+          </h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Переписка по заказу между студией и исполнителем.
+          </p>
+        </>
+      )}
 
       {realtimeStatus === "unconfigured" && (
         <p className="mt-2 text-xs text-amber-800">

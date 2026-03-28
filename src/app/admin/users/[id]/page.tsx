@@ -29,22 +29,20 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
   });
   if (!user || user.role !== "executor") notFound();
 
-  const [metrics, orders] = await Promise.all([
-    getExecutorMetrics(user.id),
-    prisma.order.findMany({
-      where: { ...orderIsActive, executorId: user.id },
-      orderBy: { updatedAt: "desc" },
-      take: 25,
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        deadline: true,
-        updatedAt: true,
-        profit: true,
-      },
-    }),
-  ]);
+  const metrics = await getExecutorMetrics(user.id);
+  const orders = await prisma.order.findMany({
+    where: { ...orderIsActive, executorId: user.id },
+    orderBy: { updatedAt: "desc" },
+    take: 25,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      deadline: true,
+      updatedAt: true,
+      profit: true,
+    },
+  });
 
   const initials = formatUserDisplayName(user)
     .split(" ")

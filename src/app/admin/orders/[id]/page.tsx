@@ -65,7 +65,7 @@ export default async function AdminOrderPage({ params }: Props) {
         supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
         supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
       />
-      <div className="mx-auto max-w-[40rem]">
+      <div className="mx-auto max-w-[80rem]">
         <Link
           href="/admin/orders"
           className="inline-flex min-h-11 items-center text-base text-zinc-500 hover:text-zinc-800 md:min-h-0 md:text-sm"

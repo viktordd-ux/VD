@@ -9,24 +9,25 @@ import { RiskOrderActions } from "./risk-actions";
 export const dynamic = "force-dynamic";
 
 export default async function RisksPage() {
-  const [candidates, banned, executors] = await Promise.all([
-    prisma.order.findMany({
-      where: { ...orderIsActive, status: { not: "DONE" } },
-      include: {
-        executor: true,
-        checkpoints: true,
-        files: true,
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 500,
-    }),
-    prisma.user.findMany({ where: { role: "executor", status: "banned" } }),
-    prisma.user.findMany({
-      where: { role: "executor", status: "active" },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, email: true, skills: true },
-    }),
-  ]);
+  /** Последовательно: см. комментарий в admin/page (P2024 при connection_limit=1). */
+  const candidates = await prisma.order.findMany({
+    where: { ...orderIsActive, status: { not: "DONE" } },
+    include: {
+      executor: true,
+      checkpoints: true,
+      files: true,
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 500,
+  });
+  const banned = await prisma.user.findMany({
+    where: { role: "executor", status: "banned" },
+  });
+  const executors = await prisma.user.findMany({
+    where: { role: "executor", status: "active" },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, email: true, skills: true },
+  });
 
   const flagged = candidates
     .map((o) => ({

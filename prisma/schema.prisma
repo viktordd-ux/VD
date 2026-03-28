@@ -72,10 +72,12 @@ model User {
   skills       String[]   @default([])
   primarySkill String     @default("") @map("primary_skill")
   onboarded    Boolean    @default(false) @map("onboarded")
+  pushEnabled  Boolean    @default(false) @map("push_enabled")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
   ordersAsExecutor Order[]    @relation("OrderExecutor")
+  pushSubscriptions PushSubscription[]
   auditLogs        AuditLog[]
   messagesSent     Message[]
 
@@ -214,4 +216,18 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([changedAt])
   @@map("audit_log")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

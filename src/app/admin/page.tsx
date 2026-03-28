@@ -24,55 +24,55 @@ function rangeStart(period: "day" | "week" | "month"): Date {
 
 export default async function AdminDashboard() {
   const end = new Date();
-  const [newLeads, activeOrders, overdue, profitSum, dayP, weekP, monthP, series30, recent] =
-    await Promise.all([
-      prisma.lead.count({ where: { status: "NEW", ...leadIsActive } }),
-      prisma.order.count({
-        where: { ...orderIsActive, status: { not: "DONE" } },
-      }),
-      prisma.order.count({
-        where: {
-          ...orderIsActive,
-          deadline: { lt: new Date() },
-          status: { not: "DONE" },
-        },
-      }),
-      prisma.order.aggregate({
-        where: orderIsActive,
-        _sum: { profit: true },
-      }),
-      prisma.order.aggregate({
-        where: {
-          ...orderIsActive,
-          status: "DONE",
-          updatedAt: { gte: rangeStart("day"), lte: end },
-        },
-        _sum: { profit: true },
-      }),
-      prisma.order.aggregate({
-        where: {
-          ...orderIsActive,
-          status: "DONE",
-          updatedAt: { gte: rangeStart("week"), lte: end },
-        },
-        _sum: { profit: true },
-      }),
-      prisma.order.aggregate({
-        where: {
-          ...orderIsActive,
-          status: "DONE",
-          updatedAt: { gte: rangeStart("month"), lte: end },
-        },
-        _sum: { profit: true },
-      }),
-      buildDailyProfitSeries(30),
-      prisma.order.findMany({
-        where: orderIsActive,
-        include: { executor: { select: { name: true } } },
-        orderBy: { updatedAt: "desc" },
-        take: 20,
-      }),
-    ]);
+  /** Последовательно: при connection_limit=1 (Supabase pooler + Vercel) Promise.all даёт P2024. */
+  const newLeads = await prisma.lead.count({
+    where: { status: "NEW", ...leadIsActive },
+  });
+  const activeOrders = await prisma.order.count({
+    where: { ...orderIsActive, status: { not: "DONE" } },
+  });
+  const overdue = await prisma.order.count({
+    where: {
+      ...orderIsActive,
+      deadline: { lt: new Date() },
+      status: { not: "DONE" },
+    },
+  });
+  const profitSum = await prisma.order.aggregate({
+    where: orderIsActive,
+    _sum: { profit: true },
+  });
+  const dayP = await prisma.order.aggregate({
+    where: {
+      ...orderIsActive,
+      status: "DONE",
+      updatedAt: { gte: rangeStart("day"), lte: end },
+    },
+    _sum: { profit: true },
+  });
+  const weekP = await prisma.order.aggregate({
+    where: {
+      ...orderIsActive,
+      status: "DONE",
+      updatedAt: { gte: rangeStart("week"), lte: end },
+    },
+    _sum: { profit: true },
+  });
+  const monthP = await prisma.order.aggregate({
+    where: {
+      ...orderIsActive,
+      status: "DONE",
+      updatedAt: { gte: rangeStart("month"), lte: end },
+    },
+    _sum: { profit: true },
+  });
+  const series30 = await buildDailyProfitSeries(30);
+  const recent = await prisma.order.findMany({
+    where: orderIsActive,
+    include: { executor: { select: { name: true } } },
+    orderBy: { updatedAt: "desc" },
+    take: 20,
+  });
 
   const lowMarginOrders = recent
     .filter((o) => Number(o.budgetClient) > 0 && Number(o.profit) / Number(o.budgetClient) < 0.5)

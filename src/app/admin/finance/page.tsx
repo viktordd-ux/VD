@@ -86,58 +86,56 @@ export default async function FinancePage({
     take: 200,
   });
 
-  const [totals, dayP, weekP, monthP, series30profit, doneOrders, users] =
-    await Promise.all([
-      prisma.order.aggregate({
-        where: orderIsActive,
-        _sum: {
-          budgetClient: true,
-          budgetExecutor: true,
-          profit: true,
-        },
-        _count: true,
-      }),
-      prisma.order.aggregate({
-        where: {
-          ...orderIsActive,
-          status: "DONE",
-          updatedAt: { gte: rangeStart("day"), lte: end },
-          ...execWhere,
-        },
-        _sum: { profit: true },
-      }),
-      prisma.order.aggregate({
-        where: {
-          ...orderIsActive,
-          status: "DONE",
-          updatedAt: { gte: rangeStart("week"), lte: end },
-          ...execWhere,
-        },
-        _sum: { profit: true },
-      }),
-      prisma.order.aggregate({
-        where: {
-          ...orderIsActive,
-          status: "DONE",
-          updatedAt: { gte: rangeStart("month"), lte: end },
-          ...execWhere,
-        },
-        _sum: { profit: true },
-      }),
-      buildDailyProfitSeries(30),
-      prisma.order.findMany({
-        where: orderWhereDone,
-        select: {
-          profit: true,
-          budgetClient: true,
-          executorId: true,
-        },
-      }),
-      prisma.user.findMany({
-        where: { role: "executor" },
-        select: { id: true, name: true },
-      }),
-    ]);
+  /** Последовательно: избегаем P2024 при connection_limit=1 на Vercel + Supabase pooler. */
+  const totals = await prisma.order.aggregate({
+    where: orderIsActive,
+    _sum: {
+      budgetClient: true,
+      budgetExecutor: true,
+      profit: true,
+    },
+    _count: true,
+  });
+  const dayP = await prisma.order.aggregate({
+    where: {
+      ...orderIsActive,
+      status: "DONE",
+      updatedAt: { gte: rangeStart("day"), lte: end },
+      ...execWhere,
+    },
+    _sum: { profit: true },
+  });
+  const weekP = await prisma.order.aggregate({
+    where: {
+      ...orderIsActive,
+      status: "DONE",
+      updatedAt: { gte: rangeStart("week"), lte: end },
+      ...execWhere,
+    },
+    _sum: { profit: true },
+  });
+  const monthP = await prisma.order.aggregate({
+    where: {
+      ...orderIsActive,
+      status: "DONE",
+      updatedAt: { gte: rangeStart("month"), lte: end },
+      ...execWhere,
+    },
+    _sum: { profit: true },
+  });
+  const series30profit = await buildDailyProfitSeries(30);
+  const doneOrders = await prisma.order.findMany({
+    where: orderWhereDone,
+    select: {
+      profit: true,
+      budgetClient: true,
+      executorId: true,
+    },
+  });
+  const users = await prisma.user.findMany({
+    where: { role: "executor" },
+    select: { id: true, name: true },
+  });
 
   let filteredDone = doneOrders;
   if (lowMargin) {

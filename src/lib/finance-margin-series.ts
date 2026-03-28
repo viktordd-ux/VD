@@ -81,11 +81,9 @@ export async function buildMarginSeriesByExecutor(opts: {
   }
 
   const [w1, w7, w30] = [1, 7, 30].map((d) => rollingWindow(d));
-  const [series1, series7, series30] = await Promise.all([
-    loadRange(w1.start, w1.end),
-    loadRange(w7.start, w7.end),
-    loadRange(w30.start, w30.end),
-  ]);
+  const series1 = await loadRange(w1.start, w1.end);
+  const series7 = await loadRange(w7.start, w7.end);
+  const series30 = await loadRange(w30.start, w30.end);
 
   return { series1, series7, series30 };
 }
