@@ -43,6 +43,17 @@ import {
 } from "@/lib/order-list-client-serialize";
 import { OrderRowQuickActions } from "./order-row-actions";
 import { OrdersBulkCheckbox } from "./orders-bulk";
+import type { OrderUnreadBatchRow } from "@/lib/order-unread-service";
+
+type OrderUnreadRow = Omit<OrderUnreadBatchRow, "orderId">;
+
+function orderUnreadTooltip(f: OrderUnreadRow): string {
+  if (f.hasUnreadChat && f.hasUnreadProject) {
+    return "Новые сообщения и обновления по этому заказу";
+  }
+  if (f.hasUnreadChat) return "Новые сообщения в чате по этому заказу";
+  return "Есть обновления по этому заказу";
+}
 
 type Props = {
   initialSerialized: SerializedOrderWithRelations[];
@@ -286,6 +297,70 @@ export function AdminOrdersListClient({
       .filter((o) => matchesAdminOrderListView(o, viewSnapshot));
   }, [orders, viewSnapshot, executorsMap]);
 
+  const visibleIdsKey = useMemo(
+    () =>
+      visible
+        .map((o) => o.id)
+        .sort()
+        .join(","),
+    [visible],
+  );
+
+  const [unreadByOrderId, setUnreadByOrderId] = useState<Record<string, OrderUnreadRow>>({});
+
+  const fetchUnreadForVisible = useCallback(async () => {
+    const ids = visibleIdsKey ? visibleIdsKey.split(",").filter(Boolean) : [];
+    if (ids.length === 0) {
+      setUnreadByOrderId({});
+      return;
+    }
+    try {
+      const res = await fetch("/api/orders/unread", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderIds: ids }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { orders?: OrderUnreadBatchRow[] };
+      const next: Record<string, OrderUnreadRow> = {};
+      for (const row of data.orders ?? []) {
+        next[row.orderId] = {
+          hasUnreadChat: row.hasUnreadChat,
+          hasUnreadProject: row.hasUnreadProject,
+          hasUnreadAny: row.hasUnreadAny,
+        };
+      }
+      setUnreadByOrderId(next);
+    } catch {
+      // сеть
+    }
+  }, [visibleIdsKey]);
+
+  useEffect(() => {
+    void fetchUnreadForVisible();
+  }, [fetchUnreadForVisible]);
+
+  useEffect(() => {
+    const id = setInterval(() => void fetchUnreadForVisible(), 30_000);
+    return () => clearInterval(id);
+  }, [fetchUnreadForVisible]);
+
+  useEffect(() => {
+    function onVis() {
+      if (document.visibilityState === "visible") void fetchUnreadForVisible();
+    }
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [fetchUnreadForVisible]);
+
+  useEffect(() => {
+    function onUnreadChanged() {
+      void fetchUnreadForVisible();
+    }
+    window.addEventListener("vd:order-unread-changed", onUnreadChanged);
+    return () => window.removeEventListener("vd:order-unread-changed", onUnreadChanged);
+  }, [fetchUnreadForVisible]);
+
   return (
     <>
       {visible.length === 0 ? (
@@ -342,12 +417,21 @@ export function AdminOrdersListClient({
                         <OrdersBulkCheckbox orderId={o.id} />
                       </td>
                       <td className={tdClass}>
-                        <Link
-                          href={`/admin/orders/${o.id}`}
-                          className="font-medium text-blue-600 hover:underline"
-                        >
-                          {o.title}
-                        </Link>
+                        <div className="flex min-w-0 items-center gap-2">
+                          {unreadByOrderId[o.id]?.hasUnreadAny ? (
+                            <span
+                              className="inline-block h-2 w-2 shrink-0 rounded-full bg-red-500"
+                              title={orderUnreadTooltip(unreadByOrderId[o.id]!)}
+                              aria-label={orderUnreadTooltip(unreadByOrderId[o.id]!)}
+                            />
+                          ) : null}
+                          <Link
+                            href={`/admin/orders/${o.id}`}
+                            className="min-w-0 font-medium text-blue-600 hover:underline"
+                          >
+                            {o.title}
+                          </Link>
+                        </div>
                       </td>
                       <td className={tdClass}>{o.clientName}</td>
                       <td className={tdClass}>
@@ -398,12 +482,21 @@ export function AdminOrdersListClient({
                 <div className="flex items-start gap-3 border-b border-zinc-100 pb-3">
                   <OrdersBulkCheckbox orderId={o.id} />
                   <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/admin/orders/${o.id}`}
-                      className="text-base font-semibold text-blue-600 hover:underline"
-                    >
-                      {o.title}
-                    </Link>
+                    <div className="flex min-w-0 items-center gap-2">
+                      {unreadByOrderId[o.id]?.hasUnreadAny ? (
+                        <span
+                          className="inline-block h-2 w-2 shrink-0 rounded-full bg-red-500"
+                          title={orderUnreadTooltip(unreadByOrderId[o.id]!)}
+                          aria-label={orderUnreadTooltip(unreadByOrderId[o.id]!)}
+                        />
+                      ) : null}
+                      <Link
+                        href={`/admin/orders/${o.id}`}
+                        className="min-w-0 text-base font-semibold text-blue-600 hover:underline"
+                      >
+                        {o.title}
+                      </Link>
+                    </div>
                     <p className="mt-1 text-sm text-zinc-600">{o.clientName}</p>
                   </div>
                   <OrderStatusBadge status={o.status} />

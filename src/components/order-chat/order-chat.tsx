@@ -28,6 +28,12 @@ const devLog = (...args: unknown[]) => {
   }
 };
 
+/** Списки заказов и сайдбар подтягивают флаги с сервера. */
+function dispatchOrderUnreadChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("vd:order-unread-changed"));
+}
+
 /** Единый порядок: только normalizeCreatedAt; при равенстве — id. */
 function sortMessagesStable(list: MessageDto[]): MessageDto[] {
   return [...list].sort((a, b) => {
@@ -99,6 +105,11 @@ export type OrderChatProps = {
   supabaseAnonKey?: string;
   /** Узкая колонка слева: выше область сообщений, скролл только внутри чата */
   variant?: "default" | "sidebar" | "dock";
+  /**
+   * С сервера: есть непрочитанные входящие сообщения.
+   * Без этого бейдж появлялся только после клиентского fetch и терялся при уходе со страницы.
+   */
+  initialHasUnreadChat?: boolean;
 };
 
 export function OrderChat({
@@ -106,6 +117,7 @@ export function OrderChat({
   supabaseUrl,
   supabaseAnonKey,
   variant = "default",
+  initialHasUnreadChat = false,
 }: OrderChatProps) {
   const { data: session, status } = useSession();
   const supabase = useMemo(
@@ -136,7 +148,7 @@ export function OrderChat({
   dockOpenRef.current = dockOpen;
 
   /** Только непрочитанные сообщения (не «проект») — красная точка на чате. */
-  const [showChatUnread, setShowChatUnread] = useState(false);
+  const [showChatUnread, setShowChatUnread] = useState(!!initialHasUnreadChat);
 
   const currentUserId = session?.user?.id;
   sessionUserIdRef.current = currentUserId;
@@ -186,6 +198,10 @@ export function OrderChat({
   }, [loadMessages]);
 
   useEffect(() => {
+    setShowChatUnread(!!initialHasUnreadChat);
+  }, [orderId, initialHasUnreadChat]);
+
+  useEffect(() => {
     if (status === "loading") return;
     void fetchUnread();
     const id = setInterval(() => void fetchUnread(), 30_000);
@@ -214,6 +230,7 @@ export function OrderChat({
         body: JSON.stringify({ markChat: true }),
       });
       await fetchUnread();
+      dispatchOrderUnreadChanged();
     })();
   }, [isDock, dockOpen, orderId, fetchUnread]);
 
@@ -237,6 +254,7 @@ export function OrderChat({
               body: JSON.stringify({ markChat: true }),
             });
             await fetchUnread();
+            dispatchOrderUnreadChanged();
           })();
         }
         prevHit = hit;
@@ -288,10 +306,12 @@ export function OrderChat({
       if (!fromOther) return;
       if (variant === "dock" && !dockOpenRef.current) {
         setShowChatUnread(true);
+        dispatchOrderUnreadChanged();
         return;
       }
       if (variant !== "dock" && !chatSectionVisibleRef.current) {
         setShowChatUnread(true);
+        dispatchOrderUnreadChanged();
       }
     }
 
@@ -361,6 +381,7 @@ export function OrderChat({
         });
         await fetchUnread();
         setShowChatUnread(false);
+        dispatchOrderUnreadChanged();
       })();
     }, 120);
     return () => window.clearTimeout(t);

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
+import { getUnreadFlagsForOrders } from "@/lib/order-unread-state";
 import { ExecutorOrderProvider } from "@/components/executor-order/executor-order-context";
 import { ExecutorOrderRealtime } from "@/components/executor-order/executor-order-realtime";
 import { ExecutorOrderView } from "@/components/executor-order/executor-order-view";
@@ -32,6 +33,9 @@ export default async function ExecutorOrderPage({ params }: Props) {
     orderBy: [{ position: "asc" }, { dueDate: "asc" }],
   });
 
+  const unreadMap = await getUnreadFlagsForOrders(session.user.id, [id]);
+  const initialChatUnread = unreadMap.get(id)?.hasUnreadChat ?? false;
+
   return (
     <ExecutorOrderProvider
       initialOrder={order}
@@ -46,6 +50,7 @@ export default async function ExecutorOrderPage({ params }: Props) {
       />
       <ExecutorOrderView
         orderId={id}
+        initialHasUnreadChat={initialChatUnread}
         supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
         supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
       />

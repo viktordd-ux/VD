@@ -13,10 +13,12 @@ import { useExecutorOrder } from "./executor-order-context";
 
 export function ExecutorOrderView({
   orderId,
+  initialHasUnreadChat,
   supabaseUrl,
   supabaseAnonKey,
 }: {
   orderId: string;
+  initialHasUnreadChat?: boolean;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
 }) {
@@ -58,6 +60,7 @@ export function ExecutorOrderView({
 
       <OrderChat
         orderId={orderId}
+        initialHasUnreadChat={initialHasUnreadChat}
         supabaseUrl={supabaseUrl}
         supabaseAnonKey={supabaseAnonKey}
       />

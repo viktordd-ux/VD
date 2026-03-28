@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PushNotificationsToggle } from "@/components/push-notifications-toggle";
 import { cn } from "@/lib/cn";
@@ -43,6 +44,31 @@ function navItemActive(pathname: string, href: string): boolean {
 
 export function ExecutorSidebarNav() {
   const pathname = usePathname();
+  const [chatUnreadAny, setChatUnreadAny] = useState(false);
+
+  useEffect(() => {
+    async function fetchChatUnread() {
+      try {
+        const res = await fetch("/api/orders/unread", { cache: "no-store" });
+        if (res.ok) {
+          const d = (await res.json()) as { global?: { hasAnyUnreadChats?: boolean } };
+          setChatUnreadAny(Boolean(d.global?.hasAnyUnreadChats));
+        }
+      } catch {
+        // ignore
+      }
+    }
+    void fetchChatUnread();
+    const id = setInterval(() => void fetchChatUnread(), 30_000);
+    function onChatUnreadEvent() {
+      void fetchChatUnread();
+    }
+    window.addEventListener("vd:order-unread-changed", onChatUnreadEvent);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("vd:order-unread-changed", onChatUnreadEvent);
+    };
+  }, [pathname]);
 
   return (
     <nav className="flex flex-1 flex-col gap-0.5 p-2">
@@ -62,7 +88,14 @@ export function ExecutorSidebarNav() {
             <item.icon
               className={cn("h-[18px] w-[18px] shrink-0", isOn ? "text-white" : "text-zinc-500")}
             />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {item.href === "/executor" && chatUnreadAny && (
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-red-500"
+                title="Есть непрочитанные сообщения в чатах по заказам"
+                aria-hidden
+              />
+            )}
           </Link>
         );
       })}

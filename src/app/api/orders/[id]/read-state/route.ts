@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
+import { getUnreadFlagsForOrders } from "@/lib/order-unread-state";
 
 export const dynamic = "force-dynamic";
 
@@ -14,16 +15,7 @@ function canAccessOrder(
   return order.executorId === userId;
 }
 
-function maxDate(dates: (Date | null | undefined)[]): Date | null {
-  let best: Date | null = null;
-  for (const d of dates) {
-    if (!d) continue;
-    if (!best || d > best) best = d;
-  }
-  return best;
-}
-
-/** GET — есть ли непрочитанные сообщения от другой стороны или обновления по заказу (не чат). */
+/** GET — флаги непрочитанного чата и проекта (вычислены на сервере). */
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -34,55 +26,25 @@ export async function GET(
   const orderId = (await params).id;
   const order = await prisma.order.findFirst({
     where: { id: orderId, ...orderIsActive },
-    select: { id: true, executorId: true, updatedAt: true },
+    select: { id: true, executorId: true },
   });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!canAccessOrder(user.role, user.id, order)) return forbidden();
 
-  const [state, latestOtherMsg, maxFile, maxCp] = await Promise.all([
-    prisma.orderUserReadState.findUnique({
-      where: { userId_orderId: { userId: user.id, orderId } },
-    }),
-    prisma.message.aggregate({
-      where: { orderId, senderId: { not: user.id } },
-      _max: { createdAt: true },
-    }),
-    prisma.file.aggregate({
-      where: { orderId },
-      _max: { createdAt: true },
-    }),
-    prisma.checkpoint.aggregate({
-      where: { orderId },
-      _max: { updatedAt: true },
-    }),
-  ]);
-
-  const chatReadAt = state?.chatReadAt ?? null;
-  const projectReadAt = state?.projectReadAt ?? null;
-
-  const latestOtherAt = latestOtherMsg._max.createdAt;
-  const hasUnreadChat =
-    latestOtherAt != null &&
-    (chatReadAt == null || latestOtherAt.getTime() > chatReadAt.getTime());
-
-  const projectActivityAt = maxDate([
-    order.updatedAt,
-    maxFile._max.createdAt,
-    maxCp._max.updatedAt,
-  ]);
-  const hasUnreadProject =
-    projectActivityAt != null &&
-    (projectReadAt == null ||
-      projectActivityAt.getTime() > projectReadAt.getTime());
+  const map = await getUnreadFlagsForOrders(user.id, [orderId]);
+  const flags = map.get(orderId);
+  if (!flags) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json({
-    hasUnreadChat,
-    hasUnreadProject,
-    showBadge: hasUnreadChat || hasUnreadProject,
+    hasUnreadChat: flags.hasUnreadChat,
+    hasUnreadProject: flags.hasUnreadProject,
+    hasUnreadAny: flags.hasUnreadAny,
   });
 }
 
-/** PATCH — отметить чат и/или «страницу заказа» просмотренными. */
+/** PATCH — отметить чат и/или «страницу заказа» просмотренными; ответ — актуальные флаги. */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -127,5 +89,16 @@ export async function PATCH(
     },
   });
 
-  return NextResponse.json({ ok: true });
+  const map = await getUnreadFlagsForOrders(user.id, [orderId]);
+  const flags = map.get(orderId);
+  if (!flags) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    hasUnreadChat: flags.hasUnreadChat,
+    hasUnreadProject: flags.hasUnreadProject,
+    hasUnreadAny: flags.hasUnreadAny,
+  });
 }

@@ -29,6 +29,7 @@ const items: {
 export function AdminSidebarNav() {
   const pathname = usePathname();
   const [badges, setBadges] = useState<Badges>({ review: 0, newLeads: 0, overdue: 0 });
+  const [chatUnreadAny, setChatUnreadAny] = useState(false);
 
   useEffect(() => {
     async function fetchBadges() {
@@ -43,6 +44,30 @@ export function AdminSidebarNav() {
     const id = setInterval(() => void fetchBadges(), 30_000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    async function fetchChatUnread() {
+      try {
+        const res = await fetch("/api/orders/unread", { cache: "no-store" });
+        if (res.ok) {
+          const d = (await res.json()) as { global?: { hasAnyUnreadChats?: boolean } };
+          setChatUnreadAny(Boolean(d.global?.hasAnyUnreadChats));
+        }
+      } catch {
+        // ignore
+      }
+    }
+    void fetchChatUnread();
+    const id = setInterval(() => void fetchChatUnread(), 30_000);
+    function onChatUnreadEvent() {
+      void fetchChatUnread();
+    }
+    window.addEventListener("vd:order-unread-changed", onChatUnreadEvent);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("vd:order-unread-changed", onChatUnreadEvent);
+    };
+  }, [pathname]);
 
   function active(href: string): boolean {
     if (href === "/admin") return pathname === "/admin";
@@ -69,6 +94,13 @@ export function AdminSidebarNav() {
               className={cn("h-[18px] w-[18px] shrink-0", isOn ? "text-white" : "text-zinc-500")}
             />
             <span className="flex-1">{item.label}</span>
+            {item.href === "/admin/orders" && chatUnreadAny && (
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-red-500"
+                title="Есть непрочитанные сообщения в чатах по заказам"
+                aria-hidden
+              />
+            )}
             {count > 0 && (
               <span
                 className={cn(

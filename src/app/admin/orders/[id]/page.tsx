@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
+import { getUnreadFlagsForOrders } from "@/lib/order-unread-state";
 import { getExecutorMetricsMap } from "@/lib/executor-matching";
 import { AdminCompleteAllCheckpoints } from "@/components/admin-complete-all-checkpoints";
 import { AdminCheckpointsPanel } from "@/components/admin-checkpoints-panel";
@@ -27,6 +29,13 @@ export default async function AdminOrderPage({ params }: Props) {
     include: { executor: true, lead: true },
   });
   if (!order) notFound();
+
+  const session = await auth();
+  let initialChatUnread = false;
+  if (session?.user?.id) {
+    const unreadMap = await getUnreadFlagsForOrders(session.user.id, [id]);
+    initialChatUnread = unreadMap.get(id)?.hasUnreadChat ?? false;
+  }
 
   const executors = await prisma.user.findMany({
     where: { role: "executor", status: "active" },
@@ -121,6 +130,7 @@ export default async function AdminOrderPage({ params }: Props) {
         <OrderChat
           orderId={id}
           variant="dock"
+          initialHasUnreadChat={initialChatUnread}
           supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
           supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
         />
