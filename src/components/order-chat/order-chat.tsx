@@ -69,32 +69,42 @@ function parseMessageFromRealtime(
   };
 }
 
-function messageSortKey(m: MessageDto) {
-  const t = new Date(m.createdAt).getTime();
-  return Number.isNaN(t) ? 0 : t;
-}
-
-/** Старые сверху, новые снизу (как в Telegram / WhatsApp). */
-function sortMessagesChronological(list: MessageDto[]): MessageDto[] {
+/** Единый порядок: createdAt по возрастанию; при равенстве времени — id (стабильность). */
+function sortMessagesStable(list: MessageDto[]): MessageDto[] {
   return [...list].sort((a, b) => {
-    const ta = messageSortKey(a);
-    const tb = messageSortKey(b);
-    if (ta !== tb) return ta - tb;
+    const ta = new Date(a.createdAt).getTime();
+    const tb = new Date(b.createdAt).getTime();
+    const na = Number.isNaN(ta) ? 0 : ta;
+    const nb = Number.isNaN(tb) ? 0 : tb;
+    if (na !== nb) return na - nb;
     return a.id.localeCompare(b.id);
   });
 }
 
-function mergeById(prev: MessageDto[], incoming: MessageDto): MessageDto[] {
-  if (prev.some((m) => m.id === incoming.id)) return prev;
-  return sortMessagesChronological([...prev, incoming]);
+/**
+ * Единый пайплайн: Map по id → дедуп → финальная сортировка по createdAt.
+ * Не использует unshift / порядок прихода событий.
+ */
+function mergeMessages(
+  prev: MessageDto[],
+  incoming: MessageDto | MessageDto[],
+): MessageDto[] {
+  const map = new Map(prev.map((m) => [m.id, m]));
+  const batch = Array.isArray(incoming) ? incoming : [incoming];
+  for (const m of batch) {
+    map.set(m.id, m);
+  }
+  return sortMessagesStable(Array.from(map.values()));
+}
+
+function removeMessageById(prev: MessageDto[], id: string): MessageDto[] {
+  const map = new Map(prev.map((m) => [m.id, m]));
+  map.delete(id);
+  return sortMessagesStable(Array.from(map.values()));
 }
 
 export type OrderChatProps = {
   orderId: string;
-  /**
-   * Передавайте с server component (page): process.env.NEXT_PUBLIC_* —
-   * на Vercel клиентский бандл иногда не получает NEXT_PUBLIC, а сервер на рантайме — да.
-   */
   supabaseUrl?: string;
   supabaseAnonKey?: string;
 };
@@ -106,6 +116,7 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
     [supabaseUrl, supabaseAnonKey],
   );
 
+  /** Инвариант: всегда отсортировано по createdAt (и id при равенстве). */
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -120,11 +131,6 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
 
   const currentUserId = session?.user?.id;
 
-  const sortedMessages = useMemo(
-    () => sortMessagesChronological(messages),
-    [messages],
-  );
-
   const loadMessages = useCallback(async () => {
     setError(null);
     const res = await fetch(
@@ -138,7 +144,7 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
     }
     const data = (await res.json()) as { messages?: MessageDto[] };
     const raw = Array.isArray(data.messages) ? data.messages : [];
-    setMessages(sortMessagesChronological(raw));
+    setMessages(mergeMessages([], raw));
   }, [orderId]);
 
   useEffect(() => {
@@ -165,13 +171,21 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
     setRealtimeStatus("idle");
 
     const filter = `order_id=eq.${orderId}`;
-    devLog("подписка postgres_changes", { orderId, filter, table: "messages" });
+    devLog("подписка postgres_changes messages *", { orderId, filter });
 
-    function onInsert(
+    function onMessageChange(
       payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
     ) {
-      devLog("событие realtime", payload.eventType, payload);
-      if (payload.eventType !== "INSERT") return;
+      devLog("realtime messages", payload.eventType, payload);
+
+      if (payload.eventType === "DELETE") {
+        const old = payload.old as Record<string, unknown> | null;
+        const id = old?.id != null ? String(old.id) : null;
+        if (!id) return;
+        setMessages((prev) => removeMessageById(prev, id));
+        return;
+      }
+
       const row = payload.new as Record<string, unknown> | null;
       if (!row) return;
       const m = parseMessageFromRealtime(row);
@@ -179,7 +193,7 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
         devLog("строка пропущена", { parsed: m, expectedOrderId: orderIdRef.current });
         return;
       }
-      setMessages((prev) => mergeById(prev, m));
+      setMessages((prev) => mergeMessages(prev, m));
     }
 
     const channel = supabase
@@ -187,12 +201,12 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "messages",
           filter,
         },
-        onInsert,
+        onMessageChange,
       )
       .subscribe((status, err) => {
         devLog("subscribe status", status, err ?? "");
@@ -214,7 +228,7 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [sortedMessages]);
+  }, [messages]);
 
   async function onSend(e: React.FormEvent) {
     e.preventDefault();
@@ -239,7 +253,7 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
     }
     const data = (await res.json()) as { message?: MessageDto };
     if (data.message) {
-      setMessages((prev) => mergeById(prev, data.message!));
+      setMessages((prev) => mergeMessages(prev, data.message!));
     }
     setInput("");
   }
@@ -289,10 +303,10 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
       >
         {loading ? (
           <p className="text-sm text-zinc-500">Загрузка сообщений…</p>
-        ) : sortedMessages.length === 0 ? (
+        ) : messages.length === 0 ? (
           <p className="text-sm text-zinc-500">Пока нет сообщений. Напишите первым.</p>
         ) : (
-          sortedMessages.map((m) => {
+          messages.map((m) => {
             const mine = currentUserId && m.senderId === currentUserId;
             const timeLabel = new Date(m.createdAt).toLocaleString("ru-RU", {
               day: "2-digit",
