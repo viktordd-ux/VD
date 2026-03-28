@@ -39,7 +39,11 @@ export default async function ExecutorOrderPage({ params }: Props) {
       initialFiles={files}
     >
       <ExecutorOrderRealtime orderId={id} userId={session.user.id} />
-      <ExecutorOrderView orderId={id} />
+      <ExecutorOrderView
+        orderId={id}
+        supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
+        supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
+      />
     </ExecutorOrderProvider>
   );
 }

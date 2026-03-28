@@ -71,7 +71,11 @@ export default async function AdminOrderPage({ params }: Props) {
 
         <AdminOrderSummaryCard />
 
-        <OrderChat orderId={id} />
+        <OrderChat
+          orderId={id}
+          supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
+          supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
+        />
 
         <AdminOrderForm executors={executors} executorStats={executorStats} />
 

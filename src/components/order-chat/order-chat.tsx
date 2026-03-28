@@ -1,15 +1,11 @@
 "use client";
 
-import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { createClient, type RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { MessageDto } from "@/lib/message-serialize";
-import {
-  getSupabaseBrowserClient,
-  isSupabaseRealtimeConfigured,
-} from "@/lib/supabase-client";
 
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
@@ -72,8 +68,33 @@ function mergeById(prev: MessageDto[], incoming: MessageDto): MessageDto[] {
   );
 }
 
-export function OrderChat({ orderId }: { orderId: string }) {
+export type OrderChatProps = {
+  orderId: string;
+  /**
+   * Передавайте с server component (page): process.env.NEXT_PUBLIC_* —
+   * на Vercel клиентский бандл иногда не получает NEXT_PUBLIC, а сервер на рантайме — да.
+   */
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+};
+
+function resolveSupabaseEnv(p: Pick<OrderChatProps, "supabaseUrl" | "supabaseAnonKey">) {
+  const url = (p.supabaseUrl || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+  const anonKey = (p.supabaseAnonKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+  return { url, anonKey };
+}
+
+export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatProps) {
   const { data: session, status } = useSession();
+  const { url: sbUrl, anonKey: sbAnon } = useMemo(
+    () => resolveSupabaseEnv({ supabaseUrl, supabaseAnonKey }),
+    [supabaseUrl, supabaseAnonKey],
+  );
+  const supabase = useMemo(() => {
+    if (!sbUrl || !sbAnon) return null;
+    return createClient(sbUrl, sbAnon);
+  }, [sbUrl, sbAnon]);
+
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -118,14 +139,8 @@ export function OrderChat({ orderId }: { orderId: string }) {
   useEffect(() => {
     if (!orderId || typeof orderId !== "string") return;
 
-    if (!isSupabaseRealtimeConfigured()) {
-      devLog("Realtime отключён: нет NEXT_PUBLIC_SUPABASE_URL или NEXT_PUBLIC_SUPABASE_ANON_KEY");
-      setRealtimeStatus("unconfigured");
-      return;
-    }
-
-    const supabase = getSupabaseBrowserClient();
     if (!supabase) {
+      devLog("Realtime отключён: нет URL/anon (передайте props с page или NEXT_PUBLIC_* в .env)");
       setRealtimeStatus("unconfigured");
       return;
     }
@@ -176,7 +191,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
       devLog("removeChannel", `order-messages:${orderId}`);
       void supabase.removeChannel(channel);
     };
-  }, [orderId]);
+  }, [orderId, supabase]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -229,10 +244,10 @@ export function OrderChat({ orderId }: { orderId: string }) {
 
       {realtimeStatus === "unconfigured" && (
         <p className="mt-2 text-xs text-amber-800">
-          Мгновенные обновления выключены: задайте в окружении{" "}
+          Мгновенные обновления выключены: в Vercel задайте{" "}
           <code className="rounded bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_URL</code> и{" "}
           <code className="rounded bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
-          и пересоберите приложение.
+          (как в Supabase → Settings → API) и сделайте <strong>Redeploy</strong>.
         </p>
       )}
       {realtimeStatus === "error" && (

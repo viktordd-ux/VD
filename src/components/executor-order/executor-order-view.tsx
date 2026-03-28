@@ -11,7 +11,15 @@ import { ExecutorOrderHistoryTabs } from "./executor-order-history-tabs";
 import { OrderChat } from "@/components/order-chat/order-chat";
 import { useExecutorOrder } from "./executor-order-context";
 
-export function ExecutorOrderView({ orderId }: { orderId: string }) {
+export function ExecutorOrderView({
+  orderId,
+  supabaseUrl,
+  supabaseAnonKey,
+}: {
+  orderId: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+}) {
   const { order, files } = useExecutorOrder();
   const executorFiles = files.filter((f) => f.uploadedBy === "executor");
   const studioFiles = files.filter((f) => f.uploadedBy === "admin");
@@ -47,7 +55,11 @@ export function ExecutorOrderView({ orderId }: { orderId: string }) {
         </p>
       </Card>
 
-      <OrderChat orderId={orderId} />
+      <OrderChat
+        orderId={orderId}
+        supabaseUrl={supabaseUrl}
+        supabaseAnonKey={supabaseAnonKey}
+      />
 
       <Card className="p-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Этапы</h2>
