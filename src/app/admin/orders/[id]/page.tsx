@@ -92,7 +92,7 @@ export default async function AdminOrderPage({ params }: Props) {
           <div className="order-3 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-2 lg:gap-5">
             <AdminOrderForm executors={executors} executorStats={executorStats} />
 
-            <div className="grid gap-4 xl:grid-cols-2 xl:items-start xl:gap-4">
+            <div className="grid gap-4 2xl:grid-cols-2 2xl:items-start 2xl:gap-4">
               <Card className="p-4 md:p-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                   <div>

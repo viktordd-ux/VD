@@ -77,12 +77,12 @@ function SortableRow({
     <li
       ref={setNodeRef}
       style={style}
-      className="flex flex-col gap-2 rounded-lg border border-zinc-100 bg-zinc-50/80 p-3 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 rounded-lg border border-zinc-100 bg-zinc-50/80 p-3 min-w-0 xl:flex-row xl:items-start xl:justify-between xl:gap-3"
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+      <div className="flex min-w-0 w-full flex-1 flex-col gap-2 xl:flex-row xl:flex-wrap xl:items-center">
         <button
           type="button"
-          className="touch-none cursor-grab select-none rounded px-1 text-zinc-400 active:cursor-grabbing"
+          className="touch-none shrink-0 cursor-grab select-none rounded px-1 text-zinc-400 active:cursor-grabbing"
           title="Перетащить"
           {...attributes}
           {...listeners}
@@ -91,7 +91,7 @@ function SortableRow({
         </button>
         <input
           defaultValue={c.title}
-          className="w-full min-w-0 rounded border border-zinc-200 bg-white px-2 py-1 text-sm font-medium sm:max-w-xs"
+          className="min-w-0 w-full max-w-full rounded border border-zinc-200 bg-white px-2 py-1 text-sm font-medium xl:min-w-[8rem] xl:flex-1"
           onBlur={(e) => {
             const v = e.target.value.trim();
             if (v && v !== c.title) void onSave(c.id, { title: v });
@@ -100,7 +100,7 @@ function SortableRow({
         <input
           type="datetime-local"
           defaultValue={dueInputValue(c.dueDate)}
-          className="rounded border border-zinc-200 bg-white px-2 py-1 text-xs"
+          className="min-w-0 shrink-0 rounded border border-zinc-200 bg-white px-2 py-1 text-xs"
           onBlur={(e) => {
             const v = e.target.value;
             const prevIso = c.dueDate
@@ -119,7 +119,7 @@ function SortableRow({
           step={0.01}
           title="Выплата исполнителю за этап (₽)"
           defaultValue={Number(c.paymentAmount)}
-          className="w-[88px] rounded border border-zinc-200 bg-white px-2 py-1 text-xs tabular-nums"
+          className="w-[min(100%,7rem)] shrink-0 rounded border border-zinc-200 bg-white px-2 py-1 text-xs tabular-nums"
           onBlur={(e) => {
             const v = Number(e.target.value);
             if (!Number.isFinite(v) || v < 0) return;
@@ -133,7 +133,7 @@ function SortableRow({
             const status = e.target.value as "pending" | "awaiting_approval" | "done";
             void onSave(c.id, { status });
           }}
-          className="w-fit rounded border border-zinc-200 bg-white px-2 py-1 text-sm"
+          className="min-w-0 max-w-full shrink rounded border border-zinc-200 bg-white px-2 py-1 text-sm"
         >
           <option value="pending">{checkpointStatusLabel.pending}</option>
           <option value="awaiting_approval">{checkpointStatusLabel.awaiting_approval}</option>
@@ -144,7 +144,7 @@ function SortableRow({
         type="button"
         onClick={() => onRemove(c.id)}
         disabled={busy === c.id}
-        className="text-xs text-red-600 hover:underline disabled:opacity-50"
+        className="shrink-0 self-start text-xs text-red-600 hover:underline disabled:opacity-50 xl:self-center"
       >
         Удалить
       </button>

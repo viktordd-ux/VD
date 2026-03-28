@@ -243,7 +243,7 @@ export function OrderChat({
       className={cn(
         "flex flex-col p-4 md:p-6",
         variant === "sidebar" &&
-          "min-h-[18rem] max-h-[min(32rem,70vh)] lg:min-h-0 lg:max-h-[calc(100dvh-2rem)] lg:h-[calc(100dvh-2rem)]",
+          "min-h-[18rem] max-h-[min(32rem,70vh)] lg:min-h-0 lg:max-h-[calc(100dvh-2rem)] lg:overflow-hidden",
       )}
     >
       <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
