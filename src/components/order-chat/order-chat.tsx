@@ -1,11 +1,12 @@
 "use client";
 
-import { createClient, type RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { MessageDto } from "@/lib/message-serialize";
+import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
@@ -61,11 +62,24 @@ function parseMessageFromRealtime(
   };
 }
 
+function messageSortKey(m: MessageDto) {
+  const t = new Date(m.createdAt).getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+
+/** Старые сверху, новые снизу (как в Telegram / WhatsApp). */
+function sortMessagesChronological(list: MessageDto[]): MessageDto[] {
+  return [...list].sort((a, b) => {
+    const ta = messageSortKey(a);
+    const tb = messageSortKey(b);
+    if (ta !== tb) return ta - tb;
+    return a.id.localeCompare(b.id);
+  });
+}
+
 function mergeById(prev: MessageDto[], incoming: MessageDto): MessageDto[] {
   if (prev.some((m) => m.id === incoming.id)) return prev;
-  return [...prev, incoming].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  );
+  return sortMessagesChronological([...prev, incoming]);
 }
 
 export type OrderChatProps = {
@@ -78,22 +92,12 @@ export type OrderChatProps = {
   supabaseAnonKey?: string;
 };
 
-function resolveSupabaseEnv(p: Pick<OrderChatProps, "supabaseUrl" | "supabaseAnonKey">) {
-  const url = (p.supabaseUrl || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
-  const anonKey = (p.supabaseAnonKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
-  return { url, anonKey };
-}
-
 export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatProps) {
   const { data: session, status } = useSession();
-  const { url: sbUrl, anonKey: sbAnon } = useMemo(
-    () => resolveSupabaseEnv({ supabaseUrl, supabaseAnonKey }),
+  const supabase = useMemo(
+    () => getSupabaseBrowserClient({ supabaseUrl, supabaseAnonKey }),
     [supabaseUrl, supabaseAnonKey],
   );
-  const supabase = useMemo(() => {
-    if (!sbUrl || !sbAnon) return null;
-    return createClient(sbUrl, sbAnon);
-  }, [sbUrl, sbAnon]);
 
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [input, setInput] = useState("");
@@ -109,6 +113,11 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
 
   const currentUserId = session?.user?.id;
 
+  const sortedMessages = useMemo(
+    () => sortMessagesChronological(messages),
+    [messages],
+  );
+
   const loadMessages = useCallback(async () => {
     setError(null);
     const res = await fetch(
@@ -121,7 +130,8 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
       return;
     }
     const data = (await res.json()) as { messages?: MessageDto[] };
-    setMessages(Array.isArray(data.messages) ? data.messages : []);
+    const raw = Array.isArray(data.messages) ? data.messages : [];
+    setMessages(sortMessagesChronological(raw));
   }, [orderId]);
 
   useEffect(() => {
@@ -264,13 +274,14 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
         </p>
       )}
 
-      <div className="mt-4 max-h-[min(24rem,50vh)] min-h-[10rem] space-y-2 overflow-y-auto rounded-lg border border-zinc-100 bg-zinc-50/80 p-3">
+      <div className="mt-4 flex max-h-[min(24rem,50vh)] min-h-[10rem] flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-zinc-100 bg-zinc-50/80 p-3">
         {loading ? (
           <p className="text-sm text-zinc-500">Загрузка сообщений…</p>
-        ) : messages.length === 0 ? (
+        ) : sortedMessages.length === 0 ? (
           <p className="text-sm text-zinc-500">Пока нет сообщений. Напишите первым.</p>
         ) : (
-          messages.map((m) => {
+          <div className="mt-auto flex min-h-0 w-full flex-col gap-2">
+          {sortedMessages.map((m) => {
             const mine = currentUserId && m.senderId === currentUserId;
             const timeLabel = new Date(m.createdAt).toLocaleString("ru-RU", {
               day: "2-digit",
@@ -308,9 +319,10 @@ export function OrderChat({ orderId, supabaseUrl, supabaseAnonKey }: OrderChatPr
                 </div>
               </div>
             );
-          })
+          })}
+          <div ref={bottomRef} aria-hidden className="h-0 shrink-0" />
+          </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       <form onSubmit={onSend} className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">

@@ -60,7 +60,11 @@ export default async function AdminOrderPage({ params }: Props) {
       initialCheckpoints={checkpoints}
       initialFiles={files}
     >
-      <AdminOrderRealtime orderId={id} />
+      <AdminOrderRealtime
+        orderId={id}
+        supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
+        supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
+      />
       <div className="mx-auto max-w-3xl space-y-6 md:space-y-8">
         <Link
           href="/admin/orders"

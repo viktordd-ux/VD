@@ -15,9 +15,13 @@ import { useExecutorOrder } from "./executor-order-context";
 export function ExecutorOrderRealtime({
   orderId,
   userId,
+  supabaseUrl,
+  supabaseAnonKey,
 }: {
   orderId: string;
   userId: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
 }) {
   const router = useRouter();
   const { setOrder, setCheckpoints, setFiles, bumpHistory } = useExecutorOrder();
@@ -25,7 +29,7 @@ export function ExecutorOrderRealtime({
   userIdRef.current = userId;
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getSupabaseBrowserClient({ supabaseUrl, supabaseAnonKey });
     if (!supabase) return;
 
     function applyOrderRow(row: Record<string, unknown>) {
@@ -150,7 +154,16 @@ export function ExecutorOrderRealtime({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [orderId, router, setOrder, setCheckpoints, setFiles, bumpHistory]);
+  }, [
+    orderId,
+    router,
+    supabaseUrl,
+    supabaseAnonKey,
+    setOrder,
+    setCheckpoints,
+    setFiles,
+    bumpHistory,
+  ]);
 
   return null;
 }

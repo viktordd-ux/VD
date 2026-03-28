@@ -16,12 +16,21 @@ import {
 } from "@/lib/order-client-deserialize";
 import { useAdminOrder } from "./admin-order-context";
 
-export function AdminOrderRealtime({ orderId }: { orderId: string }) {
+export function AdminOrderRealtime({
+  orderId,
+  supabaseUrl,
+  supabaseAnonKey,
+}: {
+  orderId: string;
+  /** С server page — иначе на проде Realtime не поднимается (пустой NEXT_PUBLIC_* в бандле). */
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+}) {
   const router = useRouter();
   const { setOrder, setCheckpoints, setFiles, bumpHistory } = useAdminOrder();
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = getSupabaseBrowserClient({ supabaseUrl, supabaseAnonKey });
     if (!supabase) return;
 
     function applyOrderRow(row: Record<string, unknown>) {
@@ -160,6 +169,8 @@ export function AdminOrderRealtime({ orderId }: { orderId: string }) {
   }, [
     orderId,
     router,
+    supabaseUrl,
+    supabaseAnonKey,
     setOrder,
     setCheckpoints,
     setFiles,
