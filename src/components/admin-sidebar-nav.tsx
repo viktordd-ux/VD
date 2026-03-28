@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { PushNotificationsToggle } from "@/components/push-notifications-toggle";
 import { cn } from "@/lib/cn";
 
 type Badges = { review: number; newLeads: number; overdue: number };
@@ -81,6 +82,7 @@ export function AdminSidebarNav() {
           </Link>
         );
       })}
+      <PushNotificationsToggle layout="nav" />
     </nav>
   );
 }

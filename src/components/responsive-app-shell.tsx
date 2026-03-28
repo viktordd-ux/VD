@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { PushNotificationsToggle } from "@/components/push-notifications-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
 import { cn } from "@/lib/cn";
 
@@ -56,8 +55,7 @@ export function ResponsiveAppShell({
       <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-200/90 bg-white shadow-sm shadow-zinc-950/[0.03] md:flex">
         <SidebarBrand variant={variant} />
         {sidebarNav}
-        <div className="mt-auto space-y-3 border-t border-zinc-100 p-3">
-          <PushNotificationsToggle />
+        <div className="mt-auto border-t border-zinc-100 p-3">
           <SignOutButton />
         </div>
       </aside>
@@ -101,8 +99,7 @@ export function ResponsiveAppShell({
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
             {sidebarNav}
           </div>
-          <div className="space-y-3 border-t border-zinc-100 p-3">
-            <PushNotificationsToggle />
+          <div className="border-t border-zinc-100 p-3">
             <SignOutButton />
           </div>
         </aside>

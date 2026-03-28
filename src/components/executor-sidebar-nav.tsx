@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PushNotificationsToggle } from "@/components/push-notifications-toggle";
 import { cn } from "@/lib/cn";
 
 const items: {
@@ -65,6 +66,7 @@ export function ExecutorSidebarNav() {
           </Link>
         );
       })}
+      <PushNotificationsToggle layout="nav" />
     </nav>
   );
 }
