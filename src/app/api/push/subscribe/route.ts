@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
@@ -32,25 +33,44 @@ export async function POST(req: Request) {
     );
   }
 
-  await prisma.pushSubscription.upsert({
-    where: { endpoint },
-    create: {
-      userId: user.id,
-      endpoint,
-      p256dh,
-      auth,
-    },
-    update: {
-      userId: user.id,
-      p256dh,
-      auth,
-    },
-  });
+  try {
+    await prisma.pushSubscription.upsert({
+      where: { endpoint },
+      create: {
+        userId: user.id,
+        endpoint,
+        p256dh,
+        auth,
+      },
+      update: {
+        userId: user.id,
+        p256dh,
+        auth,
+      },
+    });
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { pushEnabled: true },
-  });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { pushEnabled: true },
+    });
+  } catch (e) {
+    console.error("[push/subscribe]", e);
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      if (e.code === "P2021") {
+        return NextResponse.json(
+          {
+            error:
+              "В базе нет таблицы подписок. Примените миграции (prisma migrate deploy к продовой БД).",
+          },
+          { status: 500 },
+        );
+      }
+    }
+    return NextResponse.json(
+      { error: "Ошибка сохранения подписки в базе" },
+      { status: 500 },
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -14,11 +14,16 @@ function prismaDatabaseUrl(): string | undefined {
   try {
     const u = new URL(raw);
     if (!u.searchParams.has("pool_timeout")) {
-      u.searchParams.set("pool_timeout", "30");
+      u.searchParams.set("pool_timeout", "60");
+    }
+    if (!u.searchParams.has("connect_timeout")) {
+      u.searchParams.set("connect_timeout", "30");
     }
     return u.toString();
   } catch {
-    return raw;
+    const sep = raw.includes("?") ? "&" : "?";
+    if (/[?&]pool_timeout=/.test(raw)) return raw;
+    return `${raw}${sep}pool_timeout=60&connect_timeout=30`;
   }
 }
 
@@ -31,6 +36,11 @@ export const prisma =
       db: {
         url: prismaDatabaseUrl() ?? process.env.DATABASE_URL,
       },
+    },
+    /** По умолчанию maxWait 2 с — мало для Vercel + Supabase при очереди к пулу. */
+    transactionOptions: {
+      maxWait: 30_000,
+      timeout: 120_000,
     },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });

@@ -83,6 +83,7 @@ export function PushNotificationsToggle() {
     const save = await fetch("/api/push/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({
         endpoint: subJson.endpoint,
         keys: { p256dh: subJson.keys.p256dh, auth: subJson.keys.auth },
@@ -90,8 +91,16 @@ export function PushNotificationsToggle() {
     });
 
     if (!save.ok) {
+      let detail = "Не удалось сохранить подписку";
+      try {
+        const j = (await save.json()) as { error?: string };
+        if (typeof j.error === "string" && j.error.trim()) detail = j.error.trim();
+      } catch {
+        if (save.status === 401) detail = "Сессия истекла — войдите снова";
+        else if (save.status === 403) detail = "Нет доступа (профиль или роль)";
+      }
       setStatus("error");
-      setMessage("Не удалось сохранить подписку");
+      setMessage(detail);
       return;
     }
 

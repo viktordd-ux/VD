@@ -30,12 +30,17 @@ export default auth((req) => {
   const isApiAuth = pathname.startsWith("/api/auth");
 
   if (pathname.startsWith("/api") && !isApiAuth) {
+    /** Публичный VAPID-ключ (не секрет); без сессии тоже доступен для fetch. */
+    if (pathname === "/api/push/vapid-public-key") {
+      return NextResponse.next();
+    }
     if (!isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (
       executorNeedsOnboarding &&
-      !pathname.startsWith("/api/users/me")
+      !pathname.startsWith("/api/users/me") &&
+      !pathname.startsWith("/api/push/")
     ) {
       return NextResponse.json(
         { error: "Требуется завершить регистрацию профиля" },

@@ -27,6 +27,8 @@ import {
 import type { AdminOrderListViewSnapshot } from "@/lib/order-list-filters";
 
 export const dynamic = "force-dynamic";
+/** Vercel: тяжёлый findMany по заказам; на Pro можно увеличить лимит времени функции. */
+export const maxDuration = 60;
 
 export default async function OrdersPage({
   searchParams,
@@ -51,24 +53,35 @@ export default async function OrdersPage({
         ? { ...orderIsActive, status: "DONE" }
         : { ...orderIsActive };
 
-  const executorsForSkills = await prisma.user.findMany({
-    where: { role: "executor", status: "active" },
-    select: { skills: true },
-  });
+  /**
+   * Интерактивная транзакция: maxWait/timeout задаются во втором аргументе.
+   * У batch-массива $transaction([...]) в Prisma 5 в опциях только isolationLevel — дефолтный maxWait ~2 с.
+   */
+  const [executorsForSkills, templates, ordersRaw] = await prisma.$transaction(
+    async (tx) => {
+      const ex = await tx.user.findMany({
+        where: { role: "executor", status: "active" },
+        select: { skills: true },
+      });
+      const tpl = await tx.orderTemplate.findMany({
+        orderBy: { title: "asc" },
+        select: { id: true, title: true },
+      });
+      const ord = await tx.order.findMany({
+        where,
+        include: { executor: true, checkpoints: true, files: true },
+        orderBy: { updatedAt: "desc" },
+      });
+      return [ex, tpl, ord] as const;
+    },
+    { maxWait: 60_000, timeout: 120_000 },
+  );
+
   const allSkills = [
     ...new Set(executorsForSkills.flatMap((u) => u.skills)),
   ].sort((a, b) => a.localeCompare(b, "ru"));
 
-  const templates = await prisma.orderTemplate.findMany({
-    orderBy: { title: "asc" },
-    select: { id: true, title: true },
-  });
-
-  let orders = (await prisma.order.findMany({
-    where,
-    include: { executor: true, checkpoints: true, files: true },
-    orderBy: { updatedAt: "desc" },
-  })) as OrderWithRelations[];
+  let orders = ordersRaw as OrderWithRelations[];
 
   if (lowMargin) {
     orders = orders.filter(isLowMargin);
