@@ -25,8 +25,8 @@ export default async function AuditPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">История</h1>
-      <p className="text-sm text-zinc-600">
+      <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">История</h1>
+      <p className="text-sm text-[var(--muted)]">
         Последние записи журнала: кто, когда и что изменил в системе.
       </p>
       {rows.length === 0 ? (
@@ -37,7 +37,7 @@ export default async function AuditPage() {
       ) : (
         <TableWrap>
           <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="border-b border-zinc-100 bg-zinc-50/90">
+            <thead className="border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]">
               <tr>
                 <th className={thClass}>Когда</th>
                 <th className={thClass}>Кто</th>
@@ -48,19 +48,19 @@ export default async function AuditPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className={trClass}>
-                  <td className={`whitespace-nowrap ${tdClass} text-zinc-600`}>
+                  <td className={`whitespace-nowrap ${tdClass} text-[var(--muted)]`}>
                     {r.changedAt.toISOString().replace("T", " ").slice(0, 19)}
                   </td>
                   <td className={tdClass}>
                     {r.changedBy.name}
-                    <span className="block text-xs text-zinc-500">
+                    <span className="block text-xs text-[var(--muted)]">
                       {userRoleLabel(r.changedBy.role)}
                     </span>
                   </td>
                   <td className={tdClass}>
                     {auditEntityLabel(r.entityType)} · {r.entityId.slice(0, 8)}…
                   </td>
-                  <td className={`${tdClass} text-xs font-medium text-zinc-800`}>
+                  <td className={`${tdClass} text-xs font-medium text-[var(--text)]`}>
                     {auditActionLabel(r.actionType)}
                   </td>
                 </tr>

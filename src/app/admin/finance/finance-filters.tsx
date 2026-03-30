@@ -13,6 +13,9 @@ type Props = {
   };
 };
 
+const fieldClass =
+  "mt-1 block rounded-md border border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--text)] shadow-sm";
+
 export function FinanceFilters({ executors, initial }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -38,10 +41,10 @@ export function FinanceFilters({ executors, initial }: Props) {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/[0.06]"
+      className="flex flex-wrap items-end gap-4 rounded-2xl border border-[color:var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-black/[0.06] dark:shadow-black/30"
     >
       <div>
-        <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+        <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
           <IconCalendar />
           Период с
         </label>
@@ -49,11 +52,11 @@ export function FinanceFilters({ executors, initial }: Props) {
           type="date"
           name="dateFrom"
           defaultValue={initial.dateFrom}
-          className="mt-1 block rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+          className={fieldClass}
         />
       </div>
       <div>
-        <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+        <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
           <IconCalendar />
           по
         </label>
@@ -61,18 +64,18 @@ export function FinanceFilters({ executors, initial }: Props) {
           type="date"
           name="dateTo"
           defaultValue={initial.dateTo}
-          className="mt-1 block rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+          className={fieldClass}
         />
       </div>
       <div>
-        <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+        <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
           <IconUser />
           Исполнитель
         </label>
         <select
           name="executorId"
           defaultValue={initial.executorId}
-          className="mt-1 block min-w-[180px] rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+          className={`${fieldClass} min-w-[180px]`}
         >
           <option value="">Все</option>
           {executors.map((u) => (
@@ -82,12 +85,12 @@ export function FinanceFilters({ executors, initial }: Props) {
           ))}
         </select>
       </div>
-      <label className="flex cursor-pointer items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
+      <label className="flex cursor-pointer items-center gap-2 rounded-md border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-3 py-2 text-sm text-[var(--text)]">
         <input
           type="checkbox"
           name="lowMargin"
           defaultChecked={initial.lowMargin}
-          className="rounded border-zinc-300"
+          className="h-4 w-4 rounded border-[color:var(--border)]"
         />
         <IconAlert />
         Только низкая маржа (&lt; 50%)
@@ -95,7 +98,7 @@ export function FinanceFilters({ executors, initial }: Props) {
       <button
         type="submit"
         disabled={busy}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
         {busy ? "…" : "Применить"}
       </button>
@@ -123,7 +126,7 @@ function IconUser() {
 
 function IconAlert() {
   return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-zinc-600" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[var(--muted)]" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 9v4M12 17h.01" />
       <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
     </svg>

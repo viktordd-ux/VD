@@ -45,18 +45,18 @@ export default async function RisksPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Риски</h1>
-      <p className="text-sm text-zinc-600">
+      <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Риски</h1>
+      <p className="text-sm text-[var(--muted)]">
         Активные заказы с автоматическими метками: просрочки, правки, этапы, тишина
         (пороги из переменных окружения).
       </p>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
           Заказы
         </h2>
         {flagged.length === 0 && (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-[var(--muted)]">
             Сейчас нет заказов, подпадающих под выбранные риски.
           </p>
         )}
@@ -66,11 +66,11 @@ export default async function RisksPage() {
               <div>
                 <Link
                   href={`/admin/orders/${order.id}`}
-                  className="font-medium text-blue-600 hover:underline"
+                  className="font-medium text-blue-600 hover:underline dark:text-blue-400"
                 >
                   {order.title}
                 </Link>
-                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
                   <OrderStatusBadge status={order.status} />
                   <span>· правок: {order.revisionCount}</span>
                 </p>
@@ -111,14 +111,14 @@ export default async function RisksPage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
           Заблокированные исполнители
         </h2>
-        <ul className="mt-2 space-y-1 text-sm">
+        <ul className="mt-2 space-y-1 text-sm text-[var(--text)]">
           {banned.map((u) => (
             <li key={u.id}>{u.name}</li>
           ))}
-          {banned.length === 0 && <li className="text-zinc-500">Нет заблокированных</li>}
+          {banned.length === 0 && <li className="text-[var(--muted)]">Нет заблокированных</li>}
         </ul>
       </section>
     </div>

@@ -10,29 +10,28 @@ import {
   useSyncExternalStore,
 } from "react";
 
-export type ThemeMode = "light" | "dark" | "system";
+export type ThemeMode = "light" | "dark";
 
 const STORAGE_KEY = "vd-theme";
 
 function getStoredTheme(): ThemeMode {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "light";
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "light" || v === "dark" || v === "system") return v;
+    if (v === "light" || v === "dark") return v;
+    /** Старый режим «system» и пустое значение — один раз фиксируем явную тему. */
+    const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const next: ThemeMode = dark ? "dark" : "light";
+    localStorage.setItem(STORAGE_KEY, next);
+    return next;
   } catch {
     /* ignore */
   }
-  return "system";
-}
-
-function getSystemDark(): boolean {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return "light";
 }
 
 export function resolveDark(mode: ThemeMode): boolean {
-  if (mode === "dark") return true;
-  if (mode === "light") return false;
-  return getSystemDark();
+  return mode === "dark";
 }
 
 function applyDarkClass(dark: boolean) {
@@ -57,7 +56,7 @@ function readSnapshot(): ThemeMode {
 }
 
 function readServerSnapshot(): ThemeMode {
-  return "system";
+  return "light";
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -79,10 +78,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setResolvedDark(dark);
     }
     sync();
-    if (mode !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
   }, [mode]);
 
   const setMode = useCallback((next: ThemeMode) => {

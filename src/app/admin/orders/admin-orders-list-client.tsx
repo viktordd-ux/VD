@@ -319,23 +319,23 @@ export function AdminOrdersListClient({
         />
       ) : (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-[11px] text-zinc-500 md:text-xs">
-            <span className="mr-1 text-zinc-400">Сортировка</span>
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-[11px] text-[var(--muted)] md:text-xs">
+            <span className="mr-1 text-[var(--muted)]">Сортировка</span>
             {sortGroups.map((g, i) => {
               if ("only" in g) {
                 const isOn = sort === g.only;
                 return (
                   <span key={g.label} className="inline-flex items-center">
                     {i > 0 ? (
-                      <span className="mx-1 text-zinc-300" aria-hidden>
+                      <span className="mx-1 text-[color:var(--border)]" aria-hidden>
                         ·
                       </span>
                     ) : null}
                     <Link
                       href={sortHref(g.only)}
                       className={cn(
-                        "cursor-pointer rounded-md px-1.5 py-0.5 transition-all duration-150 ease-out hover:bg-zinc-100 hover:text-zinc-800 active:scale-[0.98]",
-                        isOn && "font-medium text-zinc-900",
+                        "cursor-pointer rounded-md px-1.5 py-0.5 transition-all duration-150 ease-out hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.98]",
+                        isOn && "font-medium text-[var(--text)]",
                       )}
                     >
                       {g.label}
@@ -349,15 +349,15 @@ export function AdminOrdersListClient({
               return (
                 <span key={g.label} className="inline-flex items-center">
                   {i > 0 ? (
-                    <span className="mx-1 text-zinc-300" aria-hidden>
+                    <span className="mx-1 text-[color:var(--border)]" aria-hidden>
                       ·
                     </span>
                   ) : null}
                   <Link
                     href={sortHref(next)}
                     className={cn(
-                      "cursor-pointer rounded-md px-1.5 py-0.5 transition-all duration-150 ease-out hover:bg-zinc-100 hover:text-zinc-800 active:scale-[0.98]",
-                      isGroup && "font-medium text-zinc-900",
+                      "cursor-pointer rounded-md px-1.5 py-0.5 transition-all duration-150 ease-out hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.98]",
+                      isGroup && "font-medium text-[var(--text)]",
                     )}
                   >
                     {g.label}
@@ -386,7 +386,7 @@ export function AdminOrdersListClient({
                 return (
                   <div
                     key={o.id}
-                    className="group relative flex min-h-[3.5rem] origin-center items-stretch will-change-transform transition-all duration-200 ease-out first:rounded-t-xl last:rounded-b-xl hover:z-[1] hover:scale-[1.01] hover:bg-[color:var(--muted-bg)] hover:shadow-[0_1px_0_rgba(15,23,42,0.06)] active:scale-[0.98] dark:hover:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                    className="group relative flex min-h-[3.5rem] origin-center items-stretch will-change-transform transition-all duration-200 ease-out first:rounded-t-xl last:rounded-b-xl hover:z-[1] hover:scale-[1.005] hover:bg-[color:var(--muted-bg)] hover:shadow-[0_1px_0_rgba(15,23,42,0.06)] active:scale-[0.99] dark:hover:shadow-[0_1px_0_rgba(255,255,255,0.08)]"
                   >
                     <div
                       className="flex shrink-0 items-center pl-2 pr-0.5"

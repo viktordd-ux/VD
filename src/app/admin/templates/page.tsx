@@ -13,7 +13,7 @@ import { cn } from "@/lib/cn";
 export const dynamic = "force-dynamic";
 
 const primaryLink = cn(
-  "inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800",
+  "inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200",
 );
 
 export default async function TemplatesPage() {
@@ -24,7 +24,7 @@ export default async function TemplatesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">
           Шаблоны заказов
         </h1>
         <Link
@@ -50,7 +50,7 @@ export default async function TemplatesPage() {
           <div className="hidden md:block">
             <TableWrap>
               <table className="w-full min-w-[640px] text-left text-sm">
-                <thead className="border-b border-zinc-100 bg-zinc-50/90">
+                <thead className="border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]">
                   <tr>
                     <th className={thClass}>Название</th>
                     <th className={thClass}>Теги</th>
@@ -61,20 +61,20 @@ export default async function TemplatesPage() {
                   {list.map((t) => (
                     <tr key={t.id} className={trClass}>
                       <td className={`${tdClass} font-medium`}>{t.title}</td>
-                      <td className={`${tdClass} text-zinc-600`}>
+                      <td className={`${tdClass} text-[var(--muted)]`}>
                         {t.tags.length ? t.tags.join(", ") : "—"}
                       </td>
                       <td className={tdClass}>
                         <div className="flex flex-wrap gap-3">
                           <Link
                             href={`/admin/templates/${t.id}`}
-                            className="text-sm font-medium text-blue-600 hover:underline"
+                            className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
                           >
                             Редактировать
                           </Link>
                           <Link
                             href={`/admin/quick?template=${t.id}`}
-                            className="text-sm font-medium text-blue-600 hover:underline"
+                            className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
                           >
                             Создать заказ из шаблона
                           </Link>
@@ -90,20 +90,20 @@ export default async function TemplatesPage() {
           <div className="space-y-3 md:hidden">
             {list.map((t) => (
               <Card key={t.id} className="p-4 shadow-sm">
-                <p className="text-base font-semibold text-zinc-900">{t.title}</p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                <p className="text-base font-semibold text-[var(--text)]">{t.title}</p>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
                   {t.tags.length ? t.tags.join(", ") : "—"}
                 </p>
                 <div className="mt-4 flex flex-col gap-2">
                   <Link
                     href={`/admin/templates/${t.id}`}
-                    className="flex min-h-11 items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                    className="flex min-h-11 items-center justify-center rounded-lg border border-[color:var(--border)] bg-[var(--card)] px-4 text-sm font-medium text-[var(--text)] hover:bg-[color:var(--muted-bg)]"
                   >
                     Редактировать
                   </Link>
                   <Link
                     href={`/admin/quick?template=${t.id}`}
-                    className="flex min-h-11 items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800"
+                    className="flex min-h-11 items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
                   >
                     Создать заказ из шаблона
                   </Link>

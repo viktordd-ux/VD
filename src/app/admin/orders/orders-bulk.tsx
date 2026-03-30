@@ -40,7 +40,7 @@ export function OrdersBulkCheckbox({ orderId }: { orderId: string }) {
   return (
     <input
       type="checkbox"
-      className="h-4 w-4 rounded border-zinc-300"
+      className="h-4 w-4 rounded border-[color:var(--border)] bg-[var(--card)]"
       checked={selected.has(orderId)}
       onChange={() => toggle(orderId)}
       aria-label="Выбрать заказ"

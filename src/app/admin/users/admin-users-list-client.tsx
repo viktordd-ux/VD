@@ -55,7 +55,7 @@ export function AdminUsersListClient({
           <CreateExecutorDialog onCreated={refresh} />
         </div>
       </div>
-      <p className="rounded-xl border border-zinc-200 bg-zinc-100 px-4 py-3 text-sm text-zinc-800">
+      <p className="rounded-xl border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-4 py-3 text-sm text-[var(--text)]">
         Рейтинг считается по завершённым заказам: пунктуальность, объём, скорость и вклад (шкала 0–100).
         Нажмите на строку, чтобы открыть карточку исполнителя.
       </p>
@@ -63,7 +63,7 @@ export function AdminUsersListClient({
       <div className="hidden md:block">
         <TableWrap>
           <table className="w-full min-w-[960px] text-left text-sm">
-            <thead className="border-b border-zinc-100 bg-zinc-50/90">
+            <thead className="border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]">
               <tr>
                 <th className={thClass}>Имя</th>
                 <th className={thClass}>Основной навык</th>
@@ -80,7 +80,10 @@ export function AdminUsersListClient({
               {rows.map((u) => {
                 const rating = u.rating;
                 return (
-                  <tr key={u.id} className={cn(trClass, "cursor-pointer hover:bg-zinc-100/80")}>
+                  <tr
+                    key={u.id}
+                    className={cn(trClass, "cursor-pointer hover:bg-[color:var(--muted-bg)]")}
+                  >
                     <td className={tdClass}>
                       <div className="flex items-center gap-3">
                         <Avatar
@@ -102,7 +105,7 @@ export function AdminUsersListClient({
                     </td>
                     <td className={tdClass}>
                       {u.primarySkill ? (
-                        <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-800 ring-1 ring-zinc-200">
+                        <span className="inline-flex rounded-full bg-[color:var(--muted-bg)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text)] ring-1 ring-[color:var(--border)]">
                           {u.primarySkill}
                         </span>
                       ) : (
@@ -110,25 +113,29 @@ export function AdminUsersListClient({
                       )}
                     </td>
                     <td className={`${tdClass} max-w-[240px]`}>
-                      <span className="line-clamp-2 text-zinc-700">
+                      <span className="line-clamp-2 text-[var(--muted)]">
                         {u.skills.length ? u.skills.join(", ") : "—"}
                       </span>
                     </td>
                     <td className={`${tdClass} tabular-nums`}>
                       <div className="min-w-[120px]">
-                        <p className="text-xs font-semibold text-zinc-800">
+                        <p className="text-xs font-semibold text-[var(--text)]">
                           ⭐ {rating.toFixed(0)}
                         </p>
-                        <div className="mt-1 h-2 rounded-full bg-zinc-100">
+                        <div className="mt-1 h-2 rounded-full bg-[color:var(--muted-bg)]">
                           <div
-                            className="h-2 rounded-full bg-zinc-900"
+                            className="h-2 rounded-full bg-zinc-900 dark:bg-zinc-100"
                             style={{ width: `${Math.max(5, Math.min(100, rating))}%` }}
                           />
                         </div>
                       </div>
                     </td>
-                    <td className={`${tdClass} tabular-nums`}>{u.completedOrders}</td>
-                    <td className={`${tdClass} tabular-nums`}>{`${u.latePercent.toFixed(0)}%`}</td>
+                    <td className={`${tdClass} tabular-nums text-[var(--text)]`}>
+                      {u.completedOrders}
+                    </td>
+                    <td className={`${tdClass} tabular-nums text-[var(--text)]`}>
+                      {`${u.latePercent.toFixed(0)}%`}
+                    </td>
                     <td className={tdClass}>
                       <Badge tone={u.status === "active" ? "success" : "danger"}>
                         {userStatusLabel[u.status]}
@@ -142,7 +149,7 @@ export function AdminUsersListClient({
                     <td className={tdClass}>
                       <Link
                         href={`/admin/users/${u.id}`}
-                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 sm:min-h-0 sm:py-1.5"
+                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-medium text-[var(--text)] shadow-sm transition-colors hover:bg-[color:var(--muted-bg)] sm:min-h-0 sm:py-1.5"
                       >
                         Подробнее
                       </Link>
@@ -187,10 +194,10 @@ export function AdminUsersListClient({
               </div>
               <dl className="mt-3 space-y-2 text-sm">
                 <div>
-                  <dt className="text-xs font-medium text-zinc-500">Основной навык</dt>
+                  <dt className="text-xs font-medium text-[var(--muted)]">Основной навык</dt>
                   <dd className="mt-0.5">
                     {u.primarySkill ? (
-                      <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-800 ring-1 ring-zinc-200">
+                      <span className="inline-flex rounded-full bg-[color:var(--muted-bg)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text)] ring-1 ring-[color:var(--border)]">
                         {u.primarySkill}
                       </span>
                     ) : (
@@ -199,37 +206,37 @@ export function AdminUsersListClient({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs font-medium text-zinc-500">Навыки</dt>
-                  <dd className="mt-0.5 leading-relaxed text-zinc-800">
+                  <dt className="text-xs font-medium text-[var(--muted)]">Навыки</dt>
+                  <dd className="mt-0.5 leading-relaxed text-[var(--muted)]">
                     {u.skills.length ? u.skills.join(", ") : "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs font-medium text-zinc-500">Рейтинг</dt>
+                  <dt className="text-xs font-medium text-[var(--muted)]">Рейтинг</dt>
                   <dd className="mt-1">
-                    <p className="text-sm font-semibold tabular-nums text-zinc-800">
+                    <p className="text-sm font-semibold tabular-nums text-[var(--text)]">
                       ⭐ {rating.toFixed(0)}
                     </p>
-                    <div className="mt-1 h-2 rounded-full bg-zinc-100">
+                    <div className="mt-1 h-2 rounded-full bg-[color:var(--muted-bg)]">
                       <div
-                        className="h-2 rounded-full bg-zinc-900"
+                        className="h-2 rounded-full bg-zinc-900 dark:bg-zinc-100"
                         style={{ width: `${Math.max(5, Math.min(100, rating))}%` }}
                       />
                     </div>
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-xs font-medium text-zinc-500">Завершено заказов</dt>
-                  <dd className="tabular-nums text-zinc-800">{u.completedOrders}</dd>
+                  <dt className="text-xs font-medium text-[var(--muted)]">Завершено заказов</dt>
+                  <dd className="tabular-nums text-[var(--text)]">{u.completedOrders}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-xs font-medium text-zinc-500">Просрочки</dt>
-                  <dd className="tabular-nums text-zinc-800">{`${u.latePercent.toFixed(0)}%`}</dd>
+                  <dt className="text-xs font-medium text-[var(--muted)]">Просрочки</dt>
+                  <dd className="tabular-nums text-[var(--text)]">{`${u.latePercent.toFixed(0)}%`}</dd>
                 </div>
               </dl>
               <Link
                 href={`/admin/users/${u.id}`}
-                className="mt-4 flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-300 bg-zinc-50 px-4 text-sm font-medium text-zinc-800 hover:bg-zinc-100"
+                className="mt-4 flex min-h-11 w-full items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-4 text-sm font-medium text-[var(--text)] transition-colors hover:bg-[color:var(--elevate)]"
               >
                 Подробнее
               </Link>

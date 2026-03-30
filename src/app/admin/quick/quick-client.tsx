@@ -6,6 +6,9 @@ import { Suspense, useEffect, useState } from "react";
 
 type TemplateOpt = { id: string; title: string };
 
+const fieldClass =
+  "mt-1 w-full rounded-md border border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--text)] shadow-sm placeholder:text-[var(--muted)]";
+
 function QuickForm({ templates }: { templates: TemplateOpt[] }) {
   const router = useRouter();
   const sp = useSearchParams();
@@ -41,32 +44,35 @@ function QuickForm({ templates }: { templates: TemplateOpt[] }) {
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
-      <Link href="/admin/orders" className="text-sm text-zinc-500 hover:text-zinc-800">
+      <Link
+        href="/admin/orders"
+        className="text-sm text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+      >
         ← К заказам
       </Link>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">
           Быстро создать заказ
         </h1>
-        <p className="mt-1 text-sm text-zinc-600">
+        <p className="mt-1 text-sm text-[var(--muted)]">
           Создайте заказ из текста, подставьте шаблон этапов и сразу назначьте подходящего
           исполнителя.
         </p>
       </div>
-      <div className="rounded-2xl border border-zinc-200/90 bg-white p-6 shadow-sm shadow-zinc-950/[0.04]">
-        <label className="text-xs font-medium text-zinc-600">Текст заказа</label>
+      <div className="rounded-2xl border border-[color:var(--border)] bg-[var(--card)] p-6 shadow-sm shadow-black/[0.04] dark:shadow-black/30">
+        <label className="text-xs font-medium text-[var(--muted)]">Текст заказа</label>
         <textarea
           value={orderText}
           onChange={(e) => setOrderText(e.target.value)}
           rows={10}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className={fieldClass}
           placeholder="Первая строка — название, далее — ТЗ"
         />
-        <label className="mt-4 block text-xs font-medium text-zinc-600">Шаблон</label>
+        <label className="mt-4 block text-xs font-medium text-[var(--muted)]">Шаблон</label>
         <select
           value={templateId}
           onChange={(e) => setTemplateId(e.target.value)}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className={fieldClass}
         >
           <option value="">— без шаблона (только текст и авто-назначение) —</option>
           {templates.map((t) => (
@@ -79,7 +85,7 @@ function QuickForm({ templates }: { templates: TemplateOpt[] }) {
           type="button"
           disabled={loading || !orderText.trim()}
           onClick={submit}
-          className="mt-6 w-full rounded-md bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-50"
+          className="mt-6 w-full rounded-md bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           {loading ? "…" : "Создать и назначить"}
         </button>
@@ -90,7 +96,7 @@ function QuickForm({ templates }: { templates: TemplateOpt[] }) {
 
 export function QuickClient({ templates }: { templates: TemplateOpt[] }) {
   return (
-    <Suspense fallback={<div className="text-sm text-zinc-500">Загрузка…</div>}>
+    <Suspense fallback={<div className="text-sm text-[var(--muted)]">Загрузка…</div>}>
       <QuickForm templates={templates} />
     </Suspense>
   );

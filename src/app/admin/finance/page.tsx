@@ -183,10 +183,10 @@ export default async function FinancePage({
   return (
     <div className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
       <div className="flex items-center gap-3">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-white">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">
           <IconWallet />
         </span>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Финансы</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Финансы</h1>
       </div>
 
       <FinanceFilters
@@ -208,53 +208,53 @@ export default async function FinancePage({
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="flex items-center gap-2 text-xs font-medium uppercase text-zinc-500">
+        <div className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-6 shadow-sm dark:shadow-black/30">
+          <p className="flex items-center gap-2 text-xs font-medium uppercase text-[var(--muted)]">
             <IconClient /> Клиент (всего)
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text)]">
             {rub.format(Number(totals._sum.budgetClient ?? 0))}
           </p>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="flex items-center gap-2 text-xs font-medium uppercase text-zinc-500">
+        <div className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-6 shadow-sm dark:shadow-black/30">
+          <p className="flex items-center gap-2 text-xs font-medium uppercase text-[var(--muted)]">
             <IconExecutor /> Исполнители (всего)
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text)]">
             {rub.format(Number(totals._sum.budgetExecutor ?? 0))}
           </p>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="flex items-center gap-2 text-xs font-medium uppercase text-zinc-500">
+        <div className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-6 shadow-sm dark:shadow-black/30">
+          <p className="flex items-center gap-2 text-xs font-medium uppercase text-[var(--muted)]">
             <IconProfit /> Маржа (всего)
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900">
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text)]">
             {rub.format(Number(totals._sum.profit ?? 0))}
           </p>
         </div>
       </div>
 
       <div>
-        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
           <IconClock />
           Прибыль по завершённым (по дате обновления, без фильтров страницы)
         </h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs text-zinc-500">День</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">
+          <div className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-4 shadow-sm dark:shadow-black/30">
+            <p className="text-xs text-[var(--muted)]">День</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--text)]">
               {rub.format(Number(dayP._sum.profit ?? 0))}
             </p>
           </div>
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs text-zinc-500">Неделя</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">
+          <div className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-4 shadow-sm dark:shadow-black/30">
+            <p className="text-xs text-[var(--muted)]">Неделя</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--text)]">
               {rub.format(Number(weekP._sum.profit ?? 0))}
             </p>
           </div>
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs text-zinc-500">Месяц</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">
+          <div className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-4 shadow-sm dark:shadow-black/30">
+            <p className="text-xs text-[var(--muted)]">Месяц</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--text)]">
               {rub.format(Number(monthP._sum.profit ?? 0))}
             </p>
           </div>
@@ -262,13 +262,13 @@ export default async function FinancePage({
       </div>
 
       <section>
-        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
           <IconExecutor />
           По исполнителям (с учётом фильтров выше)
         </h2>
-        <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <div className="mt-3 overflow-x-auto rounded-xl border border-[color:var(--border)] bg-[var(--card)] shadow-sm dark:shadow-black/30">
           <table className="w-full min-w-[480px] text-left text-sm">
-            <thead className="border-b border-zinc-100 bg-zinc-50 text-xs uppercase text-zinc-500">
+            <thead className="border-b border-[color:var(--border)] bg-[color:var(--muted-bg)] text-xs uppercase text-[var(--muted)]">
               <tr>
                 <th className="px-4 py-3">Исполнитель</th>
                 <th className="px-4 py-3">Сумма клиента</th>
@@ -278,15 +278,15 @@ export default async function FinancePage({
             </thead>
             <tbody>
               {executorRows.map((row) => (
-                <tr key={row.id} className="border-b border-zinc-50 last:border-0">
-                  <td className="px-4 py-3 font-medium">{row.name}</td>
-                  <td className="px-4 py-3 tabular-nums">
+                <tr key={row.id} className="border-b border-[color:var(--border)] last:border-0">
+                  <td className="px-4 py-3 font-medium text-[var(--text)]">{row.name}</td>
+                  <td className="px-4 py-3 tabular-nums text-[var(--text)]">
                     {row.budgetClient.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 tabular-nums text-zinc-900">
+                  <td className="px-4 py-3 tabular-nums text-[var(--text)]">
                     {rub.format(row.profit)}
                   </td>
-                  <td className="px-4 py-3 tabular-nums">
+                  <td className="px-4 py-3 tabular-nums text-[var(--text)]">
                     {row.marginPct !== null ? `${row.marginPct.toFixed(1)}%` : "—"}
                   </td>
                 </tr>
@@ -294,16 +294,16 @@ export default async function FinancePage({
             </tbody>
           </table>
           {executorRows.length === 0 && (
-            <p className="p-4 text-sm text-zinc-500">Нет данных по фильтрам.</p>
+            <p className="p-4 text-sm text-[var(--muted)]">Нет данных по фильтрам.</p>
           )}
         </div>
       </section>
 
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-[var(--muted)]">
         Заказов в базе: {totals._count}.{" "}
         <Link
           href="/admin/orders?lowMargin=1"
-          className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+          className="font-medium text-[var(--text)] underline-offset-2 hover:underline"
         >
           Низкая маржа
         </Link>{" "}
@@ -312,11 +312,11 @@ export default async function FinancePage({
 
       <section>
         <div className="mb-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
             <IconEdit />
             Редактирование финансов по заказам
           </h2>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 text-xs text-[var(--muted)]">
             Нажмите «Изменить» для корректировки бюджетов (возвраты, скидки). Прибыль
             пересчитывается автоматически. Изменения записываются в историю аудита.
           </p>

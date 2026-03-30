@@ -20,12 +20,23 @@
 .dark {
   --bg: #0c0e12;
   --text: #e8eaed;
-  --border: rgba(255, 255, 255, 0.09);
-  --muted: rgba(232, 234, 237, 0.55);
+  --border: rgba(255, 255, 255, 0.12);
+  --muted: rgba(232, 234, 237, 0.68);
   --muted-bg: rgba(255, 255, 255, 0.06);
   --card: #13161d;
-  --ring: rgba(255, 255, 255, 0.1);
+  --ring: rgba(255, 255, 255, 0.14);
   --elevate: rgba(0, 0, 0, 0.35);
+}
+
+/* Чекбоксы и радио: заметный accent в тёмной теме */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #18181b;
+}
+
+.dark input[type="checkbox"],
+.dark input[type="radio"] {
+  accent-color: #d4d4d8;
 }
 
 @theme inline {

@@ -30,7 +30,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const themeInitScript = `(function(){try{var t=localStorage.getItem('vd-theme');var d=document.documentElement;var dark;if(t==='dark')dark=true;else if(t==='light')dark=false;else dark=window.matchMedia('(prefers-color-scheme: dark)').matches;if(dark)d.classList.add('dark');else d.classList.remove('dark')}catch(e){}})()`;
+const themeInitScript = `(function(){try{var k='vd-theme';var t=localStorage.getItem(k);var d=document.documentElement;var dark;if(t==='dark')dark=true;else if(t==='light')dark=false;else{dark=window.matchMedia('(prefers-color-scheme: dark)').matches;try{localStorage.setItem(k,dark?'dark':'light')}catch(e){}}if(dark)d.classList.add('dark');else d.classList.remove('dark')}catch(e){}})()`;
 
 export default function RootLayout({
   children,
