@@ -427,7 +427,8 @@ export function OrderChat({
         senderId: currentUserId!,
         role,
         text: vars.text,
-        createdAt: new Date(0).toISOString(),
+        /** Только для отображения до ответа сервера; порядок держит sortMessagesStable (pending после всех). */
+        createdAt: new Date().toISOString(),
         replyToId: vars.replyToId,
       };
       queryClient.setQueryData<MessageDto[]>(msgKey, (prev) =>

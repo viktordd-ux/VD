@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
@@ -105,15 +106,39 @@ export async function POST(req: Request) {
     }
   }
 
-  const created = await prisma.message.create({
-    data: {
-      orderId,
-      senderId: user.id,
-      role,
-      text: textRaw,
-      ...(replyToId ? { replyToId } : {}),
-    },
-  });
+  let created;
+  try {
+    created = await prisma.message.create({
+      data: {
+        orderId,
+        senderId: user.id,
+        role,
+        text: textRaw,
+        ...(replyToId ? { replyToId } : {}),
+      },
+    });
+  } catch (e) {
+    const hint =
+      e instanceof Prisma.PrismaClientKnownRequestError
+        ? e.code === "P2022" || (e.meta as { column?: string } | undefined)?.column
+          ? " Выполните SQL из scripts/ensure-messages-reply-column.sql в Supabase (колонка reply_to_id)."
+          : ""
+        : "";
+    const raw =
+      typeof e === "object" && e !== null && "message" in e
+        ? String((e as { message?: unknown }).message)
+        : String(e);
+    const isMissingColumn =
+      /reply_to_id|column.*does not exist|Unknown column/i.test(raw);
+    return NextResponse.json(
+      {
+        error: isMissingColumn
+          ? "База не обновлена: добавьте колонку reply_to_id для messages (скрипт scripts/ensure-messages-reply-column.sql)."
+          : `Не удалось сохранить сообщение.${hint}`,
+      },
+      { status: 500 },
+    );
+  }
 
   const preview = textRaw.length > 180 ? `${textRaw.slice(0, 177)}…` : textRaw;
 
