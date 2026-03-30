@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { CreateExecutorDialog } from "@/components/create-executor-dialog";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
@@ -49,7 +50,7 @@ export function AdminUsersListClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Исполнители</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Исполнители</h1>
         <div className="w-full sm:w-auto [&_button]:w-full [&_button]:sm:w-auto">
           <CreateExecutorDialog onCreated={refresh} />
         </div>
@@ -81,13 +82,23 @@ export function AdminUsersListClient({
                 return (
                   <tr key={u.id} className={cn(trClass, "cursor-pointer hover:bg-zinc-100/80")}>
                     <td className={tdClass}>
-                      <Link
-                        href={`/admin/users/${u.id}`}
-                        className="font-medium text-zinc-900 hover:underline"
-                      >
-                        {formatUserDisplayName(u)}
-                      </Link>
-                      <p className="text-xs text-zinc-500">{u.email}</p>
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          size="sm"
+                          name={formatUserDisplayName(u)}
+                          seed={u.id}
+                          className="shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <Link
+                            href={`/admin/users/${u.id}`}
+                            className="font-semibold text-[var(--text)] hover:underline"
+                          >
+                            {formatUserDisplayName(u)}
+                          </Link>
+                          <p className="text-xs text-[var(--muted)]">{u.email}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className={tdClass}>
                       {u.primarySkill ? (
@@ -149,21 +160,29 @@ export function AdminUsersListClient({
           const rating = u.rating;
           return (
             <Card key={u.id} className="p-4 shadow-sm">
-              <div className="flex flex-col gap-2 border-b border-zinc-100 pb-3">
+              <div className="flex gap-3 border-b border-[color:var(--border)] pb-4">
+                <Avatar
+                  size="md"
+                  name={formatUserDisplayName(u)}
+                  seed={u.id}
+                  className="shrink-0"
+                />
+                <div className="min-w-0 flex-1">
                 <Link
                   href={`/admin/users/${u.id}`}
-                  className="text-base font-semibold text-zinc-900 hover:underline"
+                  className="text-base font-semibold text-[var(--text)] hover:underline"
                 >
                   {formatUserDisplayName(u)}
                 </Link>
-                <p className="break-all text-sm text-zinc-500">{u.email}</p>
-                <div className="flex flex-wrap gap-2">
+                <p className="break-all text-sm text-[var(--muted)]">{u.email}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
                   <Badge tone={u.status === "active" ? "success" : "danger"}>
                     {userStatusLabel[u.status]}
                   </Badge>
                   <Badge tone={u.onboarded ? "success" : "warning"}>
                     {u.onboarded ? "Профиль заполнен" : "Онбординг"}
                   </Badge>
+                </div>
                 </div>
               </div>
               <dl className="mt-3 space-y-2 text-sm">

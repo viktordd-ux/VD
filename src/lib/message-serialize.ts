@@ -8,6 +8,7 @@ export type MessageDto = {
   role: MessageRole;
   text: string;
   createdAt: string;
+  replyToId: string | null;
 };
 
 export function serializeMessage(m: Message): MessageDto {
@@ -18,5 +19,6 @@ export function serializeMessage(m: Message): MessageDto {
     role: m.role,
     text: m.text,
     createdAt: m.createdAt.toISOString(),
+    replyToId: m.replyToId ?? null,
   };
 }

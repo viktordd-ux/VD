@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/toast-provider";
@@ -20,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
 import type { MessageDto } from "@/lib/message-serialize";
 import { mergeMessages, removeMessageById } from "@/lib/chat-message-merge";
+import { buildChatTimeline } from "@/lib/chat-day-divider";
 import { formatChatMessageTime } from "@/lib/chat-display-time";
 import {
   normalizeCreatedAt,
@@ -88,7 +90,7 @@ function messageWithMentions(text: string, mine: boolean) {
           className={
             mine
               ? "font-medium text-blue-200 underline decoration-blue-300/80"
-              : "font-medium text-blue-700 underline decoration-blue-300"
+              : "font-medium text-blue-600 underline decoration-blue-400/70 dark:text-blue-400 dark:decoration-blue-500/50"
           }
         >
           {part}
@@ -99,41 +101,112 @@ function messageWithMentions(text: string, mine: boolean) {
   });
 }
 
-const ChatMessageRow = memo(function ChatMessageRow({
+function roleShortLabel(role: MessageDto["role"]) {
+  return role === "admin" ? "студия" : "исполнитель";
+}
+
+function getReplyPreview(target: MessageDto | undefined): string | null {
+  if (!target) return null;
+  const line = target.text.trim().split(/\n/)[0] ?? "";
+  if (!line) return null;
+  return line.length > 120 ? `${line.slice(0, 117)}…` : line;
+}
+
+function groupMessagesBySender(
+  messages: MessageDto[],
+  myId: string | undefined,
+): {
+  senderId: string;
+  mine: boolean;
+  role: MessageDto["role"];
+  items: MessageDto[];
+}[] {
+  const groups: {
+    senderId: string;
+    mine: boolean;
+    role: MessageDto["role"];
+    items: MessageDto[];
+  }[] = [];
+  for (const m of messages) {
+    const mine = Boolean(myId && m.senderId === myId);
+    const last = groups[groups.length - 1];
+    if (last && last.senderId === m.senderId) {
+      last.items.push(m);
+    } else {
+      groups.push({ senderId: m.senderId, mine, role: m.role, items: [m] });
+    }
+  }
+  return groups;
+}
+
+const ChatBubble = memo(function ChatBubble({
   m,
   mine,
-  timeLabel,
+  replyPreview,
+  onReply,
+  onCopy,
 }: {
   m: MessageDto;
   mine: boolean;
-  timeLabel: string;
+  replyPreview: string | null;
+  onReply: () => void;
+  onCopy: () => void;
 }) {
   return (
     <div
-      className={`vd-message-enter flex ${mine ? "justify-end" : "justify-start"}`}
+      className={cn(
+        "group relative flex w-full",
+        mine ? "justify-end" : "justify-start",
+      )}
     >
-      <div
-        className={`max-w-[min(85%,28rem)] rounded-[1.15rem] px-3.5 py-2.5 text-[15px] leading-[1.45] shadow-sm shadow-zinc-950/[0.04] ${
-          mine
-            ? "rounded-br-md bg-zinc-900 text-white"
-            : "rounded-bl-md bg-white text-zinc-900 ring-1 ring-zinc-200/80"
-        }`}
-      >
-        <p className="whitespace-pre-wrap break-words">
-          {messageWithMentions(m.text, mine)}
-        </p>
-        <p
-          className={`mt-1.5 text-[11px] tabular-nums tracking-wide ${
-            mine ? "text-zinc-400" : "text-zinc-500"
-          }`}
-        >
-          {timeLabel}
-          {!mine && (
-            <span className="ml-1.5 opacity-75">
-              · {m.role === "admin" ? "студия" : "исполнитель"}
-            </span>
+      <div className="relative max-w-[min(85%,28rem)]">
+        <div
+          className={cn(
+            "mb-1 flex min-h-[28px] items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100",
+            mine ? "justify-end" : "justify-start",
           )}
-        </p>
+        >
+          <button
+            type="button"
+            onClick={onReply}
+            className="min-h-[44px] min-w-[44px] rounded-lg px-2 text-[12px] font-medium text-[var(--muted)] transition hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] sm:min-h-0 sm:min-w-0"
+          >
+            Ответить
+          </button>
+          <button
+            type="button"
+            onClick={onCopy}
+            className="min-h-[44px] min-w-[44px] rounded-lg px-2 text-[12px] font-medium text-[var(--muted)] transition hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] sm:min-h-0 sm:min-w-0"
+          >
+            Копировать
+          </button>
+        </div>
+        <div
+          className={cn(
+            "rounded-2xl px-3.5 py-2 text-[15px] leading-[1.45] shadow-sm transition-shadow duration-150 hover:shadow-md",
+            mine
+              ? "bg-zinc-900 text-white shadow-black/15 dark:bg-zinc-100 dark:text-zinc-900"
+              : "border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-black/[0.06] dark:shadow-black/30",
+          )}
+        >
+          {m.replyToId && replyPreview ? (
+            <p
+              className={cn(
+                "mb-2 border-l-2 pl-2 text-xs leading-snug",
+                mine
+                  ? "border-white/40 text-blue-100/90"
+                  : "border-[color:var(--border)] text-[var(--muted)]",
+              )}
+            >
+              {replyPreview}
+            </p>
+          ) : m.replyToId ? (
+            <p className="mb-2 text-xs text-[var(--muted)]">Сообщение недоступно</p>
+          ) : null}
+          <p className="whitespace-pre-wrap break-words">
+            {messageWithMentions(m.text, mine)}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -167,6 +240,10 @@ export type OrderChatProps = {
    * Без этого бейдж появлялся только после клиентского fetch и терялся при уходе со страницы.
    */
   initialHasUnreadChat?: boolean;
+  /**
+   * Позиция FAB на мобилке: с отступом под нижнюю навигацию админа или ближе к низу (исполнитель).
+   */
+  dockFabBottom?: "with-nav" | "default";
 };
 
 export function OrderChat({
@@ -175,6 +252,7 @@ export function OrderChat({
   supabaseAnonKey,
   variant = "default",
   initialHasUnreadChat = false,
+  dockFabBottom = "with-nav",
 }: OrderChatProps) {
   const { data: session, status } = useSession();
   const queryClient = useQueryClient();
@@ -219,33 +297,77 @@ export function OrderChat({
   const [dockOpen, setDockOpen] = useState(false);
   dockOpenRef.current = dockOpen;
 
-  /** Только непрочитанные сообщения (не «проект») — красная точка на чате. */
-  const [showChatUnread, setShowChatUnread] = useState(!!initialHasUnreadChat);
+  /** Входящие непрочитанные сообщения в чате (для FAB). */
+  const [unreadChatCount, setUnreadChatCount] = useState(() =>
+    initialHasUnreadChat ? 1 : 0,
+  );
 
-  const [peerTyping, setPeerTyping] = useState(false);
-  const peerTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [peerTypingName, setPeerTypingName] = useState<string | null>(null);
+  /** Максимальный lastSeen среди других участников (мс, клиентский heartbeat). */
+  const [peerLastSeenMs, setPeerLastSeenMs] = useState<number | null>(null);
+  const [presenceTick, setPresenceTick] = useState(0);
+  const presenceChannelRef = useRef<ReturnType<
+    NonNullable<ReturnType<typeof getSupabaseBrowserClient>>["channel"]
+  > | null>(null);
   const typingChannelRef = useRef<ReturnType<
     NonNullable<ReturnType<typeof getSupabaseBrowserClient>>["channel"]
   > | null>(null);
-  const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingBroadcastRef = useRef(0);
+  const peerTypingClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const soundSeenMsgIdRef = useRef<string | null>(null);
+  const [replyTo, setReplyTo] = useState<MessageDto | null>(null);
 
   const currentUserId = session?.user?.id;
   sessionUserIdRef.current = currentUserId;
+
+  const peerLabel =
+    session?.user?.role === "admin" ? "Исполнитель" : "Студия";
+
+  const chatTimeline = useMemo(() => {
+    const groups = groupMessagesBySender(messages, currentUserId);
+    return buildChatTimeline(groups);
+  }, [messages, currentUserId]);
+
+  const messageById = useMemo(() => {
+    const map = new Map<string, MessageDto>();
+    for (const m of messages) map.set(m.id, m);
+    return map;
+  }, [messages]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setPresenceTick((t) => t + 1), 10_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const peerPresenceUi = useMemo(() => {
+    void presenceTick;
+    if (peerLastSeenMs == null) return { kind: "offline" as const };
+    const age = Date.now() - peerLastSeenMs;
+    if (age < 30_000) return { kind: "online" as const };
+    if (age < 5 * 60_000) return { kind: "recent" as const };
+    return { kind: "offline" as const };
+  }, [peerLastSeenMs, presenceTick]);
 
   type SendCtx = {
     previous: MessageDto[] | undefined;
     optimisticId: string;
     msgKey: ReturnType<typeof queryKeys.orderMessages>;
     previousInput: string;
+    previousReplyTo: MessageDto | null;
   };
 
   const sendMutation = useMutation({
-    mutationFn: async (text: string) => {
+    mutationFn: async (vars: { text: string; replyToId: string | null }) => {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_id: orderId, text }),
+        body: JSON.stringify({
+          order_id: orderId,
+          text: vars.text,
+          ...(vars.replyToId ? { reply_to_id: vars.replyToId } : {}),
+        }),
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -253,37 +375,42 @@ export function OrderChat({
       }
       return res.json() as Promise<{ message?: unknown }>;
     },
-    onMutate: async (text) => {
+    onMutate: async (vars) => {
       const role = session?.user?.role as MessageDto["role"];
       const msgKey = queryKeys.orderMessages(orderId);
       await queryClient.cancelQueries({ queryKey: msgKey });
       const previous = queryClient.getQueryData<MessageDto[]>(msgKey);
       const previousInput = input;
+      const previousReplyTo = replyTo;
       const optimisticId = `pending:${crypto.randomUUID()}`;
       const optimistic: MessageDto = {
         id: optimisticId,
         orderId,
         senderId: currentUserId!,
         role,
-        text,
-        createdAt: new Date().toISOString(),
+        text: vars.text,
+        createdAt: new Date(0).toISOString(),
+        replyToId: vars.replyToId,
       };
       queryClient.setQueryData<MessageDto[]>(msgKey, (prev) =>
         mergeMessages(prev ?? [], optimistic),
       );
       setInput("");
+      setReplyTo(null);
       return {
         previous,
         optimisticId,
         msgKey,
         previousInput,
+        previousReplyTo,
       } satisfies SendCtx;
     },
-    onError: (err, _text, ctx) => {
+    onError: (err, _vars, ctx) => {
       if (ctx?.msgKey) {
         queryClient.setQueryData(ctx.msgKey, ctx.previous);
       }
       if (ctx?.previousInput !== undefined) setInput(ctx.previousInput);
+      if (ctx?.previousReplyTo !== undefined) setReplyTo(ctx.previousReplyTo);
       const e = err as { status?: number; body?: { error?: string } };
       const msg =
         e?.status === 403
@@ -308,7 +435,9 @@ export function OrderChat({
   });
 
   const dockFabPos =
-    "fixed right-4 z-40 max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6";
+    dockFabBottom === "default"
+      ? "fixed right-4 z-[55] bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-6"
+      : "fixed right-4 z-[55] max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6";
 
   const fetchUnread = useCallback(async () => {
     const res = await fetch(
@@ -316,12 +445,20 @@ export function OrderChat({
       { cache: "no-store" },
     );
     if (!res.ok) return;
-    const data = (await res.json()) as { hasUnreadChat?: boolean };
-    setShowChatUnread(Boolean(data.hasUnreadChat));
+    const data = (await res.json()) as {
+      hasUnreadChat?: boolean;
+      unreadChatCount?: number;
+    };
+    const n = Math.max(0, Number(data.unreadChatCount ?? 0));
+    if (Number.isFinite(n)) {
+      setUnreadChatCount(n);
+    } else {
+      setUnreadChatCount(data.hasUnreadChat ? 1 : 0);
+    }
   }, [orderId]);
 
   useEffect(() => {
-    setShowChatUnread(!!initialHasUnreadChat);
+    setUnreadChatCount(initialHasUnreadChat ? 1 : 0);
   }, [orderId, initialHasUnreadChat]);
 
   useEffect(() => {
@@ -329,6 +466,9 @@ export function OrderChat({
     nearBottomRef.current = true;
     prevDockOpenRef.current = false;
     soundSeenMsgIdRef.current = null;
+    setPeerLastSeenMs(null);
+    setPeerTypingName(null);
+    setReplyTo(null);
   }, [orderId]);
 
   useEffect(() => {
@@ -358,25 +498,75 @@ export function OrderChat({
   }, [isDock]);
 
   useEffect(() => {
-    if (!supabase || !orderId) return;
-    const ch = supabase.channel(`typing:${orderId}`, {
-      config: { broadcast: { ack: false } },
+    if (!supabase || !orderId || !currentUserId) return;
+
+    const presenceCh = supabase.channel(`order-presence:${orderId}`, {
+      config: { presence: { key: currentUserId } },
     });
-    ch.on("broadcast", { event: "typing" }, (payload) => {
-      const raw = payload as { payload?: { userId?: string } };
-      const p = raw.payload;
-      const uid = p?.userId;
-      if (!uid || uid === currentUserId) return;
-      setPeerTyping(true);
-      if (peerTypingTimerRef.current) clearTimeout(peerTypingTimerRef.current);
-      peerTypingTimerRef.current = setTimeout(() => setPeerTyping(false), 2500);
+
+    presenceCh.on("presence", { event: "sync" }, () => {
+      const state = presenceCh.presenceState() as Record<
+        string,
+        Array<{ userId?: string; lastSeen?: number }>
+      >;
+      let best = 0;
+      for (const [key, metas] of Object.entries(state)) {
+        if (key === currentUserId) continue;
+        const meta = Array.isArray(metas) ? metas[0] : undefined;
+        const ls = typeof meta?.lastSeen === "number" ? meta.lastSeen : 0;
+        if (ls > best) best = ls;
+      }
+      setPeerLastSeenMs(best > 0 ? best : null);
     });
-    ch.subscribe((status) => {
-      if (status === "SUBSCRIBED") typingChannelRef.current = ch;
+
+    const typingCh = supabase.channel(`order-typing:${orderId}`);
+    typingCh.on(
+      "broadcast",
+      { event: "typing" },
+      ({ payload }) => {
+        const p = payload as { userId?: string; name?: string };
+        if (!p?.userId || p.userId === currentUserId) return;
+        setPeerTypingName(p.name?.trim() || "Собеседник");
+        if (peerTypingClearTimerRef.current) {
+          clearTimeout(peerTypingClearTimerRef.current);
+        }
+        peerTypingClearTimerRef.current = setTimeout(() => {
+          setPeerTypingName(null);
+        }, 3500);
+      },
+    );
+
+    typingCh.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        typingChannelRef.current = typingCh;
+      }
     });
+
+    const trackPresence = () => {
+      void presenceCh.track({
+        userId: currentUserId,
+        lastSeen: Date.now(),
+      });
+    };
+
+    presenceCh.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        presenceChannelRef.current = presenceCh;
+        trackPresence();
+      }
+    });
+
+    const hb = window.setInterval(trackPresence, 18_000);
+
     return () => {
+      window.clearInterval(hb);
+      presenceChannelRef.current = null;
       typingChannelRef.current = null;
-      void supabase.removeChannel(ch);
+      if (peerTypingClearTimerRef.current) {
+        clearTimeout(peerTypingClearTimerRef.current);
+      }
+      void supabase.removeChannel(typingCh);
+      void supabase.removeChannel(presenceCh);
     };
   }, [supabase, orderId, currentUserId]);
 
@@ -413,7 +603,7 @@ export function OrderChat({
   /** Открытый dock — переписка просмотрена: точку убираем сразу, затем синхронизация с сервером. */
   useEffect(() => {
     if (!isDock || !dockOpen) return;
-    setShowChatUnread(false);
+    setUnreadChatCount(0);
     void (async () => {
       await fetch(`/api/orders/${encodeURIComponent(orderId)}/read-state`, {
         method: "PATCH",
@@ -437,7 +627,7 @@ export function OrderChat({
         const hit = !!e?.isIntersecting && e.intersectionRatio >= 0.22;
         chatSectionVisibleRef.current = hit;
         if (hit && !prevHit) {
-          setShowChatUnread(false);
+          setUnreadChatCount(0);
           void (async () => {
             await fetch(`/api/orders/${encodeURIComponent(orderId)}/read-state`, {
               method: "PATCH",
@@ -501,7 +691,10 @@ export function OrderChat({
         if (uid != null && m.senderId === uid) {
           const pending = list.find(
             (x) =>
-              x.id.startsWith("pending:") && x.senderId === uid && x.text === m.text,
+              x.id.startsWith("pending:") &&
+              x.senderId === uid &&
+              x.text === m.text &&
+              (x.replyToId ?? null) === (m.replyToId ?? null),
           );
           if (pending) {
             return mergeMessages(removeMessageById(list, pending.id), m);
@@ -513,12 +706,12 @@ export function OrderChat({
       const fromOther = uid != null && m.senderId !== uid;
       if (!fromOther) return;
       if (variant === "dock" && !dockOpenRef.current) {
-        setShowChatUnread(true);
+        void fetchUnread();
         dispatchOrderUnreadChanged();
         return;
       }
       if (variant !== "dock" && !chatSectionVisibleRef.current) {
-        setShowChatUnread(true);
+        void fetchUnread();
         dispatchOrderUnreadChanged();
       }
     }
@@ -549,7 +742,7 @@ export function OrderChat({
       devLog("removeChannel", `order-messages:${orderId}`);
       void supabase.removeChannel(channel);
     };
-  }, [orderId, supabase, variant, queryClient]);
+  }, [orderId, supabase, variant, queryClient, fetchUnread]);
 
   const lastMessageKey =
     messages.length > 0 ? messages[messages.length - 1]!.id : "";
@@ -605,7 +798,7 @@ export function OrderChat({
           body: JSON.stringify({ markChat: true }),
         });
         await fetchUnread();
-        setShowChatUnread(false);
+        setUnreadChatCount(0);
         dispatchOrderUnreadChanged();
       })();
     }, 120);
@@ -621,7 +814,10 @@ export function OrderChat({
       toast.error("Нет прав на отправку");
       return;
     }
-    sendMutation.mutate(text);
+    sendMutation.mutate({
+      text,
+      replyToId: replyTo?.id ?? null,
+    });
   }
 
   const tallMessages = isSidebar || isDock;
@@ -649,15 +845,19 @@ export function OrderChat({
           onClick={() => setDockOpen(true)}
           className="relative flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg shadow-zinc-950/25 ring-2 ring-white/10 transition hover:bg-zinc-800 focus-visible:outline focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2"
           aria-label={
-            showChatUnread ? "Открыть чат по заказу — есть непрочитанное" : "Открыть чат по заказу"
+            unreadChatCount > 0
+              ? `Открыть чат — непрочитанных: ${unreadChatCount}`
+              : "Открыть чат по заказу"
           }
         >
           <IconChatBubble className="h-7 w-7" />
-          {showChatUnread ? (
+          {unreadChatCount > 0 ? (
             <span
-              className="absolute -right-0.5 -top-0.5 h-[30px] w-[30px] rounded-full border-2 border-zinc-900 bg-red-500"
+              className="absolute -right-1 -top-1 flex h-[22px] min-w-[22px] items-center justify-center rounded-full border-2 border-zinc-900 bg-red-500 px-1 text-[11px] font-bold leading-none text-white"
               aria-hidden
-            />
+            >
+              {unreadChatCount > 99 ? "99+" : unreadChatCount}
+            </span>
           ) : null}
         </button>
       </div>
@@ -713,18 +913,13 @@ export function OrderChat({
     >
       {isDock ? (
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-              Чат
-            </h2>
-            <p className="mt-1 text-xs text-zinc-500">
-              Переписка по заказу между студией и исполнителем.
-            </p>
-          </div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Чат
+          </h2>
           <button
             type="button"
             onClick={() => setDockOpen(false)}
-            className="shrink-0 rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+            className="shrink-0 rounded-lg p-2 text-[var(--muted)] transition hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)]"
             aria-label="Свернуть чат"
           >
             <IconChevronDown className="h-5 w-5" />
@@ -732,13 +927,18 @@ export function OrderChat({
         </div>
       ) : (
         <>
-          <h2 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <h2 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
             Чат
-            {showChatUnread ? (
-              <span className="inline-block h-6 w-6 rounded-full bg-red-500" aria-hidden />
+            {unreadChatCount > 0 ? (
+              <span
+                className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white"
+                aria-hidden
+              >
+                {unreadChatCount > 99 ? "99+" : unreadChatCount}
+              </span>
             ) : null}
           </h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
             Переписка по заказу между студией и исполнителем.
           </p>
         </>
@@ -770,10 +970,38 @@ export function OrderChat({
         ref={scrollRef}
         style={{ overflowAnchor: "none" } as CSSProperties}
         className={cn(
-          "mt-4 flex min-h-[10rem] flex-col gap-3 overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-200/40 bg-zinc-50/40 p-3.5 [scrollbar-gutter:stable]",
+          "mt-4 flex min-h-[10rem] flex-col gap-3 overflow-y-auto overflow-x-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--muted-bg)]/50 p-3.5 [scrollbar-gutter:stable] dark:bg-white/[0.03]",
           tallMessages ? "min-h-0 flex-1" : "max-h-[min(24rem,50vh)]",
         )}
       >
+        {!loading && messages.length > 0 ? (
+          <div className="sticky top-0 z-10 -mx-3.5 mb-1 border-b border-[color:var(--border)] bg-[var(--card)]/95 px-3.5 pb-2.5 pt-1 backdrop-blur-md">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  Собеседник
+                </p>
+                <p className="mt-0.5 truncate text-sm font-semibold text-[var(--text)]">
+                  {peerLabel}
+                </p>
+              </div>
+              <span className="shrink-0 text-[11px] text-[var(--muted)]">
+                {!supabase || !currentUserId ? (
+                  "—"
+                ) : peerPresenceUi.kind === "online" ? (
+                  <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                    в сети
+                  </span>
+                ) : peerPresenceUi.kind === "recent" ? (
+                  <span className="text-[var(--muted)]">был недавно</span>
+                ) : (
+                  "не в сети"
+                )}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
         {loading ? (
           <div className="flex flex-col gap-3 py-1" aria-hidden>
             <div className="flex justify-end">
@@ -787,47 +1015,141 @@ export function OrderChat({
             </div>
           </div>
         ) : messages.length === 0 ? (
-          <p className="text-sm text-zinc-500">Пока нет сообщений. Напишите первым.</p>
+          <p className="text-sm text-[var(--muted)]">Пока нет сообщений. Напишите первым.</p>
         ) : (
-          messages.map((m) => {
-            const mine = Boolean(currentUserId && m.senderId === currentUserId);
-            const timeLabel = formatChatMessageTime(m.createdAt);
+          chatTimeline.map((item, ti) => {
+            if (item.kind === "day") {
+              return (
+                <div
+                  key={`day-${item.dayKey}-${ti}`}
+                  className="flex items-center gap-3 py-2 vd-fade-in"
+                >
+                  <div className="h-px flex-1 bg-[color:var(--border)]" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    {item.label}
+                  </span>
+                  <div className="h-px flex-1 bg-[color:var(--border)]" />
+                </div>
+              );
+            }
+            const g = item.group;
+            const last = g.items[g.items.length - 1]!;
+            const timeLabel = formatChatMessageTime(last.createdAt);
+            const peerName =
+              g.role === "admin" ? "Студия" : "Исполнитель";
             return (
-              <ChatMessageRow key={m.id} m={m} mine={mine} timeLabel={timeLabel} />
+              <div
+                key={`${g.senderId}-${ti}-${last.id}`}
+                className={cn(
+                  "vd-message-enter flex gap-2.5",
+                  g.mine ? "flex-row-reverse" : "flex-row",
+                )}
+              >
+                <div className="flex shrink-0 flex-col pt-0.5">
+                  <Avatar
+                    size="md"
+                    name={g.mine ? session?.user?.name : peerName}
+                    seed={g.mine ? currentUserId ?? "me" : g.senderId}
+                    ringClassName="ring-2 ring-[var(--card)]"
+                  />
+                </div>
+                <div
+                  className={cn(
+                    "flex min-w-0 flex-1 flex-col gap-1",
+                    g.mine ? "items-end" : "items-stretch",
+                  )}
+                >
+                  {g.items.map((m) => (
+                    <ChatBubble
+                      key={m.id}
+                      m={m}
+                      mine={g.mine}
+                      replyPreview={getReplyPreview(
+                        m.replyToId ? messageById.get(m.replyToId) : undefined,
+                      )}
+                      onReply={() => setReplyTo(m)}
+                      onCopy={() => {
+                        void navigator.clipboard.writeText(m.text).then(() => {
+                          toast.success("Скопировано");
+                        });
+                      }}
+                    />
+                  ))}
+                  <p
+                    className={cn(
+                      "text-[11px] tabular-nums tracking-wide text-[var(--muted)]",
+                      g.mine ? "text-right" : "text-left",
+                    )}
+                  >
+                    {timeLabel}
+                    {!g.mine && (
+                      <span className="ml-1.5 opacity-80">
+                        · {roleShortLabel(g.role)}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
             );
           })
         )}
       </div>
 
-      {peerTyping ? (
-        <p className="mt-2 text-xs text-zinc-500 vd-fade-in">Собеседник печатает…</p>
+      {peerTypingName ? (
+        <p className="mt-2 text-xs text-[var(--muted)] vd-fade-in">
+          {peerTypingName} печатает…
+        </p>
       ) : null}
 
       <form onSubmit={onSend} className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
         <label className="sr-only" htmlFor={`order-chat-input-${orderId}`}>
           Сообщение
         </label>
+        {replyTo ? (
+          <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-3 py-2 text-left text-xs text-[var(--muted)]">
+            <p className="min-w-0 truncate">
+              <span className="font-medium text-[var(--text)]">Ответ: </span>
+              {getReplyPreview(replyTo) ?? "…"}
+            </p>
+            <button
+              type="button"
+              onClick={() => setReplyTo(null)}
+              className="min-h-[44px] shrink-0 rounded-lg px-2 text-[var(--text)] hover:bg-[color:var(--border)] sm:min-h-0"
+              aria-label="Отменить ответ"
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
         <textarea
           id={`order-chat-input-${orderId}`}
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
-            if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
-            typingDebounceRef.current = setTimeout(() => {
-              const ch = typingChannelRef.current;
-              if (ch && currentUserId) {
-                void ch.send({
-                  type: "broadcast",
-                  event: "typing",
-                  payload: { userId: currentUserId },
-                });
-              }
-            }, 400);
+            const ch = typingChannelRef.current;
+            if (!ch || !currentUserId) return;
+            const now = Date.now();
+            if (now - lastTypingBroadcastRef.current < 600) return;
+            lastTypingBroadcastRef.current = now;
+            void ch.send({
+              type: "broadcast",
+              event: "typing",
+              payload: {
+                userId: currentUserId,
+                name: session?.user?.name ?? undefined,
+              },
+            });
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSend(e as unknown as React.FormEvent);
+            }
           }}
           placeholder="Введите сообщение…"
           rows={2}
           maxLength={8000}
-          className="min-h-[2.75rem] w-full flex-1 resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm leading-relaxed outline-none ring-zinc-400 focus:border-zinc-400 focus:ring-2"
+          className="min-h-[3rem] w-full flex-1 resize-y rounded-xl border border-[color:var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400/30 dark:focus:ring-white/20"
         />
         <Button
           type="submit"

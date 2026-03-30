@@ -358,7 +358,7 @@ export function AdminOrderForm({
           {saveMutation.isPending ? (
             <>
               <span
-                className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+                className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-white/90"
                 aria-hidden
               />
               Сохранение…

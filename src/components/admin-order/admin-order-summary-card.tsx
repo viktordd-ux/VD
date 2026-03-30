@@ -6,6 +6,7 @@ import {
   formatExecutorMetricsLine,
   useExecutors,
 } from "@/context/executors-context";
+import { Avatar } from "@/components/ui/avatar";
 import { OrderPriorityIndicator } from "@/components/order-priority-indicator";
 import { getOrderRiskFlags } from "@/lib/order-risk";
 import { computeOrderPriority } from "@/lib/order-priority";
@@ -38,16 +39,16 @@ export function AdminOrderSummaryCard() {
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-10">
       <div className="min-w-0 space-y-4">
         <div className="space-y-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 md:text-3xl md:leading-tight">
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)] md:text-3xl md:leading-tight">
             {order.title}
           </h1>
           <OrderRiskBadges flags={riskFlags} />
         </div>
       </div>
 
-      <aside className="rounded-xl border border-zinc-200/60 bg-white p-5 shadow-sm shadow-zinc-950/[0.03] lg:sticky lg:top-24">
-        <div className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-4">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+      <aside className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-black/[0.04] dark:shadow-black/40 lg:sticky lg:top-24">
+        <div className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] pb-4">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
             Статус
           </span>
           <div className="flex items-center gap-2">
@@ -58,23 +59,31 @@ export function AdminOrderSummaryCard() {
 
         <dl className="mt-4 space-y-4">
           <div>
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+            <dt className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
               Исполнитель
             </dt>
-            <dd className="mt-1.5 text-sm font-medium leading-snug text-zinc-900">
+            <dd className="mt-1.5 text-sm font-medium leading-snug text-[var(--text)]">
               {order.executorId ? (
-                <>
-                  <span>
-                    {getExecutorDisplayName(order.executorId, order.executor?.name)}
-                  </span>
-                  {executorEntry && (
-                    <span className="mt-1 block text-xs font-normal tabular-nums text-zinc-500">
-                      {formatExecutorMetricsLine(executorEntry)}
-                    </span>
-                  )}
-                </>
+                <div className="flex items-start gap-3">
+                  <Avatar
+                    name={getExecutorDisplayName(order.executorId, order.executor?.name)}
+                    seed={order.executorId}
+                    size="lg"
+                    className="shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-medium leading-snug">
+                      {getExecutorDisplayName(order.executorId, order.executor?.name)}
+                    </p>
+                    {executorEntry && (
+                      <p className="mt-1 text-xs font-normal tabular-nums text-[var(--muted)]">
+                        {formatExecutorMetricsLine(executorEntry)}
+                      </p>
+                    )}
+                  </div>
+                </div>
               ) : (
-                <span className="font-normal text-zinc-500">Не назначен</span>
+                <span className="font-normal text-[var(--muted)]">Не назначен</span>
               )}
             </dd>
           </div>

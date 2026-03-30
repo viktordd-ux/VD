@@ -30,6 +30,8 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+const themeInitScript = `(function(){try{var t=localStorage.getItem('vd-theme');var d=document.documentElement;var dark;if(t==='dark')dark=true;else if(t==='light')dark=false;else dark=window.matchMedia('(prefers-color-scheme: dark)').matches;if(dark)d.classList.add('dark');else d.classList.remove('dark')}catch(e){}})()`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -38,9 +40,11 @@ export default function RootLayout({
   return (
     <html
       lang="ru"
+      suppressHydrationWarning
       className={`${inter.variable} h-full antialiased`}
     >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
           name="apple-mobile-web-app-status-bar-style"
@@ -49,7 +53,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="VD App" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
+      <body className="flex min-h-full flex-col bg-[var(--bg)] text-[var(--text)]">
         <Providers>{children}</Providers>
       </body>
     </html>

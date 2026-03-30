@@ -202,12 +202,16 @@ model Message {
   role      MessageRole
   text      String      @db.Text
   createdAt DateTime    @default(now()) @map("created_at")
+  replyToId String?     @map("reply_to_id") @db.Uuid
 
-  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  sender User  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender  User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo Message? @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies Message[] @relation("MessageReply")
 
   @@index([orderId])
   @@index([orderId, createdAt])
+  @@index([replyToId])
   @@map("messages")
 }
 

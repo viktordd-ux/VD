@@ -60,13 +60,13 @@ export function NavigationProgress() {
 
   return (
     <div
-      className="fixed inset-0 z-[190] flex items-center justify-center bg-slate-50/85 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[190] flex items-center justify-center bg-[var(--bg)]/90 backdrop-blur-[2px] dark:bg-black/50"
       role="progressbar"
       aria-busy="true"
       aria-live="polite"
       aria-label="Загрузка страницы"
     >
-      <div className="rounded-2xl border border-zinc-200/90 bg-white px-10 py-8 shadow-lg shadow-zinc-950/10">
+      <div className="rounded-2xl border border-[color:var(--border)] bg-[var(--card)] px-10 py-8 shadow-lg shadow-black/10">
         <PageLoadingSkeleton compact />
       </div>
     </div>

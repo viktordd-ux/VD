@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { GlobalSearchCommand } from "@/components/global-search-command";
 import { QuickCreateOrderModal } from "@/components/quick-create-order-modal";
 import { NotificationCenter } from "@/components/notification-center";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { QuickCreateContext } from "@/context/quick-create-context";
 import { useInvalidateAdminOrders } from "@/hooks/use-invalidate-admin-orders";
 import { isEditableKeyboardTarget } from "@/lib/keyboard-utils";
@@ -115,7 +116,8 @@ export function AdminWorkspaceProvider({ children }: { children: React.ReactNode
     <QuickCreateContext.Provider value={{ open: openQuick }}>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="pointer-events-none fixed right-3 top-[calc(3.25rem+env(safe-area-inset-top,0px))] z-40 flex items-center gap-2 md:right-6 md:top-4 md:pt-0">
-          <div className="pointer-events-auto">
+          <div className="pointer-events-auto flex items-center gap-2">
+            <ThemeToggle />
             <NotificationCenter />
           </div>
         </div>

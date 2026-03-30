@@ -9,11 +9,11 @@ type Variant = "admin" | "executor";
 
 function SidebarBrand({ variant }: { variant: Variant }) {
   return (
-    <div className="border-b border-zinc-100/80 px-3 py-3">
-      <span className="text-lg font-semibold tracking-tight">
-        V<span className="text-zinc-400">|</span>D
+    <div className="border-b border-[color:var(--border)] px-3 py-3.5">
+      <span className="text-lg font-semibold tracking-tight text-[var(--text)]">
+        V<span className="text-[var(--muted)]">|</span>D
       </span>
-      <p className="text-xs text-zinc-500">
+      <p className="mt-0.5 text-xs text-[var(--muted)]">
         {variant === "admin" ? "Админ" : "Исполнитель"}
       </p>
     </div>
@@ -54,11 +54,11 @@ export function ResponsiveAppShell({
   }, [open]);
 
   return (
-    <div className="flex min-h-full min-w-0 flex-1 bg-[#fafafa]">
-      <aside className="hidden w-52 shrink-0 flex-col border-r border-zinc-200/50 bg-white md:flex">
+    <div className="flex min-h-full min-w-0 flex-1 bg-[var(--bg)]">
+      <aside className="hidden w-52 shrink-0 flex-col border-r border-[color:var(--border)] bg-[var(--card)] md:flex">
         <SidebarBrand variant={variant} />
         {sidebarNav}
-        <div className="mt-auto border-t border-zinc-100/80 p-2.5">
+        <div className="mt-auto border-t border-[color:var(--border)] p-2.5">
           <SignOutButton />
         </div>
       </aside>
@@ -69,25 +69,25 @@ export function ResponsiveAppShell({
       >
         <button
           type="button"
-          className="absolute inset-0 z-40 bg-black/40 transition-opacity opacity-100"
+          className="absolute inset-0 z-40 bg-black/50 transition-opacity dark:bg-black/60"
           onClick={() => setOpen(false)}
           aria-label="Закрыть меню"
         />
         <aside
           id="app-mobile-drawer"
           className={cn(
-            "absolute inset-y-0 left-0 z-50 flex w-[min(100%,18rem)] flex-col border-r border-zinc-200/90 bg-white shadow-xl transition-transform duration-200 ease-out",
+            "absolute inset-y-0 left-0 z-50 flex w-[min(100%,18rem)] flex-col border-r border-[color:var(--border)] bg-[var(--card)] shadow-xl transition-transform duration-200 ease-out",
             open ? "translate-x-0" : "-translate-x-full",
           )}
         >
-          <div className="flex items-start justify-between gap-2 border-b border-zinc-100">
+          <div className="flex items-start justify-between gap-2 border-b border-[color:var(--border)]">
             <div className="min-w-0 flex-1">
               <SidebarBrand variant={variant} />
             </div>
             <button
               type="button"
               aria-label="Закрыть меню"
-              className="m-2 shrink-0 rounded-lg p-2.5 text-zinc-600 hover:bg-zinc-100"
+              className="m-2 shrink-0 rounded-lg p-2.5 text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)]"
               onClick={() => setOpen(false)}
             >
               <IconClose className="h-5 w-5" />
@@ -96,17 +96,17 @@ export function ResponsiveAppShell({
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
             {sidebarNav}
           </div>
-          <div className="border-t border-zinc-100 p-3">
+          <div className="border-t border-[color:var(--border)] p-3">
             <SignOutButton />
           </div>
         </aside>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-[3.25rem] items-center gap-3 border-b border-zinc-200/50 bg-white/90 px-3 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-white/85 md:hidden">
+        <header className="sticky top-0 z-30 flex min-h-[3.5rem] items-center gap-3 border-b border-[color:var(--border)] bg-[var(--card)]/90 px-3 py-2.5 backdrop-blur-md supports-[backdrop-filter]:bg-[var(--card)]/80 md:hidden">
           <button
             type="button"
-            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-800 hover:bg-zinc-50"
+            className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-xl border border-[color:var(--border)] text-[var(--text)] transition-colors hover:bg-[color:var(--muted-bg)] active:scale-[0.98]"
             onClick={() => setOpen(true)}
             aria-expanded={open}
             aria-controls="app-mobile-drawer"
@@ -115,10 +115,10 @@ export function ResponsiveAppShell({
             <IconMenu className="h-5 w-5" />
           </button>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-zinc-900">
-              V<span className="text-zinc-400">|</span>D
+            <p className="truncate text-sm font-semibold text-[var(--text)]">
+              V<span className="text-[var(--muted)]">|</span>D
             </p>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-[var(--muted)]">
               {variant === "admin" ? "Админ" : "Исполнитель"}
             </p>
           </div>
@@ -126,9 +126,9 @@ export function ResponsiveAppShell({
         <main
           id="app-main"
           className={cn(
-            "min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-5 md:px-8 md:py-8 lg:px-10 lg:py-10",
+            "min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 md:px-8 md:py-8 lg:px-10 lg:py-10",
             bottomNav != null
-              ? "pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-8 lg:pb-10"
+              ? "pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] md:pb-8 lg:pb-10"
               : undefined,
           )}
         >

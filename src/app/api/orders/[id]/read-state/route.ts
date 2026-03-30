@@ -37,10 +37,27 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const readRow = await prisma.orderUserReadState.findUnique({
+    where: { userId_orderId: { userId: user.id, orderId } },
+    select: { chatReadAt: true },
+  });
+  const chatReadAt = readRow?.chatReadAt ?? null;
+
+  const unreadChatCount = await prisma.message.count({
+    where: {
+      orderId,
+      senderId: { not: user.id },
+      ...(chatReadAt
+        ? { createdAt: { gt: chatReadAt } }
+        : {}),
+    },
+  });
+
   return NextResponse.json({
     hasUnreadChat: flags.hasUnreadChat,
     hasUnreadProject: flags.hasUnreadProject,
     hasUnreadAny: flags.hasUnreadAny,
+    unreadChatCount,
   });
 }
 

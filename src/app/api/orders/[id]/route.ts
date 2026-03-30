@@ -13,6 +13,10 @@ import {
   pushNotifyAdminsOrderReview,
   pushNotifyExecutorAssigned,
 } from "@/lib/push-notify";
+import {
+  createInAppNotification,
+  createInAppNotificationForAdmins,
+} from "@/lib/in-app-notifications";
 import { notifyExecutorOrderAssigned } from "@/lib/telegram-notify";
 
 type Params = { params: Promise<{ id: string }> };
@@ -111,6 +115,12 @@ export async function PATCH(req: Request, { params }: Params) {
       event: "order_submit_review",
     });
     pushNotifyAdminsOrderReview(updated.title, id);
+    void createInAppNotificationForAdmins({
+      kind: "order",
+      title: "Сдача на проверку",
+      body: `Заказ «${updated.title}» переведён в REVIEW`,
+      linkHref: `/admin/orders/${id}`,
+    });
     revalidateOrderViews(id);
     return NextResponse.json(serializeOrder(updated, "executor"));
   }
@@ -191,6 +201,27 @@ export async function PATCH(req: Request, { params }: Params) {
   ) {
     notifyExecutorOrderAssigned(updated.executorId, updated.title);
     pushNotifyExecutorAssigned(updated.executorId, updated.title, id);
+    void createInAppNotification({
+      userId: updated.executorId,
+      kind: "order",
+      title: "Вас назначили на заказ",
+      body: updated.title,
+      linkHref: `/executor/orders/${id}`,
+    });
+  }
+
+  if (
+    body.status !== undefined &&
+    updated.status !== existing.status &&
+    updated.executorId
+  ) {
+    void createInAppNotification({
+      userId: updated.executorId,
+      kind: "order",
+      title: "Статус заказа обновлён",
+      body: `«${updated.title}» — ${updated.status}`,
+      linkHref: `/executor/orders/${id}`,
+    });
   }
 
   const bc = Number(updated.budgetClient);

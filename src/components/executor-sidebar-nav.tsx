@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PushNotificationsToggle } from "@/components/push-notifications-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/cn";
 
 const items: {
@@ -66,7 +67,8 @@ export function ExecutorSidebarNav() {
   }, []);
 
   return (
-    <nav className="flex flex-1 flex-col gap-0.5 p-2">
+    <nav className="flex min-h-0 flex-1 flex-col p-2">
+      <div className="flex flex-1 flex-col gap-0.5">
       {items.map((item) => {
         const isOn = navItemActive(pathname, item.href);
         return (
@@ -74,10 +76,10 @@ export function ExecutorSidebarNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-base font-medium transition-colors md:min-h-0 md:py-2 md:text-sm",
+              "flex min-h-12 items-center gap-2.5 rounded-xl px-3 py-2.5 text-base font-medium transition-colors md:min-h-0 md:py-2 md:text-sm",
               isOn
-                ? "bg-zinc-900 text-white shadow-sm"
-                : "text-zinc-700 hover:bg-zinc-100",
+                ? "bg-zinc-900 text-white shadow-sm dark:bg-white dark:text-zinc-900"
+                : "text-[var(--text)] hover:bg-[color:var(--muted-bg)]",
             )}
           >
             <item.icon
@@ -94,7 +96,13 @@ export function ExecutorSidebarNav() {
           </Link>
         );
       })}
-      <PushNotificationsToggle layout="nav" />
+      </div>
+      <div className="mt-auto flex flex-col gap-2 border-t border-[color:var(--border)] pt-3">
+        <div className="flex justify-center">
+          <ThemeToggle />
+        </div>
+        <PushNotificationsToggle layout="nav" />
+      </div>
     </nav>
   );
 }

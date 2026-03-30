@@ -1,9 +1,15 @@
 import type { MessageDto } from "@/lib/message-serialize";
 import { normalizeCreatedAt } from "@/lib/message-normalize";
 
-/** Единый порядок: только normalizeCreatedAt; при равенстве — id. */
+/**
+ * Стабильный порядок: createdAt из БД (мс), затем id.
+ * Оптимистичные `pending:*` всегда после серверных сообщений (без локальных timestamp для порядка).
+ */
 export function sortMessagesStable(list: MessageDto[]): MessageDto[] {
   return [...list].sort((a, b) => {
+    const ap = a.id.startsWith("pending:");
+    const bp = b.id.startsWith("pending:");
+    if (ap !== bp) return ap ? 1 : -1;
     const na = normalizeCreatedAt(a.createdAt) - normalizeCreatedAt(b.createdAt);
     if (na !== 0) return na;
     return a.id.localeCompare(b.id);

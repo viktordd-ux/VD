@@ -7,20 +7,23 @@ import { NavigationProgress } from "@/components/navigation-progress";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { ToastProvider } from "@/components/toast-provider";
 import { ReactQueryProvider } from "@/providers/react-query-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ReactQueryProvider>
-        <ToastProvider>
-          <ServiceWorkerRegister />
-          <IosPwaInstallBanner />
-          <Suspense fallback={null}>
-            <NavigationProgress />
-          </Suspense>
-          {children}
-        </ToastProvider>
-      </ReactQueryProvider>
+      <ThemeProvider>
+        <ReactQueryProvider>
+          <ToastProvider>
+            <ServiceWorkerRegister />
+            <IosPwaInstallBanner />
+            <Suspense fallback={null}>
+              <NavigationProgress />
+            </Suspense>
+            {children}
+          </ToastProvider>
+        </ReactQueryProvider>
+      </ThemeProvider>
     </SessionProvider>
   );
 }

@@ -63,6 +63,9 @@ export async function POST(req: Request) {
   const orderId =
     typeof body.order_id === "string" ? body.order_id.trim() : "";
   const textRaw = typeof body.text === "string" ? body.text.trim() : "";
+  const replyToIdRaw =
+    typeof body.reply_to_id === "string" ? body.reply_to_id.trim() : "";
+  const replyToId = replyToIdRaw || null;
   // createdAt / created_at с клиента не используются
   if (!orderId) {
     return NextResponse.json({ error: "order_id required" }, { status: 400 });
@@ -87,12 +90,25 @@ export async function POST(req: Request) {
 
   const role = user.role === "admin" ? "admin" : "executor";
 
+  if (replyToId) {
+    const parent = await prisma.message.findFirst({
+      where: { id: replyToId, orderId },
+    });
+    if (!parent) {
+      return NextResponse.json(
+        { error: "reply_to_id not found in this order" },
+        { status: 400 },
+      );
+    }
+  }
+
   const created = await prisma.message.create({
     data: {
       orderId,
       senderId: user.id,
       role,
       text: textRaw,
+      ...(replyToId ? { replyToId } : {}),
     },
   });
 

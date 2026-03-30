@@ -45,6 +45,7 @@ import {
 import { orderStatusLabel } from "@/lib/ui-labels";
 import { computeOrderPriority } from "@/lib/order-priority";
 import { cn } from "@/lib/cn";
+import { Avatar } from "@/components/ui/avatar";
 
 type OrderUnreadRow = Omit<OrderUnreadBatchRow, "orderId">;
 
@@ -367,8 +368,8 @@ export function AdminOrdersListClient({
             })}
           </div>
 
-          <div className="rounded-xl border border-zinc-200/60 bg-white shadow-sm shadow-zinc-950/[0.025]">
-            <div className="divide-y divide-zinc-100/90">
+          <div className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] shadow-sm shadow-black/[0.04] dark:shadow-black/40">
+            <div className="divide-y divide-[color:var(--border)]">
               {visible.map((o) => {
                 const ex = o.executorId ? getEntry(o.executorId) : undefined;
                 const executorName = getExecutorDisplayName(
@@ -385,7 +386,7 @@ export function AdminOrdersListClient({
                 return (
                   <div
                     key={o.id}
-                    className="group relative flex min-h-[3.25rem] origin-center items-stretch will-change-transform transition-all duration-150 ease-out first:rounded-t-xl last:rounded-b-xl hover:z-[1] hover:scale-[1.01] hover:bg-zinc-50/95 hover:shadow-[0_1px_0_rgba(15,23,42,0.04)] active:scale-[0.98]"
+                    className="group relative flex min-h-[3.5rem] origin-center items-stretch will-change-transform transition-all duration-200 ease-out first:rounded-t-xl last:rounded-b-xl hover:z-[1] hover:bg-[color:var(--muted-bg)] hover:shadow-[0_1px_0_rgba(15,23,42,0.06)] active:scale-[0.99] dark:hover:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
                   >
                     <div
                       className="flex shrink-0 items-center pl-2 pr-0.5"
@@ -409,6 +410,16 @@ export function AdminOrdersListClient({
                       </span>
 
                       <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-start gap-3">
+                          {o.executorId ? (
+                            <Avatar
+                              size="sm"
+                              name={executorName}
+                              seed={o.executorId}
+                              className="mt-0.5 shrink-0"
+                            />
+                          ) : null}
+                          <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-center gap-2">
                           {unreadByOrderId[o.id]?.hasUnreadAny ? (
                             <span
@@ -417,25 +428,27 @@ export function AdminOrdersListClient({
                               aria-label={orderUnreadTooltip(unreadByOrderId[o.id]!)}
                             />
                           ) : null}
-                          <span className="truncate text-[15px] font-medium leading-snug tracking-tight text-zinc-900">
+                          <span className="truncate text-[15px] font-semibold leading-snug tracking-tight text-[var(--text)]">
                             {o.title}
                           </span>
                         </div>
-                        <p className="mt-0.5 truncate text-xs leading-relaxed text-zinc-500">
+                        <p className="mt-0.5 truncate text-xs leading-relaxed text-[var(--muted)]">
                           {o.clientName}
-                          <span className="text-zinc-300"> · </span>
+                          <span className="text-[color:var(--border)]"> · </span>
                           {executorName}
                           {ex ? (
                             <>
-                              <span className="text-zinc-300"> · </span>
-                              <span className="tabular-nums text-zinc-400">
+                              <span className="text-[color:var(--border)]"> · </span>
+                              <span className="tabular-nums text-[var(--muted)]">
                                 {formatExecutorMetricsLine(ex)}
                               </span>
                             </>
                           ) : null}
-                          <span className="text-zinc-300"> · </span>
+                          <span className="text-[color:var(--border)]"> · </span>
                           <span className="tabular-nums">{deadlineShort(o)}</span>
                         </p>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="hidden shrink-0 flex-col items-end justify-center gap-0.5 text-right sm:flex">

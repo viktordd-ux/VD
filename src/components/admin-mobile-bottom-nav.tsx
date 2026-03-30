@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
+import { queryKeys } from "@/lib/query-keys";
 
 const links = [
   { href: "/admin", label: "Главная", icon: IconHome },
@@ -11,8 +14,42 @@ const links = [
   { href: "/admin/quick", label: "Создать", icon: IconZap },
 ] as const;
 
+async function fetchNavBadges() {
+  const res = await fetch("/api/orders/unread", { cache: "no-store" });
+  if (!res.ok) throw new Error("badges");
+  return res.json() as Promise<{
+    global?: {
+      unreadChatOrderCount?: number;
+      notificationUnreadCount?: number;
+    };
+  }>;
+}
+
 export function AdminMobileBottomNav() {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
+
+  const { data } = useQuery({
+    queryKey: queryKeys.navBadges(),
+    queryFn: fetchNavBadges,
+    staleTime: 15_000,
+  });
+
+  const g = data?.global;
+  const chatC = Math.max(0, Number(g?.unreadChatOrderCount ?? 0));
+  const notifC = Math.max(0, Number(g?.notificationUnreadCount ?? 0));
+  const totalBadge = chatC + notifC;
+
+  useEffect(() => {
+    const inv = () =>
+      void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
+    window.addEventListener("vd:order-unread-changed", inv);
+    window.addEventListener("vd:notifications-changed", inv);
+    return () => {
+      window.removeEventListener("vd:order-unread-changed", inv);
+      window.removeEventListener("vd:notifications-changed", inv);
+    };
+  }, [queryClient]);
 
   function active(href: string) {
     if (href === "/admin") return pathname === "/admin";
@@ -21,22 +58,32 @@ export function AdminMobileBottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-zinc-200/80 bg-white/95 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-md md:hidden"
+      className="fixed bottom-0 left-0 z-50 flex w-full max-w-[100vw] border-t border-[color:var(--border)] bg-[var(--card)]/95 pb-[calc(0.65rem+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-md md:hidden"
       aria-label="Нижнее меню"
     >
-      {links.map((item) => (
+      {links.map((item, index) => (
         <Link
           key={item.href}
           href={item.href}
           prefetch
           className={cn(
-            "flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-all duration-150 ease-out active:scale-[0.97]",
-            active(item.href) ? "text-zinc-900" : "text-zinc-500",
+            "relative flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium transition-all duration-150 ease-out active:scale-[0.97]",
+            active(item.href) ? "text-[var(--text)]" : "text-[var(--muted)]",
           )}
         >
-          <item.icon
-            className={cn("h-6 w-6", active(item.href) ? "text-zinc-900" : "text-zinc-400")}
-          />
+          <span className="relative inline-flex">
+            <item.icon
+              className={cn(
+                "h-7 w-7",
+                active(item.href) ? "text-[var(--text)]" : "text-[var(--muted)]",
+              )}
+            />
+            {index === 0 && totalBadge > 0 ? (
+              <span className="absolute -right-2 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-[5px] text-[10px] font-bold leading-none text-white">
+                {totalBadge > 99 ? "99+" : totalBadge}
+              </span>
+            ) : null}
+          </span>
           {item.label}
         </Link>
       ))}

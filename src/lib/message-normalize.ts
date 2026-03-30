@@ -71,10 +71,16 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
       : o.sender_id != null
         ? String(o.sender_id)
         : "";
-  const text = o.text != null ? String(o.text) : "";
+  const text = o.text != null ? String(o.text).trim() : "";
   const role = o.role;
-  if (!id || !orderId || !senderId || !text) return null;
+  if (!id || !orderId || !senderId || text === "") return null;
   if (role !== "admin" && role !== "executor") return null;
+
+  const replyRaw = o.reply_to_id ?? o.replyToId;
+  const replyToId =
+    replyRaw != null && replyRaw !== ""
+      ? String(replyRaw)
+      : null;
   const rawTime =
     o.created_at !== undefined && o.created_at !== null
       ? o.created_at
@@ -90,5 +96,6 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
     role,
     text,
     createdAt,
+    replyToId,
   };
 }

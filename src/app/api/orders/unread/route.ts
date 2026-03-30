@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 import {
   filterAccessibleOrderIds,
   getHasAnyUnreadChat,
+  getUnreadChatOrderCount,
   getUnreadFlagsForOrders,
 } from "@/lib/order-unread-state";
 import type { OrderUnreadBatchRow } from "@/lib/order-unread-service";
@@ -16,9 +18,20 @@ export async function GET() {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
 
-  const hasAnyUnreadChats = await getHasAnyUnreadChat(user.id, user.role);
+  const [hasAnyUnreadChats, unreadChatOrderCount, notificationUnreadCount] =
+    await Promise.all([
+      getHasAnyUnreadChat(user.id, user.role),
+      getUnreadChatOrderCount(user.id, user.role),
+      prisma.notification.count({
+        where: { userId: user.id, readAt: null },
+      }),
+    ]);
   return NextResponse.json({
-    global: { hasAnyUnreadChats },
+    global: {
+      hasAnyUnreadChats,
+      unreadChatOrderCount,
+      notificationUnreadCount,
+    },
   });
 }
 
@@ -54,10 +67,21 @@ export async function POST(req: Request) {
     };
   });
 
-  const hasAnyUnreadChats = await getHasAnyUnreadChat(user.id, user.role);
+  const [hasAnyUnreadChats, unreadChatOrderCount, notificationUnreadCount] =
+    await Promise.all([
+      getHasAnyUnreadChat(user.id, user.role),
+      getUnreadChatOrderCount(user.id, user.role),
+      prisma.notification.count({
+        where: { userId: user.id, readAt: null },
+      }),
+    ]);
 
   return NextResponse.json({
     orders,
-    global: { hasAnyUnreadChats },
+    global: {
+      hasAnyUnreadChats,
+      unreadChatOrderCount,
+      notificationUnreadCount,
+    },
   });
 }

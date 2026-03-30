@@ -137,3 +137,34 @@ export async function getHasAnyUnreadChat(
   `;
   return Boolean(rows[0]?.has_unread);
 }
+
+/** Сколько заказов в зоне роли с непрочитанным входящим чатом (для бейджа в навигации). */
+export async function getUnreadChatOrderCount(
+  userId: string,
+  role: "admin" | "executor",
+): Promise<number> {
+  if (role === "admin") {
+    const rows = await prisma.$queryRaw<{ c: bigint }[]>`
+      SELECT COUNT(DISTINCT m.order_id)::bigint AS c
+      FROM messages m
+      INNER JOIN orders o ON o.id = m.order_id AND o.deleted_at IS NULL
+      LEFT JOIN order_user_read_state s
+        ON s.order_id = m.order_id AND s.user_id = ${userId}
+      WHERE m.sender_id != ${userId}
+        AND (s.chat_read_at IS NULL OR m.created_at > s.chat_read_at)
+    `;
+    return Number(rows[0]?.c ?? 0);
+  }
+
+  const rows = await prisma.$queryRaw<{ c: bigint }[]>`
+    SELECT COUNT(DISTINCT m.order_id)::bigint AS c
+    FROM messages m
+    INNER JOIN orders o ON o.id = m.order_id AND o.deleted_at IS NULL
+    LEFT JOIN order_user_read_state s
+      ON s.order_id = m.order_id AND s.user_id = ${userId}
+    WHERE m.sender_id != ${userId}
+      AND o.executor_id = ${userId}
+      AND (s.chat_read_at IS NULL OR m.created_at > s.chat_read_at)
+  `;
+  return Number(rows[0]?.c ?? 0);
+}

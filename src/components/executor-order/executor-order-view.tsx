@@ -60,6 +60,8 @@ export function ExecutorOrderView({
 
       <OrderChat
         orderId={orderId}
+        variant="dock"
+        dockFabBottom="default"
         initialHasUnreadChat={initialHasUnreadChat}
         supabaseUrl={supabaseUrl}
         supabaseAnonKey={supabaseAnonKey}

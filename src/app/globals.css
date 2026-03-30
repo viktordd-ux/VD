@@ -1,9 +1,31 @@
 @import "tailwindcss";
 
+/* Class-based dark mode (see ThemeProvider + inline script in layout). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #fafafa;
-  --foreground: #0f172a;
-  --vd-border: rgba(15, 23, 42, 0.06);
+  --bg: #f4f4f5;
+  --text: #0f172a;
+  --border: rgba(15, 23, 42, 0.09);
+  --muted: rgba(15, 23, 42, 0.55);
+  --muted-bg: rgba(15, 23, 42, 0.045);
+  --card: #ffffff;
+  --ring: rgba(15, 23, 42, 0.12);
+  --elevate: rgba(15, 23, 42, 0.06);
+  --background: var(--bg);
+  --foreground: var(--text);
+  --vd-border: var(--border);
+}
+
+.dark {
+  --bg: #0c0e12;
+  --text: #e8eaed;
+  --border: rgba(255, 255, 255, 0.09);
+  --muted: rgba(232, 234, 237, 0.55);
+  --muted-bg: rgba(255, 255, 255, 0.06);
+  --card: #13161d;
+  --ring: rgba(255, 255, 255, 0.1);
+  --elevate: rgba(0, 0, 0, 0.35);
 }
 
 @theme inline {
@@ -16,10 +38,14 @@ html {
   overflow-x: clip;
 }
 
+.text-muted {
+  color: var(--muted);
+}
+
 @keyframes vd-message-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -59,7 +85,7 @@ html {
 }
 
 .vd-message-enter {
-  animation: vd-message-in 120ms ease-out forwards;
+  animation: vd-message-in 200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .vd-fade-in {
@@ -85,13 +111,12 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-inter), Inter, Arial, Helvetica, sans-serif;
   font-size: 1rem;
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
-  /* iOS PWA + viewport-fit=cover: контент не под вырезом / индикатором домена */
   padding-top: env(safe-area-inset-top);
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);

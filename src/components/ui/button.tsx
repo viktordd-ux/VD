@@ -6,13 +6,13 @@ type Size = "sm" | "md";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:scale-[1.01] active:scale-[0.98] active:bg-zinc-950 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
+    "bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:scale-[1.01] active:scale-[0.98] active:bg-zinc-950 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200",
   secondary:
-    "border border-zinc-300 bg-transparent text-zinc-800 shadow-sm hover:bg-zinc-100 hover:scale-[1.01] active:scale-[0.98] active:bg-zinc-200 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
+    "border border-[color:var(--border)] bg-transparent text-[var(--text)] shadow-sm hover:bg-[color:var(--muted-bg)] hover:scale-[1.01] active:scale-[0.98] active:opacity-90 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
   destructive:
-    "border border-red-200 bg-red-50 text-red-900 shadow-sm hover:bg-red-100 hover:scale-[1.01] active:scale-[0.98] active:bg-red-200 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
+    "border border-red-200/80 bg-red-50 text-red-900 shadow-sm hover:bg-red-100/90 hover:scale-[1.01] active:scale-[0.98] active:bg-red-200/80 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100 dark:hover:bg-red-950/60",
   ghost:
-    "text-zinc-700 hover:bg-zinc-100 hover:scale-[1.01] active:scale-[0.98] active:bg-zinc-200 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
+    "text-[var(--text)] hover:bg-[color:var(--muted-bg)] hover:scale-[1.01] active:scale-[0.98] active:opacity-90 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
 };
 
 const sizes: Record<Size, string> = {
@@ -48,13 +48,13 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <>
+        <span className="inline-flex items-center gap-2 opacity-90">
           <span
-            className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-80"
+            className="inline-flex h-1 w-1 animate-pulse rounded-full bg-current opacity-70"
             aria-hidden
           />
-          <span className="opacity-90">{children}</span>
-        </>
+          <span className="animate-pulse">{children}</span>
+        </span>
       ) : (
         children
       )}

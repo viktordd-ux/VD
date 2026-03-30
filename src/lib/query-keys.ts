@@ -5,4 +5,5 @@ export const queryKeys = {
   orderMessages: (orderId: string) => ["order", "messages", orderId] as const,
   globalSearch: (q: string) => ["admin", "search", q] as const,
   notifications: () => ["notifications"] as const,
+  navBadges: () => ["nav-badges"] as const,
 };
