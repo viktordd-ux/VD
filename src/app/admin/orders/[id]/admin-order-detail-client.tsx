@@ -32,7 +32,7 @@ export function AdminOrderDetailClient({ orderId }: { orderId: string }) {
 
   if (isError) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-100">
         {(error as Error)?.message ?? "Ошибка загрузки"}
       </div>
     );
@@ -40,7 +40,7 @@ export function AdminOrderDetailClient({ orderId }: { orderId: string }) {
 
   if (!data) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600">
+      <div className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-6 text-sm text-[var(--muted)]">
         Заказ не найден
       </div>
     );
@@ -62,56 +62,66 @@ export function AdminOrderDetailClient({ orderId }: { orderId: string }) {
         supabaseUrl={supabaseUrl}
         supabaseAnonKey={supabaseAnonKey}
       />
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl px-1 md:px-0">
         <Link
           href="/admin/orders"
-          className="inline-flex min-h-11 items-center text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-800 md:min-h-0"
+          className="inline-flex min-h-11 items-center text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)] md:min-h-0"
           prefetch
         >
           ← Заказы
         </Link>
 
-        <div className="mt-8 flex min-w-0 flex-col gap-8 lg:gap-10">
-          <AdminOrderSummaryCard />
+        <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-10">
+          <div className="min-w-0 space-y-6 lg:space-y-8">
+            <AdminOrderSummaryCard layout="headerOnly" />
 
-          <AdminOrderForm executors={data.executors} executorStats={data.executorStats} />
+            <AdminOrderForm executors={data.executors} executorStats={data.executorStats} />
 
-          <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-            <Card className="p-5 md:p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold tracking-tight text-zinc-900">Этапы</h2>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                    Когда все этапы выполнены при статусе «В работе», заказ переходит на проверку.
-                  </p>
+            <div className="grid gap-6 lg:grid-cols-1">
+              <Card className="border-[color:var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-black/[0.03] dark:shadow-black/30 md:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+                      Этапы
+                    </h2>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+                      Когда все этапы выполнены при статусе «В работе», заказ переходит на проверку.
+                    </p>
+                  </div>
+                  <AdminCompleteAllCheckpoints orderId={orderId} />
                 </div>
-                <AdminCompleteAllCheckpoints orderId={orderId} />
-              </div>
-              <div className="mt-5">
-                <AdminCheckpointsPanel
-                  orderId={orderId}
-                  supabaseUrl={supabaseUrl}
-                  supabaseAnonKey={supabaseAnonKey}
-                />
-              </div>
-            </Card>
+                <div className="mt-5">
+                  <AdminCheckpointsPanel
+                    orderId={orderId}
+                    supabaseUrl={supabaseUrl}
+                    supabaseAnonKey={supabaseAnonKey}
+                  />
+                </div>
+              </Card>
 
-            <Card className="p-5 md:p-6">
-              <AdminOrderFilesSection orderId={orderId} />
+              <Card className="border-[color:var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-black/[0.03] dark:shadow-black/30 md:p-6">
+                <AdminOrderFilesSection orderId={orderId} />
+              </Card>
+            </div>
+
+            <AdminOrderDelete orderId={orderId} />
+
+            <Card className="border-[color:var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-black/[0.03] dark:shadow-black/30 md:p-6">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+                История и аудит
+              </h2>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+                Хронология изменений, этапов и записей аудита по заказу.
+              </p>
+              <div className="mt-5">
+                <AdminOrderHistoryTabs orderId={orderId} />
+              </div>
             </Card>
           </div>
 
-          <AdminOrderDelete orderId={orderId} />
-
-          <Card className="p-5 md:p-6">
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-900">История и аудит</h2>
-            <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-              Хронология изменений, этапов и записей аудита по заказу.
-            </p>
-            <div className="mt-5">
-              <AdminOrderHistoryTabs orderId={orderId} />
-            </div>
-          </Card>
+          <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+            <AdminOrderSummaryCard layout="sidebarOnly" />
+          </div>
         </div>
 
         <OrderChat

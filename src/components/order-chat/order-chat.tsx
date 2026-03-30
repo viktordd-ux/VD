@@ -14,7 +14,6 @@ import {
 } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/toast-provider";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -139,73 +138,110 @@ function groupMessagesBySender(
   return groups;
 }
 
+function IconSendArrow({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
+    </svg>
+  );
+}
+
 const ChatBubble = memo(function ChatBubble({
   m,
   mine,
   replyPreview,
+  timeLabel,
+  roleLabel,
   onReply,
   onCopy,
 }: {
   m: MessageDto;
   mine: boolean;
   replyPreview: string | null;
+  timeLabel: string;
+  roleLabel: string | null;
   onReply: () => void;
   onCopy: () => void;
 }) {
   return (
     <div
       className={cn(
-        "group relative flex w-full",
-        mine ? "justify-end" : "justify-start",
+        "group relative w-full max-w-[min(70%,20rem)]",
+        mine ? "ml-auto" : "mr-auto",
       )}
     >
-      <div className="relative max-w-[min(85%,28rem)]">
-        <div
+      <div
+        className={cn(
+          "pointer-events-none absolute right-1 top-1 z-[1] flex gap-0.5 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-sm:pointer-events-auto max-sm:opacity-100",
+        )}
+      >
+        <button
+          type="button"
+          onClick={onReply}
           className={cn(
-            "mb-1 flex min-h-[28px] items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100",
-            mine ? "justify-end" : "justify-start",
-          )}
-        >
-          <button
-            type="button"
-            onClick={onReply}
-            className="min-h-[44px] min-w-[44px] rounded-lg px-2 text-[12px] font-medium text-[var(--muted)] transition hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] sm:min-h-0 sm:min-w-0"
-          >
-            Ответить
-          </button>
-          <button
-            type="button"
-            onClick={onCopy}
-            className="min-h-[44px] min-w-[44px] rounded-lg px-2 text-[12px] font-medium text-[var(--muted)] transition hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] sm:min-h-0 sm:min-w-0"
-          >
-            Копировать
-          </button>
-        </div>
-        <div
-          className={cn(
-            "rounded-2xl px-3.5 py-2 text-[15px] leading-[1.45] shadow-sm transition-shadow duration-150 hover:shadow-md",
+            "rounded-md px-1 py-0.5 text-[10px] font-medium backdrop-blur-sm",
             mine
-              ? "bg-zinc-900 text-white shadow-black/15 dark:bg-zinc-100 dark:text-zinc-900"
-              : "border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-black/[0.06] dark:shadow-black/30",
+              ? "bg-white/15 text-white"
+              : "bg-black/10 text-[var(--text)] dark:bg-white/10",
           )}
         >
-          {m.replyToId && replyPreview ? (
-            <p
-              className={cn(
-                "mb-2 border-l-2 pl-2 text-xs leading-snug",
-                mine
-                  ? "border-white/40 text-blue-100/90"
-                  : "border-[color:var(--border)] text-[var(--muted)]",
-              )}
-            >
-              {replyPreview}
-            </p>
-          ) : m.replyToId ? (
-            <p className="mb-2 text-xs text-[var(--muted)]">Сообщение недоступно</p>
-          ) : null}
-          <p className="whitespace-pre-wrap break-words">
-            {messageWithMentions(m.text, mine)}
+          ↩
+        </button>
+        <button
+          type="button"
+          onClick={onCopy}
+          className={cn(
+            "rounded-md px-1 py-0.5 text-[10px] font-medium backdrop-blur-sm",
+            mine
+              ? "bg-white/15 text-white"
+              : "bg-black/10 text-[var(--text)] dark:bg-white/10",
+          )}
+        >
+          ⧉
+        </button>
+      </div>
+      <div
+        className={cn(
+          "rounded-[16px] px-3 py-2 text-[15px] leading-snug",
+          mine
+            ? "bg-zinc-900 text-white dark:bg-[#2563eb] dark:text-white"
+            : "border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)]",
+        )}
+      >
+        {m.replyToId && replyPreview ? (
+          <p
+            className={cn(
+              "mb-1.5 border-l-2 pl-2 text-xs leading-snug",
+              mine
+                ? "border-white/40 text-blue-100/90"
+                : "border-[color:var(--border)] text-[var(--muted)]",
+            )}
+          >
+            {replyPreview}
           </p>
+        ) : m.replyToId ? (
+          <p className="mb-1.5 text-xs text-[var(--muted)]">Сообщение недоступно</p>
+        ) : null}
+        <p className="whitespace-pre-wrap break-words">
+          {messageWithMentions(m.text, mine)}
+        </p>
+        <div
+          className={cn(
+            "mt-1 flex items-end justify-end gap-1 text-[11px] tabular-nums leading-none",
+            mine ? "text-white/70" : "text-[var(--muted)]",
+          )}
+        >
+          <span className="min-w-0">
+            {roleLabel ? (
+              <span className="opacity-80">{roleLabel} · </span>
+            ) : null}
+            {timeLabel}
+          </span>
         </div>
       </div>
     </div>
@@ -281,6 +317,7 @@ export function OrderChat({
     "idle" | "subscribed" | "error" | "unconfigured"
   >("idle");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   /** Обновляется только обработчиком scroll — чтобы не скроллить вниз, если пользователь читает историю. */
   const nearBottomRef = useRef(true);
   const prevLenRef = useRef(0);
@@ -436,8 +473,8 @@ export function OrderChat({
 
   const dockFabPos =
     dockFabBottom === "default"
-      ? "fixed right-4 z-[55] bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-6"
-      : "fixed right-4 z-[55] max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6";
+      ? "fixed right-3 z-[65] bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] lg:bottom-6"
+      : "fixed right-3 z-[65] max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6";
 
   const fetchUnread = useCallback(async () => {
     const res = await fetch(
@@ -519,7 +556,9 @@ export function OrderChat({
       setPeerLastSeenMs(best > 0 ? best : null);
     });
 
-    const typingCh = supabase.channel(`order-typing:${orderId}`);
+    const typingCh = supabase.channel(`order-typing:${orderId}`, {
+      config: { broadcast: { self: false } },
+    });
     typingCh.on(
       "broadcast",
       { event: "typing" },
@@ -580,7 +619,7 @@ export function OrderChat({
     }
     if (soundSeenMsgIdRef.current === last.id) return;
     soundSeenMsgIdRef.current = last.id;
-    if (document.hidden || !document.hasFocus()) {
+    if (document.hidden) {
       playSoftPing();
     }
   }, [messages, currentUserId]);
@@ -820,6 +859,18 @@ export function OrderChat({
     });
   }
 
+  const syncInputHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(120, Math.max(36, el.scrollHeight));
+    el.style.height = `${next}px`;
+  }, []);
+
+  useLayoutEffect(() => {
+    syncInputHeight();
+  }, [input, syncInputHeight]);
+
   const tallMessages = isSidebar || isDock;
 
   function dockShell(node: ReactNode) {
@@ -828,8 +879,8 @@ export function OrderChat({
       <div
         className={cn(
           dockFabPos,
-          "flex w-[min(22rem,calc(100vw-2rem))] flex-col",
-          "h-[min(38rem,55dvh)] max-h-[min(38rem,55dvh)]",
+          "flex w-[min(22rem,calc(100vw-0.75rem))] flex-col",
+          "h-[min(42rem,70vh)] max-h-[calc(100dvh-1rem)]",
         )}
       >
         {node}
@@ -871,25 +922,30 @@ export function OrderChat({
     const loadingCard = (
       <Card
         className={cn(
-          "p-4 md:p-6",
-          isSidebar && "flex min-h-[12rem] flex-col lg:max-h-[calc(100dvh-2rem)]",
+          "flex h-full min-h-0 flex-col overflow-hidden p-0 shadow-none",
+          isSidebar && "min-h-[12rem] lg:max-h-[calc(100dvh-2rem)]",
           isDock &&
-            "flex min-h-0 flex-1 flex-col overflow-hidden shadow-2xl ring-1 ring-zinc-200/80",
+            "flex-1 rounded-2xl border border-[color:var(--border)] ring-1 ring-black/[0.04] dark:ring-white/10",
         )}
       >
         {isDock && (
-          <div className="-mt-1 mb-2 flex justify-end">
+          <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--border)] px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              Чат
+            </span>
             <button
               type="button"
               onClick={() => setDockOpen(false)}
-              className="shrink-0 rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+              className="shrink-0 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)]"
               aria-label="Свернуть чат"
             >
               <IconChevronDown className="h-5 w-5" />
             </button>
           </div>
         )}
-        <p className="text-sm text-zinc-500">Загрузка чата…</p>
+        <div className="flex flex-1 items-center justify-center px-3 py-6">
+          <p className="text-sm text-[var(--muted)]">Загрузка чата…</p>
+        </div>
       </Card>
     );
     return dockShell(
@@ -901,67 +957,94 @@ export function OrderChat({
     return dockFabButton();
   }
 
+  const peerPresenceShort =
+    !supabase || !currentUserId
+      ? "—"
+      : peerPresenceUi.kind === "online"
+        ? "в сети"
+        : peerPresenceUi.kind === "recent"
+          ? "был недавно"
+          : "не в сети";
+
   const chatCard = (
     <Card
       className={cn(
-        "flex flex-col p-4 md:p-6",
+        "flex h-full min-h-0 flex-col overflow-hidden p-0 shadow-none",
         isSidebar &&
           "min-h-[18rem] max-h-[min(32rem,70vh)] lg:min-h-0 lg:max-h-[calc(100dvh-2rem)] lg:overflow-hidden",
         isDock &&
-          "min-h-0 flex-1 flex-col overflow-hidden shadow-2xl ring-1 ring-zinc-200/80",
+          "min-h-0 flex-1 rounded-2xl border border-[color:var(--border)] ring-1 ring-black/[0.04] dark:ring-white/10",
+        !isDock && !isSidebar && "min-h-[min(24rem,50vh)]",
       )}
     >
       {isDock ? (
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-            Чат
-          </h2>
+        <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[color:var(--border)] px-3 py-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                Чат
+              </h2>
+            </div>
+            <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">
+              <span className="font-medium text-[var(--text)]">{peerLabel}</span>
+              <span className="mx-1">·</span>
+              {peerPresenceUi.kind === "online" ? (
+                <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                  {peerPresenceShort}
+                </span>
+              ) : (
+                <span>{peerPresenceShort}</span>
+              )}
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => setDockOpen(false)}
-            className="shrink-0 rounded-lg p-2 text-[var(--muted)] transition hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)]"
+            className="shrink-0 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)]"
             aria-label="Свернуть чат"
           >
             <IconChevronDown className="h-5 w-5" />
           </button>
         </div>
       ) : (
-        <>
-          <h2 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-            Чат
-            {unreadChatCount > 0 ? (
-              <span
-                className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white"
-                aria-hidden
-              >
-                {unreadChatCount > 99 ? "99+" : unreadChatCount}
-              </span>
-            ) : null}
-          </h2>
-          <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
-            Переписка по заказу между студией и исполнителем.
-          </p>
-        </>
+        <div className="shrink-0 border-b border-[color:var(--border)] px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              Чат
+              {unreadChatCount > 0 ? (
+                <span
+                  className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+                  aria-hidden
+                >
+                  {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                </span>
+              ) : null}
+            </h2>
+            <span className="text-[11px] text-[var(--muted)]">
+              {peerLabel} · {peerPresenceShort}
+            </span>
+          </div>
+        </div>
       )}
 
       {realtimeStatus === "unconfigured" && (
-        <p className="mt-2 text-xs text-amber-800">
+        <p className="border-b border-amber-200/60 bg-amber-50/90 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
           Мгновенные обновления выключены: в Vercel задайте{" "}
-          <code className="rounded bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_URL</code> и{" "}
-          <code className="rounded bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
+          <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">NEXT_PUBLIC_SUPABASE_URL</code> и{" "}
+          <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
           (как в Supabase → Settings → API) и сделайте <strong>Redeploy</strong>.
         </p>
       )}
       {realtimeStatus === "error" && (
-        <p className="mt-2 text-xs text-amber-800">
+        <p className="border-b border-amber-200/60 bg-amber-50/90 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
           Не удалось подключить Realtime. В Supabase:{" "}
           <strong>Database → Publications</strong> или <strong>Replication</strong> — включите
-          таблицу <code className="rounded bg-amber-100 px-1">messages</code> для Realtime.
+          таблицу <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">messages</code> для Realtime.
         </p>
       )}
 
       {chatLoadError && (
-        <p className="mt-2 text-sm text-red-700" role="alert">
+        <p className="border-b border-red-200 px-3 py-2 text-xs text-red-700 dark:border-red-900/40 dark:text-red-300" role="alert">
           {chatLoadError}
         </p>
       )}
@@ -970,59 +1053,34 @@ export function OrderChat({
         ref={scrollRef}
         style={{ overflowAnchor: "none" } as CSSProperties}
         className={cn(
-          "mt-4 flex min-h-[10rem] flex-col gap-3 overflow-y-auto overflow-x-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--muted-bg)]/50 p-3.5 [scrollbar-gutter:stable] dark:bg-white/[0.03]",
-          tallMessages ? "min-h-0 flex-1" : "max-h-[min(24rem,50vh)]",
+          "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--bg)] px-3 pt-3 pb-2 [scrollbar-gutter:stable]",
+          tallMessages ? "" : "max-h-[min(24rem,50vh)]",
         )}
       >
-        {!loading && messages.length > 0 ? (
-          <div className="sticky top-0 z-10 -mx-3.5 mb-1 border-b border-[color:var(--border)] bg-[var(--card)]/95 px-3.5 pb-2.5 pt-1 backdrop-blur-md">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                  Собеседник
-                </p>
-                <p className="mt-0.5 truncate text-sm font-semibold text-[var(--text)]">
-                  {peerLabel}
-                </p>
-              </div>
-              <span className="shrink-0 text-[11px] text-[var(--muted)]">
-                {!supabase || !currentUserId ? (
-                  "—"
-                ) : peerPresenceUi.kind === "online" ? (
-                  <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                    в сети
-                  </span>
-                ) : peerPresenceUi.kind === "recent" ? (
-                  <span className="text-[var(--muted)]">был недавно</span>
-                ) : (
-                  "не в сети"
-                )}
-              </span>
-            </div>
-          </div>
-        ) : null}
-
         {loading ? (
-          <div className="flex flex-col gap-3 py-1" aria-hidden>
+          <div className="flex flex-col gap-2 py-1" aria-hidden>
             <div className="flex justify-end">
-              <Skeleton className="h-11 w-[72%] max-w-sm rounded-2xl rounded-br-md" />
+              <Skeleton className="h-10 w-[min(70%,18rem)] rounded-[16px]" />
             </div>
-            <div className="flex justify-start">
-              <Skeleton className="h-14 w-[78%] max-w-md rounded-2xl rounded-bl-md" />
+            <div className="flex justify-start gap-2">
+              <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+              <Skeleton className="h-14 w-[min(70%,20rem)] rounded-[16px]" />
             </div>
             <div className="flex justify-end">
-              <Skeleton className="h-9 w-[55%] max-w-xs rounded-2xl rounded-br-md" />
+              <Skeleton className="h-9 w-[55%] max-w-xs rounded-[16px]" />
             </div>
           </div>
         ) : messages.length === 0 ? (
-          <p className="text-sm text-[var(--muted)]">Пока нет сообщений. Напишите первым.</p>
+          <p className="py-2 text-center text-sm text-[var(--muted)]">
+            Пока нет сообщений. Напишите первым.
+          </p>
         ) : (
           chatTimeline.map((item, ti) => {
             if (item.kind === "day") {
               return (
                 <div
                   key={`day-${item.dayKey}-${ti}`}
-                  className="flex items-center gap-3 py-2 vd-fade-in"
+                  className="flex items-center gap-2 py-1.5 vd-fade-in"
                 >
                   <div className="h-px flex-1 bg-[color:var(--border)]" />
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
@@ -1034,61 +1092,62 @@ export function OrderChat({
             }
             const g = item.group;
             const last = g.items[g.items.length - 1]!;
-            const timeLabel = formatChatMessageTime(last.createdAt);
-            const peerName =
-              g.role === "admin" ? "Студия" : "Исполнитель";
+            const peerName = g.role === "admin" ? "Студия" : "Исполнитель";
             return (
               <div
                 key={`${g.senderId}-${ti}-${last.id}`}
-                className={cn(
-                  "vd-message-enter flex gap-2.5",
-                  g.mine ? "flex-row-reverse" : "flex-row",
-                )}
+                className="flex flex-col gap-0.5"
               >
-                <div className="flex shrink-0 flex-col pt-0.5">
-                  <Avatar
-                    size="md"
-                    name={g.mine ? session?.user?.name : peerName}
-                    seed={g.mine ? currentUserId ?? "me" : g.senderId}
-                    ringClassName="ring-2 ring-[var(--card)]"
-                  />
-                </div>
-                <div
-                  className={cn(
-                    "flex min-w-0 flex-1 flex-col gap-1",
-                    g.mine ? "items-end" : "items-stretch",
-                  )}
-                >
-                  {g.items.map((m) => (
-                    <ChatBubble
+                {g.items.map((m, mi) => {
+                  const msgTime = m.id.startsWith("pending:")
+                    ? ""
+                    : formatChatMessageTime(m.createdAt);
+                  const roleLabel = !g.mine ? roleShortLabel(g.role) : null;
+                  return (
+                    <div
                       key={m.id}
-                      m={m}
-                      mine={g.mine}
-                      replyPreview={getReplyPreview(
-                        m.replyToId ? messageById.get(m.replyToId) : undefined,
+                      className={cn(
+                        "vd-message-enter flex gap-2",
+                        g.mine ? "justify-end" : "justify-start",
                       )}
-                      onReply={() => setReplyTo(m)}
-                      onCopy={() => {
-                        void navigator.clipboard.writeText(m.text).then(() => {
-                          toast.success("Скопировано");
-                        });
-                      }}
-                    />
-                  ))}
-                  <p
-                    className={cn(
-                      "text-[11px] tabular-nums tracking-wide text-[var(--muted)]",
-                      g.mine ? "text-right" : "text-left",
-                    )}
-                  >
-                    {timeLabel}
-                    {!g.mine && (
-                      <span className="ml-1.5 opacity-80">
-                        · {roleShortLabel(g.role)}
-                      </span>
-                    )}
-                  </p>
-                </div>
+                    >
+                      {!g.mine ? (
+                        <div className="flex w-9 shrink-0 justify-center pt-0.5">
+                          {mi === 0 ? (
+                            <Avatar
+                              size="md"
+                              name={peerName}
+                              seed={g.senderId}
+                              ringClassName="ring-2 ring-[var(--bg)]"
+                            />
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <div
+                        className={cn(
+                          "min-w-0",
+                          g.mine ? "flex max-w-full flex-1 justify-end" : "flex-1",
+                        )}
+                      >
+                        <ChatBubble
+                          m={m}
+                          mine={g.mine}
+                          timeLabel={msgTime}
+                          roleLabel={roleLabel}
+                          replyPreview={getReplyPreview(
+                            m.replyToId ? messageById.get(m.replyToId) : undefined,
+                          )}
+                          onReply={() => setReplyTo(m)}
+                          onCopy={() => {
+                            void navigator.clipboard.writeText(m.text).then(() => {
+                              toast.success("Скопировано");
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })
@@ -1096,17 +1155,20 @@ export function OrderChat({
       </div>
 
       {peerTypingName ? (
-        <p className="mt-2 text-xs text-[var(--muted)] vd-fade-in">
+        <p className="shrink-0 px-3 pb-2 text-[11px] text-[var(--muted)] vd-fade-in">
           {peerTypingName} печатает…
         </p>
       ) : null}
 
-      <form onSubmit={onSend} className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+      <form
+        onSubmit={onSend}
+        className="sticky bottom-0 z-10 shrink-0 border-t border-[color:var(--border)] bg-[var(--card)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] pt-2"
+      >
         <label className="sr-only" htmlFor={`order-chat-input-${orderId}`}>
           Сообщение
         </label>
         {replyTo ? (
-          <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-3 py-2 text-left text-xs text-[var(--muted)]">
+          <div className="mb-2 flex w-full items-center justify-between gap-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-3 py-1.5 text-left text-[11px] text-[var(--muted)]">
             <p className="min-w-0 truncate">
               <span className="font-medium text-[var(--text)]">Ответ: </span>
               {getReplyPreview(replyTo) ?? "…"}
@@ -1114,53 +1176,58 @@ export function OrderChat({
             <button
               type="button"
               onClick={() => setReplyTo(null)}
-              className="min-h-[44px] shrink-0 rounded-lg px-2 text-[var(--text)] hover:bg-[color:var(--border)] sm:min-h-0"
+              className="shrink-0 rounded-lg px-2 py-1 text-[var(--text)] transition hover:bg-[color:var(--border)]"
               aria-label="Отменить ответ"
             >
               ✕
             </button>
           </div>
         ) : null}
-        <textarea
-          id={`order-chat-input-${orderId}`}
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            const ch = typingChannelRef.current;
-            if (!ch || !currentUserId) return;
-            const now = Date.now();
-            if (now - lastTypingBroadcastRef.current < 600) return;
-            lastTypingBroadcastRef.current = now;
-            void ch.send({
-              type: "broadcast",
-              event: "typing",
-              payload: {
-                userId: currentUserId,
-                name: session?.user?.name ?? undefined,
-              },
-            });
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onSend(e as unknown as React.FormEvent);
-            }
-          }}
-          placeholder="Введите сообщение…"
-          rows={2}
-          maxLength={8000}
-          className="min-h-[3rem] w-full flex-1 resize-y rounded-xl border border-[color:var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400/30 dark:focus:ring-white/20"
-        />
-        <Button
-          type="submit"
-          variant="primary"
-          size="md"
-          loading={sendMutation.isPending}
-          disabled={sendMutation.isPending || !input.trim() || !currentUserId}
-          className="w-full shrink-0 cursor-pointer sm:w-auto"
-        >
-          Отправить
-        </Button>
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            id={`order-chat-input-${orderId}`}
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              const ch = typingChannelRef.current;
+              if (!ch || !currentUserId) return;
+              const now = Date.now();
+              if (now - lastTypingBroadcastRef.current < 600) return;
+              lastTypingBroadcastRef.current = now;
+              void ch.send({
+                type: "broadcast",
+                event: "typing",
+                payload: {
+                  userId: currentUserId,
+                  name: session?.user?.name ?? undefined,
+                },
+              });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                onSend(e as unknown as React.FormEvent);
+              }
+            }}
+            placeholder="Сообщение"
+            rows={1}
+            maxLength={8000}
+            className="min-h-9 max-h-[120px] w-full resize-none rounded-[20px] border border-[color:var(--border)] bg-[var(--bg)] py-2.5 pl-3 pr-11 text-[15px] leading-snug text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400/25 dark:bg-[var(--muted-bg)] dark:focus:ring-white/15"
+          />
+          <button
+            type="submit"
+            disabled={sendMutation.isPending || !input.trim() || !currentUserId}
+            className="absolute bottom-3 right-3 flex h-8 w-8 touch-manipulation items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition hover:bg-zinc-800 active:scale-95 disabled:pointer-events-none disabled:opacity-40 dark:bg-blue-600 dark:hover:bg-blue-500"
+            aria-label="Отправить"
+          >
+            {sendMutation.isPending ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : (
+              <IconSendArrow className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </form>
     </Card>
   );

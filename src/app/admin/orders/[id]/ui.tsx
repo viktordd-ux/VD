@@ -167,8 +167,9 @@ export function AdminOrderForm({
       : null;
 
   const fieldClass =
-    "mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base leading-relaxed md:min-h-0 md:py-2 md:text-sm";
-  const labelClass = "text-sm font-medium text-zinc-700 md:text-xs";
+    "mt-1 w-full min-h-11 rounded-lg border border-[color:var(--border)] bg-[var(--card)] px-3 py-2.5 text-base leading-relaxed text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition-shadow focus:border-[color:var(--ring)] focus:ring-2 focus:ring-[color:var(--ring)]/25 md:min-h-0 md:py-2 md:text-sm";
+  const labelClass =
+    "text-sm font-medium text-[var(--muted)] md:text-xs";
 
   return (
     <form
@@ -177,8 +178,8 @@ export function AdminOrderForm({
       className="space-y-4 pb-24 lg:pb-0"
       key={order.updatedAt.toISOString()}
     >
-      <Card className="space-y-4 p-4 md:p-6">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+      <Card className="space-y-4 border-[color:var(--border)] bg-[var(--card)] p-4 shadow-sm shadow-black/[0.03] dark:shadow-black/30 md:p-6">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
         Данные заказа
       </h2>
       <div>
@@ -257,10 +258,10 @@ export function AdminOrderForm({
           <input
             readOnly
             value={order.profit.toString()}
-            className="mt-1 w-full min-h-11 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-base tabular-nums md:min-h-0 md:py-2 md:text-sm"
+            className="mt-1 w-full min-h-11 rounded-lg border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-3 py-2.5 text-base tabular-nums text-[var(--text)] md:min-h-0 md:py-2 md:text-sm"
           />
           {marginPct !== null && (
-            <p className="mt-1 text-xs text-zinc-500">Маржа: {marginPct}% от клиента</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">Маржа: {marginPct}% от клиента</p>
           )}
         </div>
       </div>
@@ -296,7 +297,7 @@ export function AdminOrderForm({
             placeholder="Фильтр по навыку (тег)"
             value={skillTag}
             onChange={(e) => setSkillTag(e.target.value)}
-            className="mb-2 mt-1 w-full min-h-11 rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm md:min-h-0 md:py-1.5"
+            className="mb-2 mt-1 w-full min-h-11 rounded-lg border border-dashed border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--text)] md:min-h-0 md:py-1.5"
           />
           <select
             name="executorId"

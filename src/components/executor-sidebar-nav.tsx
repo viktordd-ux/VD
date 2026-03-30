@@ -47,8 +47,8 @@ export function ExecutorSidebarNav() {
       try {
         const res = await fetch("/api/orders/unread", { cache: "no-store" });
         if (res.ok) {
-          const d = (await res.json()) as { global?: { hasAnyUnreadChats?: boolean } };
-          setChatUnreadAny(Boolean(d.global?.hasAnyUnreadChats));
+          const d = (await res.json()) as { unreadChatOrderCount?: number };
+          setChatUnreadAny((Number(d.unreadChatOrderCount ?? 0) || 0) > 0);
         }
       } catch {
         // ignore

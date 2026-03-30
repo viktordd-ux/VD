@@ -22,9 +22,8 @@ function todayYmd(): string {
 }
 
 function yesterdayYmd(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return ymdInTz(d.toISOString());
+  const ms = Date.now() - 24 * 60 * 60 * 1000;
+  return ymdInTz(new Date(ms).toISOString());
 }
 
 /** Подпись для разделителя дат в чате (Сегодня / Вчера / дата). */

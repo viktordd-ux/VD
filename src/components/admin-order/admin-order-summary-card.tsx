@@ -12,7 +12,12 @@ import { getOrderRiskFlags } from "@/lib/order-risk";
 import { computeOrderPriority } from "@/lib/order-priority";
 import { useAdminOrder } from "./admin-order-context";
 
-export function AdminOrderSummaryCard() {
+export function AdminOrderSummaryCard({
+  layout = "split",
+}: {
+  /** split: заголовок слева + сайдбар справа; для страницы заказа — headerOnly + sidebarOnly в сетке. */
+  layout?: "split" | "headerOnly" | "sidebarOnly";
+}) {
   const { getExecutorDisplayName, getEntry } = useExecutors();
   const { order, checkpoints, files } = useAdminOrder();
   const executorEntry = order.executorId ? getEntry(order.executorId) : undefined;
@@ -35,18 +40,19 @@ export function AdminOrderSummaryCard() {
       })
     : "Не задан";
 
-  return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-10">
-      <div className="min-w-0 space-y-4">
-        <div className="space-y-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)] md:text-3xl md:leading-tight">
-            {order.title}
-          </h1>
-          <OrderRiskBadges flags={riskFlags} />
-        </div>
+  const header = (
+    <div className="min-w-0 space-y-4">
+      <div className="space-y-3">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)] md:text-3xl md:leading-tight">
+          {order.title}
+        </h1>
+        <OrderRiskBadges flags={riskFlags} />
       </div>
+    </div>
+  );
 
-      <aside className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-black/[0.04] dark:shadow-black/40 lg:sticky lg:top-24">
+  const sidebar = (
+      <aside className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-[var(--elevate)] dark:shadow-black/40">
         <div className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] pb-4">
           <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
             Статус
@@ -89,29 +95,29 @@ export function AdminOrderSummaryCard() {
           </div>
 
           <div>
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+            <dt className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
               Дедлайн
             </dt>
-            <dd className="mt-1.5 text-sm tabular-nums text-zinc-900">
+            <dd className="mt-1.5 text-sm tabular-nums text-[var(--text)]">
               {deadlineLabel}
             </dd>
           </div>
 
-          <div className="rounded-lg border border-zinc-100 bg-zinc-50/50 p-4">
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+          <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--muted-bg)] p-4">
+            <dt className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
               Финансы
             </dt>
             <dd className="mt-2">
               <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-baseline sm:gap-8">
                 <div>
-                  <span className="text-zinc-500">Маржа </span>
-                  <span className="font-semibold tabular-nums text-emerald-800">
+                  <span className="text-[var(--muted)]">Маржа </span>
+                  <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
                     {marginPct !== null ? `${marginPct}%` : "—"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-zinc-500">Прибыль </span>
-                  <span className="font-semibold tabular-nums text-zinc-900">
+                  <span className="text-[var(--muted)]">Прибыль </span>
+                  <span className="font-semibold tabular-nums text-[var(--text)]">
                     {order.profit.toString()}
                   </span>
                 </div>
@@ -120,6 +126,15 @@ export function AdminOrderSummaryCard() {
           </div>
         </dl>
       </aside>
+  );
+
+  if (layout === "headerOnly") return header;
+  if (layout === "sidebarOnly") return sidebar;
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-10">
+      {header}
+      <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">{sidebar}</div>
     </div>
   );
 }

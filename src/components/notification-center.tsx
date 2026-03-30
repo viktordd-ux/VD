@@ -8,21 +8,22 @@ import { queryKeys } from "@/lib/query-keys";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 import { cn } from "@/lib/cn";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  fetchNavBadges,
+  type NavBadgesPayload,
+} from "@/lib/nav-badges-client";
+import {
+  parseNotificationRealtimeRow,
+  type NotificationListRow,
+} from "@/lib/notification-realtime-map";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 function dispatchNotificationsChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("vd:notifications-changed"));
 }
 
-type Row = {
-  id: string;
-  kind: string;
-  title: string;
-  body: string;
-  linkHref: string | null;
-  readAt: string | null;
-  createdAt: string;
-};
+type Row = NotificationListRow;
 
 async function fetchNotifications(): Promise<{ notifications: Row[] }> {
   const res = await fetch("/api/notifications");
@@ -92,34 +93,75 @@ export function NotificationCenter() {
 
   const grouped = useMemo(() => groupNotificationsByDay(list), [list]);
 
+  const refreshNavBadges = useCallback(async () => {
+    try {
+      const data = await fetchNavBadges();
+      queryClient.setQueryData(queryKeys.navBadges(), data);
+    } catch {
+      /* ignore */
+    }
+  }, [queryClient]);
+
   useEffect(() => {
     if (!userId) return;
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
-    const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
-    };
-    const onNotificationInsert = () => {
+
+    const onInsert = (
+      payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
+    ) => {
+      const row = parseNotificationRealtimeRow(
+        payload.new as Record<string, unknown>,
+      );
+      if (!row) return;
+      queryClient.setQueryData<{ notifications: Row[] }>(
+        queryKeys.notifications(),
+        (old) => {
+          if (!old?.notifications) return { notifications: [row] };
+          if (old.notifications.some((n) => n.id === row.id)) return old;
+          return { notifications: [row, ...old.notifications] };
+        },
+      );
       queryClient.setQueryData(
         queryKeys.navBadges(),
-        (old: { global?: { unreadChatOrderCount?: number; notificationUnreadCount?: number } } | undefined) => {
-          const g = old?.global ?? {};
+        (old: NavBadgesPayload | undefined) => {
           return {
-            global: {
-              ...g,
-              notificationUnreadCount: Math.max(
-                0,
-                Number(g.notificationUnreadCount ?? 0) + 1,
-              ),
-            },
+            unreadChatOrderCount: Math.max(
+              0,
+              Number(old?.unreadChatOrderCount ?? 0),
+            ),
+            notificationUnreadCount: Math.max(
+              0,
+              Number(old?.notificationUnreadCount ?? 0) + 1,
+            ),
           };
         },
       );
       dispatchNotificationsChanged();
-      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
     };
+
+    const onUpdate = (
+      payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
+    ) => {
+      const row = parseNotificationRealtimeRow(
+        payload.new as Record<string, unknown>,
+      );
+      if (!row) return;
+      queryClient.setQueryData<{ notifications: Row[] }>(
+        queryKeys.notifications(),
+        (old) => {
+          if (!old?.notifications) return old;
+          return {
+            notifications: old.notifications.map((n) =>
+              n.id === row.id ? row : n,
+            ),
+          };
+        },
+      );
+      void refreshNavBadges();
+      dispatchNotificationsChanged();
+    };
+
     const channel = supabase
       .channel(`notifications-user:${userId}`)
       .on(
@@ -130,7 +172,7 @@ export function NotificationCenter() {
           table: "notifications",
           filter: `user_id=eq.${userId}`,
         },
-        onNotificationInsert,
+        onInsert,
       )
       .on(
         "postgres_changes",
@@ -140,13 +182,13 @@ export function NotificationCenter() {
           table: "notifications",
           filter: `user_id=eq.${userId}`,
         },
-        invalidate,
+        onUpdate,
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [userId, queryClient]);
+  }, [userId, queryClient, refreshNavBadges]);
 
   useEffect(() => {
     if (!open) return;
@@ -174,15 +216,14 @@ export function NotificationCenter() {
               : old,
         );
         await markRead([n.id]);
-        void queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });
-        void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
+        await refreshNavBadges();
         dispatchNotificationsChanged();
       }
       if (n.linkHref) {
         setOpen(false);
       }
     },
-    [queryClient],
+    [queryClient, refreshNavBadges],
   );
 
   const markAllReadOnOpen = useCallback(async () => {
@@ -195,10 +236,9 @@ export function NotificationCenter() {
       notifications: snap.notifications.map((n) => ({ ...n, readAt: n.readAt ?? now })),
     });
     await markAllRead();
-    void queryClient.invalidateQueries({ queryKey: key });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
+    await refreshNavBadges();
     dispatchNotificationsChanged();
-  }, [queryClient]);
+  }, [queryClient, refreshNavBadges]);
 
   if (!userId) return null;
 
@@ -233,8 +273,10 @@ export function NotificationCenter() {
                 type="button"
                 onClick={async () => {
                   await markAllRead();
-                  void queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });
-                  void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
+                  queryClient.setQueryData<{ notifications: Row[] }>(queryKeys.notifications(), {
+                    notifications: list.map((x) => ({ ...x, readAt: x.readAt ?? new Date().toISOString() })),
+                  });
+                  await refreshNavBadges();
                   dispatchNotificationsChanged();
                 }}
                 className="text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)]"

@@ -386,7 +386,7 @@ export function AdminOrdersListClient({
                 return (
                   <div
                     key={o.id}
-                    className="group relative flex min-h-[3.5rem] origin-center items-stretch will-change-transform transition-all duration-200 ease-out first:rounded-t-xl last:rounded-b-xl hover:z-[1] hover:bg-[color:var(--muted-bg)] hover:shadow-[0_1px_0_rgba(15,23,42,0.06)] active:scale-[0.99] dark:hover:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                    className="group relative flex min-h-[3.5rem] origin-center items-stretch will-change-transform transition-all duration-200 ease-out first:rounded-t-xl last:rounded-b-xl hover:z-[1] hover:scale-[1.01] hover:bg-[color:var(--muted-bg)] hover:shadow-[0_1px_0_rgba(15,23,42,0.06)] active:scale-[0.98] dark:hover:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
                   >
                     <div
                       className="flex shrink-0 items-center pl-2 pr-0.5"
@@ -452,22 +452,22 @@ export function AdminOrdersListClient({
                       </div>
 
                       <div className="hidden shrink-0 flex-col items-end justify-center gap-0.5 text-right sm:flex">
-                        <span className="text-xs font-medium tabular-nums text-zinc-900">
+                        <span className="text-xs font-medium tabular-nums text-[var(--text)]">
                           {o.profit.toString()}
                         </span>
-                        <span className="text-[11px] tabular-nums text-zinc-500">
+                        <span className="text-[11px] tabular-nums text-[var(--muted)]">
                           {marginPct}%
                         </span>
-                        <span className="max-w-[7rem] truncate text-[11px] text-zinc-400">
+                        <span className="max-w-[7rem] truncate text-[11px] text-[var(--muted)]">
                           {orderStatusLabel[o.status]}
                         </span>
                       </div>
 
                       <div className="flex shrink-0 flex-col items-end justify-center gap-0.5 text-right sm:hidden">
-                        <span className="text-xs font-semibold tabular-nums text-zinc-900">
+                        <span className="text-xs font-semibold tabular-nums text-[var(--text)]">
                           {o.profit.toString()}
                         </span>
-                        <span className="text-[10px] tabular-nums text-zinc-400">
+                        <span className="text-[10px] tabular-nums text-[var(--muted)]">
                           {updatedShort}
                         </span>
                       </div>

@@ -8,6 +8,10 @@ import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
 import { dispatchNotification } from "@/lib/notifications";
 import {
+  createInAppNotification,
+  createInAppNotificationForAdmins,
+} from "@/lib/in-app-notifications";
+import {
   pushNotifyAdminsCheckpointReview,
   pushNotifyExecutorCheckpointAccepted,
 } from "@/lib/push-notify";
@@ -93,6 +97,12 @@ export async function PATCH(req: Request, { params }: Params) {
         event: "checkpoint_done",
       });
       pushNotifyAdminsCheckpointReview(order.title, existing.orderId);
+      await createInAppNotificationForAdmins({
+        kind: "order",
+        title: "Этап сдан на проверку",
+        body: `«${updated.title}» — ${order.title}`,
+        linkHref: `/admin/orders/${existing.orderId}`,
+      });
     }
 
     const orderRow = await prisma.order.findUnique({
@@ -165,6 +175,15 @@ export async function PATCH(req: Request, { params }: Params) {
       event: "checkpoint_done",
     });
     pushNotifyExecutorCheckpointAccepted(order.executorId, order.title, existing.orderId);
+    if (order.executorId) {
+      await createInAppNotification({
+        userId: order.executorId,
+        kind: "order",
+        title: "Этап принят",
+        body: `«${updated.title}» — ${order.title}`,
+        linkHref: `/executor/orders/${existing.orderId}`,
+      });
+    }
   }
 
   const orderRow = await prisma.order.findUnique({

@@ -2,28 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
 import { queryKeys } from "@/lib/query-keys";
+import { fetchNavBadges } from "@/lib/nav-badges-client";
 
 const links = [
-  { href: "/admin", label: "Главная", icon: IconHome },
-  { href: "/admin/orders", label: "Заказы", icon: IconOrders },
-  { href: "/admin/leads", label: "Лиды", icon: IconUsers },
-  { href: "/admin/quick", label: "Создать", icon: IconZap },
+  { href: "/admin", label: "Главная", icon: IconHome, badge: "notif" as const },
+  { href: "/admin/orders", label: "Заказы", icon: IconOrders, badge: "chat" as const },
+  { href: "/admin/leads", label: "Лиды", icon: IconUsers, badge: "none" as const },
+  { href: "/admin/quick", label: "Создать", icon: IconZap, badge: "none" as const },
 ] as const;
-
-async function fetchNavBadges() {
-  const res = await fetch("/api/orders/unread", { cache: "no-store" });
-  if (!res.ok) throw new Error("badges");
-  return res.json() as Promise<{
-    global?: {
-      unreadChatOrderCount?: number;
-      notificationUnreadCount?: number;
-    };
-  }>;
-}
 
 export function AdminMobileBottomNav() {
   const pathname = usePathname();
@@ -32,24 +22,36 @@ export function AdminMobileBottomNav() {
   const { data } = useQuery({
     queryKey: queryKeys.navBadges(),
     queryFn: fetchNavBadges,
-    staleTime: 15_000,
+    staleTime: 30_000,
   });
 
-  const g = data?.global;
-  const chatC = Math.max(0, Number(g?.unreadChatOrderCount ?? 0));
-  const notifC = Math.max(0, Number(g?.notificationUnreadCount ?? 0));
-  const totalBadge = chatC + notifC;
+  const chatC = Math.max(0, Number(data?.unreadChatOrderCount ?? 0));
+  const notifC = Math.max(0, Number(data?.notificationUnreadCount ?? 0));
+
+  const refreshBadges = useCallback(async () => {
+    try {
+      const next = await fetchNavBadges();
+      queryClient.setQueryData(queryKeys.navBadges(), next);
+    } catch {
+      /* ignore */
+    }
+  }, [queryClient]);
 
   useEffect(() => {
-    const inv = () =>
-      void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
-    window.addEventListener("vd:order-unread-changed", inv);
-    window.addEventListener("vd:notifications-changed", inv);
-    return () => {
-      window.removeEventListener("vd:order-unread-changed", inv);
-      window.removeEventListener("vd:notifications-changed", inv);
+    void refreshBadges();
+  }, [refreshBadges]);
+
+  useEffect(() => {
+    const onBadges = () => {
+      void refreshBadges();
     };
-  }, [queryClient]);
+    window.addEventListener("vd:order-unread-changed", onBadges);
+    window.addEventListener("vd:notifications-changed", onBadges);
+    return () => {
+      window.removeEventListener("vd:order-unread-changed", onBadges);
+      window.removeEventListener("vd:notifications-changed", onBadges);
+    };
+  }, [refreshBadges]);
 
   function active(href: string) {
     if (href === "/admin") return pathname === "/admin";
@@ -58,35 +60,43 @@ export function AdminMobileBottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 z-50 flex w-full max-w-[100vw] border-t border-[color:var(--border)] bg-[var(--card)]/95 pb-[calc(0.65rem+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-md md:hidden"
+      className="fixed bottom-0 left-0 z-[60] flex w-full max-w-[100vw] border-t border-[color:var(--border)] bg-[var(--card)]/88 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl md:hidden dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]"
       aria-label="Нижнее меню"
     >
-      {links.map((item, index) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          prefetch
-          className={cn(
-            "relative flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium transition-all duration-150 ease-out active:scale-[0.97]",
-            active(item.href) ? "text-[var(--text)]" : "text-[var(--muted)]",
-          )}
-        >
-          <span className="relative inline-flex">
-            <item.icon
-              className={cn(
-                "h-7 w-7",
-                active(item.href) ? "text-[var(--text)]" : "text-[var(--muted)]",
-              )}
-            />
-            {index === 0 && totalBadge > 0 ? (
-              <span className="absolute -right-2 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-[5px] text-[10px] font-bold leading-none text-white">
-                {totalBadge > 99 ? "99+" : totalBadge}
-              </span>
-            ) : null}
-          </span>
-          {item.label}
-        </Link>
-      ))}
+      {links.map((item) => {
+        const badge =
+          item.badge === "notif"
+            ? notifC
+            : item.badge === "chat"
+              ? chatC
+              : 0;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            prefetch
+            className={cn(
+              "relative flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium transition-all duration-200 ease-out active:scale-[0.98] active:duration-100",
+              active(item.href) ? "text-[var(--text)]" : "text-[var(--muted)]",
+            )}
+          >
+            <span className="relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center">
+              <item.icon
+                className={cn(
+                  "h-7 w-7 transition-transform duration-200",
+                  active(item.href) ? "text-[var(--text)]" : "text-[var(--muted)]",
+                )}
+              />
+              {badge > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-[5px] text-[10px] font-bold leading-none text-white shadow-sm">
+                  {badge > 99 ? "99+" : badge}
+                </span>
+              ) : null}
+            </span>
+            {item.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

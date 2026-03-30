@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --bg: #f4f4f5;
+  --bg: #fafafa;
   --text: #0f172a;
   --border: rgba(15, 23, 42, 0.09);
   --muted: rgba(15, 23, 42, 0.55);

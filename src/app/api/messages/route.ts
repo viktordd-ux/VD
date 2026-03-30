@@ -2,7 +2,10 @@ import { after, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
-import { createInAppNotification } from "@/lib/in-app-notifications";
+import {
+  createInAppNotification,
+  createInAppNotificationForAdmins,
+} from "@/lib/in-app-notifications";
 import { serializeMessage } from "@/lib/message-serialize";
 import {
   pushNotifyAdminsNewChatMessage,
@@ -112,39 +115,42 @@ export async function POST(req: Request) {
     },
   });
 
-  /** Push/Telegram/in-app — не блокируют ответ клиенту. */
+  const preview = textRaw.length > 180 ? `${textRaw.slice(0, 177)}…` : textRaw;
+
+  /** In-app сразу в БД → Realtime INSERT до ответа (без after). */
+  try {
+    if (user.role === "admin" && order.executorId) {
+      await createInAppNotification({
+        userId: order.executorId,
+        kind: "chat",
+        title: `Сообщение в «${order.title}»`,
+        body: preview,
+        linkHref: `/executor/orders/${orderId}`,
+      });
+    }
+    if (user.role === "executor") {
+      await createInAppNotificationForAdmins({
+        kind: "chat",
+        title: `Новое сообщение: ${order.title}`,
+        body: preview,
+        linkHref: `/admin/orders/${orderId}`,
+      });
+    }
+  } catch {
+    // не блокируем ответ; push/Telegram ниже
+  }
+
   after(async () => {
-    const preview = textRaw.length > 180 ? `${textRaw.slice(0, 177)}…` : textRaw;
     try {
       if (user.role === "admin" && order.executorId) {
         notifyExecutorChatMessage(order.executorId);
         pushNotifyExecutorChatMessage(order.executorId, order.title, orderId);
-        await createInAppNotification({
-          userId: order.executorId,
-          kind: "chat",
-          title: `Сообщение в «${order.title}»`,
-          body: preview,
-          linkHref: `/executor/orders/${orderId}`,
-        });
       }
       if (user.role === "executor") {
         pushNotifyAdminsNewChatMessage(order.title, orderId);
-        const admins = await prisma.user.findMany({
-          where: { role: "admin", status: "active" },
-          select: { id: true },
-        });
-        await prisma.notification.createMany({
-          data: admins.map((a) => ({
-            userId: a.id,
-            kind: "chat" as const,
-            title: `Новое сообщение: ${order.title}`,
-            body: preview,
-            linkHref: `/admin/orders/${orderId}`,
-          })),
-        });
       }
     } catch {
-      // не ломаем отправку сообщения
+      /* ignore */
     }
   });
 

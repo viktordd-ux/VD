@@ -1,14 +1,11 @@
 /**
- * Время в чате показываем в одной зоне для всех пользователей, иначе при разных
- * настройках часового пояса на устройствах «одно и то же» сообщение выглядит на ±N часов.
+ * Время в чате показываем в **Europe/Moscow** для всех пользователей,
+ * чтобы время отправки совпадало с «московским» и не зависело от TZ устройства.
  *
- * Переопределение: NEXT_PUBLIC_CHAT_TIMEZONE (IANA), например Europe/Moscow.
+ * Раньше можно было переопределить через NEXT_PUBLIC_CHAT_TIMEZONE; на практике
+ * значение UTC из .env ломало отображение — для продукта фиксируем Москву.
  */
-export const CHAT_DISPLAY_TIMEZONE =
-  typeof process !== "undefined" &&
-  process.env.NEXT_PUBLIC_CHAT_TIMEZONE?.trim()
-    ? process.env.NEXT_PUBLIC_CHAT_TIMEZONE.trim()
-    : "Europe/Moscow";
+export const CHAT_DISPLAY_TIMEZONE = "Europe/Moscow" as const;
 
 export function formatChatMessageTime(iso: string): string {
   const d = new Date(iso);
