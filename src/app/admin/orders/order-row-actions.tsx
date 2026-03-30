@@ -1,9 +1,14 @@
 "use client";
 
+import type { OrderStatus } from "@prisma/client";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { AdminDeleteModal } from "@/components/admin-delete-modal";
+import { useToast } from "@/components/toast-provider";
 import { Button } from "@/components/ui/button";
+import { useAdminOrdersListActions } from "@/context/admin-orders-list-actions";
+import { parseCheckpointsFromListApi } from "@/lib/order-list-api-merge";
+import { useState } from "react";
 
 export function OrderRowQuickActions({
   orderId,
@@ -15,18 +20,117 @@ export function OrderRowQuickActions({
   checkpointCount: number;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<string | null>(null);
+  const toast = useToast();
+  const list = useAdminOrdersListActions();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  async function run(key: string, fn: () => Promise<void>) {
-    setBusy(key);
-    try {
-      await fn();
-      router.refresh();
-    } finally {
-      setBusy(null);
-    }
-  }
+  const assignMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/orders/${orderId}/auto-assign`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Ошибка");
+      }
+      return (await res.json()) as Record<string, unknown>;
+    },
+    onSuccess: (json) => {
+      list?.patchOrderFromAdminApi(orderId, json);
+      toast.success("Исполнитель назначен");
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+    },
+  });
+
+  const completeCpMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(
+        `/api/orders/${orderId}/checkpoints/complete-all`,
+        { method: "PATCH" },
+      );
+      if (!res.ok) throw new Error("complete");
+      const data = (await res.json()) as {
+        order?: { status?: string } | null;
+      };
+      const cpRes = await fetch(`/api/orders/${orderId}/checkpoints`);
+      let checkpoints = null;
+      if (cpRes.ok) {
+        const raw = await cpRes.json();
+        checkpoints = parseCheckpointsFromListApi(raw);
+      }
+      return { data, checkpoints };
+    },
+    onSuccess: ({ data, checkpoints }) => {
+      if (checkpoints) {
+        list?.setOrderCheckpoints(orderId, checkpoints);
+      }
+      if (data.order?.status) {
+        list?.patchOrderStatus(orderId, data.order.status);
+      }
+      toast.success("Этапы завершены");
+    },
+    onError: () => {
+      toast.error("Не удалось завершить этапы");
+    },
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "REVIEW" }),
+      });
+      if (!res.ok) throw new Error("review");
+      return (await res.json()) as Record<string, unknown>;
+    },
+    onMutate: () => {
+      const prev = status as OrderStatus;
+      list?.patchOrderStatus(orderId, "REVIEW");
+      return { prev };
+    },
+    onError: (_err, _v, ctx) => {
+      if (ctx?.prev) list?.patchOrderStatus(orderId, ctx.prev);
+      toast.error("Не удалось перевести на проверку");
+    },
+    onSuccess: (json) => {
+      list?.patchOrderFromAdminApi(orderId, json);
+      toast.success("На проверке");
+    },
+  });
+
+  const doneMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "DONE" }),
+      });
+      if (!res.ok) throw new Error("done");
+      return (await res.json()) as Record<string, unknown>;
+    },
+    onMutate: () => {
+      const prev = status as OrderStatus;
+      list?.patchOrderStatus(orderId, "DONE");
+      return { prev };
+    },
+    onError: (_err, _v, ctx) => {
+      if (ctx?.prev) list?.patchOrderStatus(orderId, ctx.prev);
+      toast.error("Не удалось завершить заказ");
+    },
+    onSuccess: (json) => {
+      list?.patchOrderFromAdminApi(orderId, json);
+      toast.success("Заказ завершён");
+    },
+  });
+
+  const busy =
+    assignMutation.isPending ||
+    completeCpMutation.isPending ||
+    reviewMutation.isPending ||
+    doneMutation.isPending;
 
   return (
     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-1.5">
@@ -34,41 +138,26 @@ export function OrderRowQuickActions({
         type="button"
         variant="secondary"
         size="sm"
-        className="w-full sm:w-auto"
-        disabled={busy !== null}
+        className="w-full cursor-pointer sm:w-auto"
+        disabled={busy}
+        loading={assignMutation.isPending}
         title="Назначить лучшего исполнителя автоматически"
-        onClick={() =>
-          run("assign", async () => {
-            const res = await fetch(`/api/orders/${orderId}/auto-assign`, {
-              method: "POST",
-            });
-            if (!res.ok) {
-              alert((await res.json().catch(() => ({}))).error ?? "Ошибка");
-            }
-          })
-        }
+        onClick={() => assignMutation.mutate()}
       >
-        {busy === "assign" ? "…" : "Авто"}
+        Авто
       </Button>
       {checkpointCount > 0 && status === "IN_PROGRESS" && (
         <Button
           type="button"
           variant="secondary"
           size="sm"
-          className="w-full sm:w-auto"
-          disabled={busy !== null}
+          className="w-full cursor-pointer sm:w-auto"
+          disabled={busy}
+          loading={completeCpMutation.isPending}
           title="Завершить все этапы"
-          onClick={() =>
-            run("cp", async () => {
-              const res = await fetch(
-                `/api/orders/${orderId}/checkpoints/complete-all`,
-                { method: "PATCH" },
-              );
-              if (!res.ok) alert("Не удалось завершить этапы");
-            })
-          }
+          onClick={() => completeCpMutation.mutate()}
         >
-          {busy === "cp" ? "…" : "Этапы"}
+          Этапы
         </Button>
       )}
       {status !== "REVIEW" && status !== "DONE" && (
@@ -76,20 +165,12 @@ export function OrderRowQuickActions({
           type="button"
           variant="secondary"
           size="sm"
-          className="w-full sm:w-auto"
-          disabled={busy !== null}
-          onClick={() =>
-            run("review", async () => {
-              const res = await fetch(`/api/orders/${orderId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "REVIEW" }),
-              });
-              if (!res.ok) alert("Не удалось перевести на проверку");
-            })
-          }
+          className="w-full cursor-pointer sm:w-auto"
+          disabled={busy}
+          loading={reviewMutation.isPending}
+          onClick={() => reviewMutation.mutate()}
         >
-          {busy === "review" ? "…" : "На проверку"}
+          На проверку
         </Button>
       )}
       {status !== "DONE" && (
@@ -97,28 +178,20 @@ export function OrderRowQuickActions({
           type="button"
           variant="secondary"
           size="sm"
-          className="w-full border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 sm:w-auto"
-          disabled={busy !== null}
-          onClick={() =>
-            run("done", async () => {
-              const res = await fetch(`/api/orders/${orderId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "DONE" }),
-              });
-              if (!res.ok) alert("Не удалось завершить заказ");
-            })
-          }
+          className="w-full cursor-pointer border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 sm:w-auto"
+          disabled={busy}
+          loading={doneMutation.isPending}
+          onClick={() => doneMutation.mutate()}
         >
-          {busy === "done" ? "…" : "Завершить"}
+          Завершить
         </Button>
       )}
       <Button
         type="button"
         variant="secondary"
         size="sm"
-        className="w-full border-red-200 text-red-800 hover:bg-red-50 sm:w-auto"
-        disabled={busy !== null}
+        className="w-full cursor-pointer border-red-200 text-red-800 hover:bg-red-50 sm:w-auto"
+        disabled={busy}
         onClick={() => setDeleteOpen(true)}
       >
         Удалить
@@ -133,16 +206,18 @@ export function OrderRowQuickActions({
         onSoft={async () => {
           const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
           if (!res.ok) throw new Error();
+          list?.removeOrder(orderId);
+          toast.action("Заказ скрыт");
           router.push("/admin/orders");
-          router.refresh();
         }}
         onHard={async () => {
           const res = await fetch(`/api/orders/${orderId}?hard=true`, {
             method: "DELETE",
           });
           if (!res.ok) throw new Error();
+          list?.removeOrder(orderId);
+          toast.action("Заказ удалён");
           router.push("/admin/orders");
-          router.refresh();
         }}
       />
     </div>

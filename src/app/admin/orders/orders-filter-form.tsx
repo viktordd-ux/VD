@@ -47,6 +47,7 @@ type Props = {
     deadlineAfter: string;
     deadlineBefore: string;
     skillsMode: "any" | "all";
+    priority: string;
   };
 };
 
@@ -76,6 +77,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
     deadlineAfter: string;
     deadlineBefore: string;
     skillsMode: "any" | "all";
+    priority: string;
   }) {
     const p = new URLSearchParams();
     p.set("filter", next.filter);
@@ -89,6 +91,9 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
       p.set("deadlineBefore", next.deadlineBefore.trim());
     }
     if (next.skillsMode === "all") p.set("skillsMode", "all");
+    if (next.priority === "high" || next.priority === "medium" || next.priority === "low") {
+      p.set("priority", next.priority);
+    }
     const q = p.toString();
     return q ? `${hrefBase}?${q}` : hrefBase;
   }
@@ -99,6 +104,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
     const sort = String(fd.get("sort") ?? "updated_desc");
     const deadlineAfter = String(fd.get("deadlineAfter") ?? "");
     const deadlineBefore = String(fd.get("deadlineBefore") ?? "");
+    const priority = String(fd.get("priority") ?? "");
     const href = buildQuery({
       filter,
       lowMargin,
@@ -109,12 +115,12 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
       deadlineAfter,
       deadlineBefore,
       skillsMode,
+      priority,
     });
     const qs = href.includes("?") ? href.split("?")[1] ?? "" : "";
     saveOrdersFiltersQuery(qs);
     setBusy(true);
     router.push(href);
-    router.refresh();
     window.setTimeout(() => setBusy(false), 300);
   }
 
@@ -172,6 +178,19 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="w-full sm:w-auto">
+          <label className="text-xs font-medium text-zinc-500">Приоритет (авто)</label>
+          <select
+            name="priority"
+            defaultValue={initial.priority || ""}
+            className="mt-1 block min-h-11 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-base sm:min-h-0 sm:py-2 sm:text-sm"
+          >
+            <option value="">Все</option>
+            <option value="high">Срочно</option>
+            <option value="medium">Внимание</option>
+            <option value="low">Обычный</option>
+          </select>
+        </div>
         <div className="w-full sm:w-auto">
           <label className="text-xs font-medium text-zinc-500">Сортировка</label>
           <select

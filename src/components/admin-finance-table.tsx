@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 
 type OrderRow = {
@@ -22,8 +21,12 @@ const STATUS_LABEL: Record<string, string> = {
   DONE: "Завершён",
 };
 
-export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
-  const router = useRouter();
+export function AdminFinanceTable({ orders: initialOrders }: { orders: OrderRow[] }) {
+  const [orders, setOrders] = useState(initialOrders);
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
+
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [formData, setFormData] = useState<{
@@ -57,8 +60,25 @@ export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
       alert("Ошибка сохранения");
       return;
     }
+    const data = (await res.json()) as {
+      id: string;
+      budgetClient: string;
+      budgetExecutor: string;
+      profit: string;
+    };
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === id
+          ? {
+              ...o,
+              budgetClient: data.budgetClient,
+              budgetExecutor: data.budgetExecutor,
+              profit: data.profit,
+            }
+          : o,
+      ),
+    );
     setEditing(null);
-    router.refresh();
   }
 
   async function deleteRow(id: string, title: string) {
@@ -71,7 +91,7 @@ export function AdminFinanceTable({ orders }: { orders: OrderRow[] }) {
       alert("Ошибка удаления");
       return;
     }
-    router.refresh();
+    setOrders((prev) => prev.filter((o) => o.id !== id));
   }
 
   return (

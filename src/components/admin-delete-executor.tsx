@@ -38,7 +38,6 @@ export function AdminDeleteExecutor({
             throw new Error(j.error ?? "Не удалось удалить");
           }
           router.push("/admin/users");
-          router.refresh();
         }}
       />
     </>

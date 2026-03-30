@@ -1,14 +1,60 @@
 "use client";
 
+import { Prisma } from "@prisma/client";
 import type { User } from "@prisma/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AdminAutoAssignButton } from "@/components/admin-auto-assign";
 import { useAdminOrder } from "@/components/admin-order/admin-order-context";
+import { useToast } from "@/components/toast-provider";
 import { useExecutors } from "@/context/executors-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { parseAdminOrderFromApiJson } from "@/lib/order-client-deserialize";
+import {
+  normalizeOrderForClient,
+  parseAdminOrderFromApiJson,
+  type OrderWithRelations,
+} from "@/lib/order-client-deserialize";
+import { queryKeys } from "@/lib/query-keys";
+import type { AdminOrderBundleCached } from "@/lib/react-query-realtime";
 import { leadStatusLabel, orderStatusLabel } from "@/lib/ui-labels";
+
+type SaveBody = {
+  title: string;
+  description: string;
+  clientName: string;
+  platform: string;
+  deadline: string | null;
+  budgetClient: number;
+  budgetExecutor: number;
+  status: OrderWithRelations["status"];
+  executorId: string | null;
+  requiredSkills: string[];
+};
+
+function buildOptimisticOrder(
+  prev: OrderWithRelations,
+  body: SaveBody,
+): OrderWithRelations {
+  const budgetClient = new Prisma.Decimal(body.budgetClient);
+  const budgetExecutor = new Prisma.Decimal(body.budgetExecutor);
+  const profit = budgetClient.minus(budgetExecutor);
+  return normalizeOrderForClient({
+    ...prev,
+    title: body.title,
+    description: body.description,
+    clientName: body.clientName,
+    platform: body.platform,
+    deadline: body.deadline ? new Date(body.deadline) : null,
+    budgetClient,
+    budgetExecutor,
+    profit,
+    status: body.status,
+    executorId: body.executorId,
+    requiredSkills: body.requiredSkills,
+    updatedAt: new Date(),
+  });
+}
 
 type ExecutorOption = Pick<User, "id" | "name" | "email" | "skills">;
 
@@ -31,10 +77,55 @@ export function AdminOrderForm({
     { rating: number; completedOrders: number; latePercent: number }
   >;
 }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const { order, setOrder, bumpHistory } = useAdminOrder();
   const { refresh: refreshExecutors } = useExecutors();
-  const [loading, setLoading] = useState(false);
   const [skillTag, setSkillTag] = useState("");
+
+  const saveMutation = useMutation({
+    mutationFn: async (body: SaveBody) => {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("save");
+      return res.json() as Promise<Record<string, unknown>>;
+    },
+    onMutate: (body) => {
+      const key = queryKeys.adminOrder(order.id);
+      const prevBundle = queryClient.getQueryData<AdminOrderBundleCached | null>(
+        key,
+      );
+      const prevOrder = order;
+      const optimistic = buildOptimisticOrder(order, body);
+      queryClient.setQueryData<AdminOrderBundleCached | null>(key, (old) =>
+        old ? { ...old, order: optimistic } : old,
+      );
+      setOrder(optimistic);
+      return { prevBundle, prevOrder, key };
+    },
+    onError: (_err, _body, ctx) => {
+      if (ctx?.prevBundle !== undefined && ctx.key) {
+        queryClient.setQueryData(ctx.key, ctx.prevBundle);
+      }
+      if (ctx?.prevOrder) setOrder(ctx.prevOrder);
+      toast.error("Не удалось сохранить");
+    },
+    onSuccess: (data, _body, ctx) => {
+      const parsed = parseAdminOrderFromApiJson(data);
+      setOrder(parsed);
+      if (ctx?.key) {
+        queryClient.setQueryData<AdminOrderBundleCached | null>(ctx.key, (old) =>
+          old ? { ...old, order: parsed } : old,
+        );
+      }
+      toast.success("Сохранено");
+      bumpHistory();
+      void refreshExecutors();
+    },
+  });
 
   const filteredExecutors = useMemo(() => {
     const t = skillTag.trim().toLowerCase();
@@ -44,7 +135,7 @@ export function AdminOrderForm({
     );
   }, [executors, skillTag]);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const reqSkillsRaw = String(fd.get("requiredSkills") ?? "");
@@ -52,7 +143,7 @@ export function AdminOrderForm({
       .split(/[,;]+/)
       .map((s) => s.trim())
       .filter(Boolean);
-    const body = {
+    const body: SaveBody = {
       title: String(fd.get("title")),
       description: String(fd.get("description")),
       clientName: String(fd.get("clientName")),
@@ -60,25 +151,11 @@ export function AdminOrderForm({
       deadline: fd.get("deadline") ? String(fd.get("deadline")) : null,
       budgetClient: Number(fd.get("budgetClient")),
       budgetExecutor: Number(fd.get("budgetExecutor")),
-      status: fd.get("status") as "LEAD" | "IN_PROGRESS" | "REVIEW" | "DONE",
+      status: fd.get("status") as SaveBody["status"],
       executorId: fd.get("executorId") ? String(fd.get("executorId")) : null,
       requiredSkills,
     };
-    setLoading(true);
-    const res = await fetch(`/api/orders/${order.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setLoading(false);
-    if (!res.ok) {
-      alert("Ошибка сохранения");
-      return;
-    }
-    const data = (await res.json()) as Record<string, unknown>;
-    setOrder(parseAdminOrderFromApiJson(data));
-    bumpHistory();
-    void refreshExecutors();
+    saveMutation.mutate(body);
   }
 
   const dl = order.deadline ? order.deadline.toISOString().slice(0, 16) : "";
@@ -264,10 +341,10 @@ export function AdminOrderForm({
         type="submit"
         variant="primary"
         size="md"
-        disabled={loading}
+        loading={saveMutation.isPending}
         className="hidden w-full lg:inline-flex"
       >
-        {loading ? "…" : "Сохранить"}
+        Сохранить
       </Button>
       </Card>
 
@@ -275,10 +352,20 @@ export function AdminOrderForm({
         <button
           type="submit"
           form="admin-order-edit-form"
-          disabled={loading}
-          className="flex min-h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:opacity-50"
+          disabled={saveMutation.isPending}
+          className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:opacity-50"
         >
-          {loading ? "…" : "Сохранить заказ"}
+          {saveMutation.isPending ? (
+            <>
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+                aria-hidden
+              />
+              Сохранение…
+            </>
+          ) : (
+            "Сохранить заказ"
+          )}
         </button>
       </div>
     </form>

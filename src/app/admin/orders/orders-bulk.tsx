@@ -6,8 +6,8 @@ import {
   useContext,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
 import { AdminHardDeleteOnlyModal } from "@/components/admin-delete-modal";
+import { useAdminOrdersListActions } from "@/context/admin-orders-list-actions";
 
 const Ctx = createContext<{
   selected: Set<string>;
@@ -48,21 +48,26 @@ export function OrdersBulkCheckbox({ orderId }: { orderId: string }) {
   );
 }
 
-export function OrdersBulkToolbar() {
+export function OrdersBulkToolbar({
+  onMutateSuccess,
+}: {
+  onMutateSuccess?: () => void;
+} = {}) {
   const { selected, clear } = useOrdersBulk();
-  const router = useRouter();
+  const list = useAdminOrdersListActions();
   const [hardOpen, setHardOpen] = useState(false);
 
   const n = selected.size;
   if (n === 0) return null;
 
   async function bulk(soft: boolean) {
+    const ids = [...selected];
     const res = await fetch("/api/admin/bulk-delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "orders",
-        ids: [...selected],
+        ids,
         hard: !soft,
       }),
     });
@@ -79,9 +84,11 @@ export function OrdersBulkToolbar() {
         `Частично: ошибок ${data.failed.length}. Проверьте связи и повторите.`,
       );
     }
+    const failed = new Set((data.failed ?? []).map((f) => f.id));
+    list?.removeOrders(ids.filter((id) => !failed.has(id)));
     clear();
     setHardOpen(false);
-    router.refresh();
+    onMutateSuccess?.();
   }
 
   return (

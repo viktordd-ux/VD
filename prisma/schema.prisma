@@ -56,6 +56,12 @@ enum MessageRole {
   executor
 }
 
+enum NotificationKind {
+  order
+  chat
+  system
+}
+
 model User {
   id           String     @id @default(cuid())
   name         String
@@ -81,6 +87,7 @@ model User {
   auditLogs        AuditLog[]
   messagesSent     Message[]
   orderReadStates  OrderUserReadState[]
+  notifications    Notification[]
 
   @@map("users")
 }
@@ -246,4 +253,22 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+/// Внутри приложения: чат, заказы, системные события (для админов и исполнителей).
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  kind      NotificationKind
+  title     String
+  body      String           @db.Text
+  linkHref  String?          @map("link_href") @db.Text
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

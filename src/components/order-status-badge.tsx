@@ -11,6 +11,8 @@ const statusTone: Record<OrderStatus, BadgeTone> = {
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return (
-    <Badge tone={statusTone[status]}>{orderStatusLabel[status]}</Badge>
+    <span key={status} className="inline-flex vd-status-badge-enter">
+      <Badge tone={statusTone[status]}>{orderStatusLabel[status]}</Badge>
+    </span>
   );
 }

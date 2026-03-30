@@ -4,21 +4,21 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { isSupabaseRealtimeConfigured } from "@/lib/supabase-client";
 
-/** Без Realtime — периодический опрос; с Realtime — только редкий fallback. */
-const DEFAULT_MS = 30_000;
-const WITH_REALTIME_FALLBACK_MS = 120_000;
+/** Без Realtime — редкий fallback; при настроенном Realtime не опрашиваем RSC. */
+const FALLBACK_MS_NO_REALTIME = 300_000;
 
 /**
- * Периодически вызывает `router.refresh()` для страниц без собственных подписок (напр. «Заработок»).
- * При настроенном Supabase Realtime интервал по умолчанию редкий — основные экраны обновляют state сами.
+ * Раньше вызывал `router.refresh()` часто — полный перерендер RSC.
+ * Сейчас: при активном Supabase Realtime компонент ничего не делает.
+ * Без Realtime — очень редкий refresh только для экранов без своих подписок (напр. заработок).
  */
 export function OrderLiveRefresh({ intervalMs }: { intervalMs?: number }) {
   const router = useRouter();
 
   useEffect(() => {
-    const effective =
-      intervalMs ??
-      (isSupabaseRealtimeConfigured() ? WITH_REALTIME_FALLBACK_MS : DEFAULT_MS);
+    if (isSupabaseRealtimeConfigured()) return;
+
+    const effective = intervalMs ?? FALLBACK_MS_NO_REALTIME;
 
     const tick = () => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
@@ -27,15 +27,7 @@ export function OrderLiveRefresh({ intervalMs }: { intervalMs?: number }) {
 
     const id = setInterval(tick, effective);
 
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") router.refresh();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-
-    return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
+    return () => clearInterval(id);
   }, [router, intervalMs]);
 
   return null;

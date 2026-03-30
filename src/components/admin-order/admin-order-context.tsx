@@ -5,6 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -34,17 +35,26 @@ export function AdminOrderProvider({
   initialOrder,
   initialCheckpoints,
   initialFiles,
+  /** Сдвигается при обновлении кэша React Query (realtime / refetch) — синхронизация с сервером. */
+  bundleRevision,
 }: {
   children: ReactNode;
   initialOrder: OrderWithRelations;
   initialCheckpoints: Checkpoint[];
   initialFiles: File[];
+  bundleRevision: number;
 }) {
   const [order, setOrder] = useState(() => normalizeOrderForClient(initialOrder));
   const [checkpoints, setCheckpoints] = useState(initialCheckpoints);
   const [files, setFiles] = useState(initialFiles);
   const [historyVersion, setHistoryVersion] = useState(0);
   const bumpHistory = useCallback(() => setHistoryVersion((v) => v + 1), []);
+
+  useEffect(() => {
+    setOrder(normalizeOrderForClient(initialOrder));
+    setCheckpoints(initialCheckpoints);
+    setFiles(initialFiles);
+  }, [bundleRevision]);
 
   const value = useMemo(
     () => ({

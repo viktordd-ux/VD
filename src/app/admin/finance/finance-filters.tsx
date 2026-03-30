@@ -32,7 +32,6 @@ export function FinanceFilters({ executors, initial }: Props) {
     const qs = p.toString();
     setBusy(true);
     router.push(qs ? `/admin/finance?${qs}` : "/admin/finance");
-    router.refresh();
     window.setTimeout(() => setBusy(false), 300);
   }
 

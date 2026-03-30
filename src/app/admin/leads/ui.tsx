@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminDeleteModal } from "@/components/admin-delete-modal";
+import { useLeadsListMutations } from "@/context/leads-list-mutations";
 
 export function ConvertLeadButton({ leadId }: { leadId: string }) {
   const router = useRouter();
+  const list = useLeadsListMutations();
   const [loading, setLoading] = useState(false);
 
   async function onConvert() {
@@ -13,8 +15,8 @@ export function ConvertLeadButton({ leadId }: { leadId: string }) {
     try {
       const res = await fetch(`/api/leads/${leadId}/convert`, { method: "POST" });
       if (!res.ok) throw new Error();
+      list?.removeLead(leadId);
       router.push("/admin/orders");
-      router.refresh();
     } catch {
       setLoading(false);
       alert("Не удалось конвертировать");
@@ -37,7 +39,7 @@ export function ConvertLeadButton({ leadId }: { leadId: string }) {
 }
 
 export function LeadDeleteButton({ leadId }: { leadId: string }) {
-  const router = useRouter();
+  const list = useLeadsListMutations();
   const [open, setOpen] = useState(false);
 
   return (
@@ -62,14 +64,14 @@ export function LeadDeleteButton({ leadId }: { leadId: string }) {
             alert(j.error ?? "Ошибка");
             throw new Error("abort");
           }
-          router.refresh();
+          list?.removeLead(leadId);
         }}
         onHard={async () => {
           const res = await fetch(`/api/leads/${leadId}?hard=true`, {
             method: "DELETE",
           });
           if (!res.ok) throw new Error();
-          router.refresh();
+          list?.removeLead(leadId);
         }}
       />
     </>

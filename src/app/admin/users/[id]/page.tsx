@@ -13,10 +13,13 @@ import {
   trClass,
 } from "@/components/table-wrap";
 import { formatUserDisplayName } from "@/lib/user-profile";
-import { userStatusLabel } from "@/lib/ui-labels";
 import { AdminDeleteExecutor } from "@/components/admin-delete-executor";
-import { AdminUserStatusToggle } from "@/components/admin-user-status-toggle";
-import { ExecutorSkillsEditor } from "../ui";
+import {
+  ExecutorAccountStatusRow,
+  ExecutorDetailHeaderStatusBadge,
+  ExecutorDetailStatusProvider,
+} from "./executor-detail-status-context";
+import { ExecutorSkillsSection } from "../executor-skills-section";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +55,7 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
     .join("");
 
   return (
+    <ExecutorDetailStatusProvider initialStatus={user.status}>
     <div className="space-y-8">
       <Link
         href="/admin/users"
@@ -74,9 +78,7 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={user.status === "active" ? "success" : "danger"}>
-              {userStatusLabel[user.status]}
-            </Badge>
+            <ExecutorDetailHeaderStatusBadge />
             <Badge tone="neutral">{user.onboarded ? "Профиль заполнен" : "Профиль не заполнен"}</Badge>
           </div>
         </div>
@@ -152,16 +154,12 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
         <Card className="p-6">
           <h2 className="text-base font-semibold text-zinc-900">Управление аккаунтом</h2>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Badge tone={user.status === "active" ? "success" : "danger"}>
-              Статус: {userStatusLabel[user.status]}
-            </Badge>
             <Badge tone="neutral">{user.onboarded ? "Онбординг пройден" : "Нужен онбординг"}</Badge>
           </div>
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-            <AdminUserStatusToggle
-              userId={user.id}
-              currentStatus={user.status}
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <ExecutorAccountStatusRow userId={user.id} />
+            </div>
             <AdminDeleteExecutor
               userId={user.id}
               displayName={formatUserDisplayName(user)}
@@ -172,29 +170,7 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
 
       <Card className="p-6">
         <h2 className="text-base font-semibold text-zinc-900">Навыки</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {user.primarySkill ? (
-            <span className="inline-flex rounded-full bg-zinc-900 px-3 py-1 text-sm font-semibold text-white ring-1 ring-zinc-900">
-              {user.primarySkill} — основной
-            </span>
-          ) : null}
-          {user.skills
-            .filter((s) => s !== user.primarySkill)
-            .map((s) => (
-              <span
-                key={s}
-                className="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-800 ring-1 ring-zinc-200"
-              >
-                {s}
-              </span>
-            ))}
-        </div>
-        <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-          <p className="text-sm font-medium text-zinc-800">Изменить список навыков</p>
-          <div className="mt-2">
-            <ExecutorSkillsEditor user={user} embedded />
-          </div>
-        </div>
+        <ExecutorSkillsSection user={user} />
       </Card>
 
       <section>
@@ -249,5 +225,6 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
         </div>
       </section>
     </div>
+    </ExecutorDetailStatusProvider>
   );
 }

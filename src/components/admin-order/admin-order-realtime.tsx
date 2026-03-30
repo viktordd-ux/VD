@@ -1,19 +1,17 @@
 "use client";
 
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 import {
-  parseCheckpointRowFromSupabase,
-  parseFileRowFromSupabase,
-  parseOrderRowFromSupabase,
-  sortCheckpointsForUi,
-} from "@/lib/supabase-realtime-parsers";
-import {
-  normalizeOrderForClient,
-  type OrderWithRelations,
-} from "@/lib/order-client-deserialize";
+  applyRealtimeCheckpointToBundleCache,
+  applyRealtimeFileToBundleCache,
+  applyRealtimeOrderRowToBundleCache,
+} from "@/lib/react-query-realtime";
+import { queryKeys } from "@/lib/query-keys";
+import { parseOrderRowFromSupabase } from "@/lib/supabase-realtime-parsers";
 import { useAdminOrder } from "./admin-order-context";
 
 export function AdminOrderRealtime({
@@ -27,7 +25,8 @@ export function AdminOrderRealtime({
   supabaseAnonKey?: string;
 }) {
   const router = useRouter();
-  const { setOrder, setCheckpoints, setFiles, bumpHistory } = useAdminOrder();
+  const queryClient = useQueryClient();
+  const { bumpHistory } = useAdminOrder();
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient({ supabaseUrl, supabaseAnonKey });
@@ -37,17 +36,11 @@ export function AdminOrderRealtime({
       const parsed = parseOrderRowFromSupabase(row);
       if (!parsed) return;
       if (parsed.deletedAt) {
+        queryClient.removeQueries({ queryKey: queryKeys.adminOrder(orderId) });
         router.push("/admin/orders");
         return;
       }
-      setOrder((p) =>
-        normalizeOrderForClient({
-          ...p,
-          ...parsed,
-          lead: parsed.leadId === p.leadId ? p.lead : null,
-          executor: parsed.executorId === p.executorId ? p.executor : null,
-        } as OrderWithRelations),
-      );
+      applyRealtimeOrderRowToBundleCache(queryClient, orderId, row);
       bumpHistory();
     }
 
@@ -55,6 +48,7 @@ export function AdminOrderRealtime({
       payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
     ) {
       if (payload.eventType === "DELETE") {
+        queryClient.removeQueries({ queryKey: queryKeys.adminOrder(orderId) });
         router.push("/admin/orders");
         return;
       }
@@ -65,67 +59,14 @@ export function AdminOrderRealtime({
     function handleCheckpointPayload(
       payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
     ) {
-      if (payload.eventType === "DELETE") {
-        const old = payload.old as Record<string, unknown> | null;
-        const id = old?.id ? String(old.id) : null;
-        if (!id) return;
-        setCheckpoints((prev) => prev.filter((c) => c.id !== id));
-        bumpHistory();
-        return;
-      }
-      const row = payload.new as Record<string, unknown> | null;
-      if (!row) return;
-      const c = parseCheckpointRowFromSupabase(row);
-      if (!c) return;
-      if (payload.eventType === "INSERT") {
-        setCheckpoints((prev) => {
-          if (prev.some((x) => x.id === c.id)) return prev;
-          const cleaned = prev.filter(
-            (x) =>
-              !(
-                x.id.startsWith("optimistic-") &&
-                x.orderId === c.orderId &&
-                x.title === c.title
-              ),
-          );
-          return sortCheckpointsForUi([...cleaned, c]);
-        });
-        bumpHistory();
-        return;
-      }
-      setCheckpoints((prev) => {
-        const next = prev.some((x) => x.id === c.id)
-          ? prev.map((x) => (x.id === c.id ? c : x))
-          : [...prev, c];
-        return sortCheckpointsForUi(next);
-      });
+      applyRealtimeCheckpointToBundleCache(queryClient, orderId, payload);
       bumpHistory();
     }
 
     function handleFilePayload(
       payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
     ) {
-      if (payload.eventType === "DELETE") {
-        const old = payload.old as Record<string, unknown> | null;
-        const id = old?.id ? String(old.id) : null;
-        if (!id) return;
-        setFiles((prev) => prev.filter((f) => f.id !== id));
-        bumpHistory();
-        return;
-      }
-      const row = payload.new as Record<string, unknown> | null;
-      if (!row) return;
-      const f = parseFileRowFromSupabase(row);
-      if (!f) return;
-      if (payload.eventType === "INSERT") {
-        setFiles((prev) => {
-          if (prev.some((x) => x.id === f.id)) return prev;
-          return [f, ...prev];
-        });
-        bumpHistory();
-        return;
-      }
-      setFiles((prev) => prev.map((x) => (x.id === f.id ? f : x)));
+      applyRealtimeFileToBundleCache(queryClient, orderId, payload);
       bumpHistory();
     }
 
@@ -169,11 +110,9 @@ export function AdminOrderRealtime({
   }, [
     orderId,
     router,
+    queryClient,
     supabaseUrl,
     supabaseAnonKey,
-    setOrder,
-    setCheckpoints,
-    setFiles,
     bumpHistory,
   ]);
 

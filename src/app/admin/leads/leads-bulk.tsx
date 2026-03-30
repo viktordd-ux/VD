@@ -6,8 +6,8 @@ import {
   useContext,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
 import { AdminHardDeleteOnlyModal } from "@/components/admin-delete-modal";
+import { useLeadsListMutations } from "@/context/leads-list-mutations";
 
 const Ctx = createContext<{
   selected: Set<string>;
@@ -50,19 +50,20 @@ export function LeadsBulkCheckbox({ leadId }: { leadId: string }) {
 
 export function LeadsBulkToolbar() {
   const { selected, clear } = useLeadsBulk();
-  const router = useRouter();
+  const list = useLeadsListMutations();
   const [hardOpen, setHardOpen] = useState(false);
 
   const n = selected.size;
   if (n === 0) return null;
 
   async function bulk(soft: boolean) {
+    const ids = [...selected];
     const res = await fetch("/api/admin/bulk-delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "leads",
-        ids: [...selected],
+        ids,
         hard: !soft,
       }),
     });
@@ -77,9 +78,10 @@ export function LeadsBulkToolbar() {
     if (data.failed?.length) {
       alert(`Ошибок при обработке: ${data.failed.length}`);
     }
+    const failed = new Set((data.failed ?? []).map((f) => f.id));
+    list?.removeLeads(ids.filter((id) => !failed.has(id)));
     clear();
     setHardOpen(false);
-    router.refresh();
   }
 
   return (

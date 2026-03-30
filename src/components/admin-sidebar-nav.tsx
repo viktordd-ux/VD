@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PushNotificationsToggle } from "@/components/push-notifications-toggle";
+import { usePrefetchAdminOrdersList } from "@/hooks/use-prefetch-admin-orders-list";
 import { cn } from "@/lib/cn";
 
 type Badges = { review: number; newLeads: number; overdue: number };
@@ -28,6 +29,7 @@ const items: {
 
 export function AdminSidebarNav() {
   const pathname = usePathname();
+  const prefetchOrdersList = usePrefetchAdminOrdersList();
   const [badges, setBadges] = useState<Badges>({ review: 0, newLeads: 0, overdue: 0 });
   const [chatUnreadAny, setChatUnreadAny] = useState(false);
 
@@ -75,7 +77,7 @@ export function AdminSidebarNav() {
   }
 
   return (
-    <nav className="flex flex-1 flex-col gap-0.5 p-2">
+    <nav className="flex flex-1 flex-col gap-0.5 px-1.5 py-2">
       {items.map((item) => {
         const isOn = active(item.href);
         const count = item.badgeKey ? badges[item.badgeKey] : 0;
@@ -83,15 +85,22 @@ export function AdminSidebarNav() {
           <Link
             key={item.href}
             href={item.href}
+            prefetch
+            onMouseEnter={() => {
+              if (item.href === "/admin/orders") prefetchOrdersList("");
+            }}
             className={cn(
-              "flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-base font-medium transition-colors md:min-h-0 md:py-2 md:text-sm",
+              "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-base font-medium transition-all duration-150 ease-out hover:scale-[1.01] active:scale-[0.98] md:min-h-0 md:text-[13px]",
               isOn
-                ? "bg-zinc-900 text-white shadow-sm"
-                : "text-zinc-700 hover:bg-zinc-100",
+                ? "bg-zinc-100/90 font-medium text-zinc-900"
+                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900",
             )}
           >
             <item.icon
-              className={cn("h-[18px] w-[18px] shrink-0", isOn ? "text-white" : "text-zinc-500")}
+              className={cn(
+                "h-[17px] w-[17px] shrink-0 transition-colors",
+                isOn ? "text-zinc-900" : "text-zinc-400",
+              )}
             />
             <span className="flex-1">{item.label}</span>
             {item.href === "/admin/orders" && chatUnreadAny && (
@@ -104,8 +113,8 @@ export function AdminSidebarNav() {
             {count > 0 && (
               <span
                 className={cn(
-                  "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none",
-                  isOn ? "bg-white text-slate-900" : "bg-red-500 text-white",
+                  "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold leading-none",
+                  isOn ? "bg-zinc-200/90 text-zinc-900" : "bg-red-500 text-white",
                 )}
               >
                 {count > 99 ? "99+" : count}

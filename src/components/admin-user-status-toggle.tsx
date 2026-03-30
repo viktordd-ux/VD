@@ -1,16 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function AdminUserStatusToggle({
   userId,
   currentStatus,
+  onSuccess,
 }: {
   userId: string;
   currentStatus: "active" | "banned";
+  onSuccess?: (next: "active" | "banned") => void;
 }) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function toggle() {
@@ -30,7 +30,7 @@ export function AdminUserStatusToggle({
       alert("Не удалось обновить статус");
       return;
     }
-    router.refresh();
+    onSuccess?.(newStatus);
   }
 
   const isBanned = currentStatus === "banned";

@@ -1,0 +1,65 @@
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { requireUser } from "@/lib/api-auth";
+
+/** GET /api/notifications — список уведомлений текущего пользователя. */
+export async function GET(req: Request) {
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+
+  const unreadOnly = new URL(req.url).searchParams.get("unread") === "1";
+
+  const rows = await prisma.notification.findMany({
+    where: {
+      userId: user.id,
+      ...(unreadOnly ? { readAt: null } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  return NextResponse.json({
+    notifications: rows.map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      title: n.title,
+      body: n.body,
+      linkHref: n.linkHref,
+      readAt: n.readAt?.toISOString() ?? null,
+      createdAt: n.createdAt.toISOString(),
+    })),
+  });
+}
+
+/** PATCH /api/notifications — { ids?: string[], readAll?: boolean } */
+export async function PATCH(req: Request) {
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+
+  const body = (await req.json().catch(() => ({}))) as {
+    ids?: string[];
+    readAll?: boolean;
+  };
+
+  const now = new Date();
+
+  if (body.readAll) {
+    await prisma.notification.updateMany({
+      where: { userId: user.id, readAt: null },
+      data: { readAt: now },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
+  if (ids.length === 0) {
+    return NextResponse.json({ error: "ids or readAll required" }, { status: 400 });
+  }
+
+  await prisma.notification.updateMany({
+    where: { userId: user.id, id: { in: ids } },
+    data: { readAt: now },
+  });
+
+  return NextResponse.json({ ok: true });
+}

@@ -1,5 +1,4 @@
 import { auth } from "@/auth";
-import { OrderLiveRefresh } from "@/components/order-live-refresh";
 import { Card } from "@/components/ui/card";
 import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
@@ -77,7 +76,6 @@ export default async function ExecutorEarningsPage() {
 
   return (
     <div className="space-y-8">
-      <OrderLiveRefresh />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Заработок</h1>
         <p className="mt-1 text-sm text-zinc-500">

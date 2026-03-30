@@ -9,7 +9,7 @@ type Variant = "admin" | "executor";
 
 function SidebarBrand({ variant }: { variant: Variant }) {
   return (
-    <div className="border-b border-zinc-100 px-4 py-4">
+    <div className="border-b border-zinc-100/80 px-3 py-3">
       <span className="text-lg font-semibold tracking-tight">
         V<span className="text-zinc-400">|</span>D
       </span>
@@ -23,10 +23,13 @@ function SidebarBrand({ variant }: { variant: Variant }) {
 export function ResponsiveAppShell({
   variant,
   sidebarNav,
+  bottomNav,
   children,
 }: {
   variant: Variant;
   sidebarNav: React.ReactNode;
+  /** Нижняя навигация (например PWA / мобильный админ). */
+  bottomNav?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -51,11 +54,11 @@ export function ResponsiveAppShell({
   }, [open]);
 
   return (
-    <div className="flex min-h-full min-w-0 flex-1 bg-slate-50">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-200/90 bg-white shadow-sm shadow-zinc-950/[0.03] md:flex">
+    <div className="flex min-h-full min-w-0 flex-1 bg-[#fafafa]">
+      <aside className="hidden w-52 shrink-0 flex-col border-r border-zinc-200/50 bg-white md:flex">
         <SidebarBrand variant={variant} />
         {sidebarNav}
-        <div className="mt-auto border-t border-zinc-100 p-3">
+        <div className="mt-auto border-t border-zinc-100/80 p-2.5">
           <SignOutButton />
         </div>
       </aside>
@@ -100,7 +103,7 @@ export function ResponsiveAppShell({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-[3.25rem] items-center gap-3 border-b border-zinc-200/80 bg-white/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-white/90 md:hidden">
+        <header className="sticky top-0 z-30 flex min-h-[3.25rem] items-center gap-3 border-b border-zinc-200/50 bg-white/90 px-3 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-white/85 md:hidden">
           <button
             type="button"
             className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-800 hover:bg-zinc-50"
@@ -122,10 +125,16 @@ export function ResponsiveAppShell({
         </header>
         <main
           id="app-main"
-          className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8"
+          className={cn(
+            "min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-5 md:px-8 md:py-8 lg:px-10 lg:py-10",
+            bottomNav != null
+              ? "pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-8 lg:pb-10"
+              : undefined,
+          )}
         >
           {children}
         </main>
+        {bottomNav}
       </div>
     </div>
   );

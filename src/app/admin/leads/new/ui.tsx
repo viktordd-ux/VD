@@ -30,7 +30,6 @@ export function NewLeadForm() {
       return;
     }
     router.push("/admin/leads");
-    router.refresh();
   }
 
   return (

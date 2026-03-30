@@ -2,8 +2,9 @@
 
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useSession } from "next-auth/react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -11,15 +12,21 @@ import {
   useRef,
   useState,
 } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/components/toast-provider";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
 import type { MessageDto } from "@/lib/message-serialize";
+import { mergeMessages, removeMessageById } from "@/lib/chat-message-merge";
 import { formatChatMessageTime } from "@/lib/chat-display-time";
 import {
   normalizeCreatedAt,
   normalizeMessageDto,
 } from "@/lib/message-normalize";
+import { useOrderMessagesQuery } from "@/hooks/use-order-messages-query";
+import { queryKeys } from "@/lib/query-keys";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 
 const devLog = (...args: unknown[]) => {
@@ -28,41 +35,30 @@ const devLog = (...args: unknown[]) => {
   }
 };
 
+function playSoftPing() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = 880;
+    g.gain.value = 0.04;
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + 0.06);
+    o.onended = () => void ctx.close();
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Списки заказов и сайдбар подтягивают флаги с сервера. */
 function dispatchOrderUnreadChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("vd:order-unread-changed"));
-}
-
-/** Единый порядок: только normalizeCreatedAt; при равенстве — id. */
-function sortMessagesStable(list: MessageDto[]): MessageDto[] {
-  return [...list].sort((a, b) => {
-    const na = normalizeCreatedAt(a.createdAt) - normalizeCreatedAt(b.createdAt);
-    if (na !== 0) return na;
-    return a.id.localeCompare(b.id);
-  });
-}
-
-/**
- * Единый пайплайн: Map по id → дедуп → финальная сортировка по createdAt.
- * Не использует unshift / порядок прихода событий.
- */
-function mergeMessages(
-  prev: MessageDto[],
-  incoming: MessageDto | MessageDto[],
-): MessageDto[] {
-  const map = new Map(prev.map((m) => [m.id, m]));
-  const batch = Array.isArray(incoming) ? incoming : [incoming];
-  for (const m of batch) {
-    map.set(m.id, m);
-  }
-  return sortMessagesStable(Array.from(map.values()));
-}
-
-function removeMessageById(prev: MessageDto[], id: string): MessageDto[] {
-  const map = new Map(prev.map((m) => [m.id, m]));
-  map.delete(id);
-  return sortMessagesStable(Array.from(map.values()));
 }
 
 function IconChatBubble({ className }: { className?: string }) {
@@ -81,6 +77,67 @@ function IconChatBubble({ className }: { className?: string }) {
     </svg>
   );
 }
+
+function messageWithMentions(text: string, mine: boolean) {
+  const parts = text.split(/(@[\w\u0400-\u04FF]+)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("@")) {
+      return (
+        <span
+          key={i}
+          className={
+            mine
+              ? "font-medium text-blue-200 underline decoration-blue-300/80"
+              : "font-medium text-blue-700 underline decoration-blue-300"
+          }
+        >
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+const ChatMessageRow = memo(function ChatMessageRow({
+  m,
+  mine,
+  timeLabel,
+}: {
+  m: MessageDto;
+  mine: boolean;
+  timeLabel: string;
+}) {
+  return (
+    <div
+      className={`vd-message-enter flex ${mine ? "justify-end" : "justify-start"}`}
+    >
+      <div
+        className={`max-w-[min(85%,28rem)] rounded-[1.15rem] px-3.5 py-2.5 text-[15px] leading-[1.45] shadow-sm shadow-zinc-950/[0.04] ${
+          mine
+            ? "rounded-br-md bg-zinc-900 text-white"
+            : "rounded-bl-md bg-white text-zinc-900 ring-1 ring-zinc-200/80"
+        }`}
+      >
+        <p className="whitespace-pre-wrap break-words">
+          {messageWithMentions(m.text, mine)}
+        </p>
+        <p
+          className={`mt-1.5 text-[11px] tabular-nums tracking-wide ${
+            mine ? "text-zinc-400" : "text-zinc-500"
+          }`}
+        >
+          {timeLabel}
+          {!mine && (
+            <span className="ml-1.5 opacity-75">
+              · {m.role === "admin" ? "студия" : "исполнитель"}
+            </span>
+          )}
+        </p>
+      </div>
+    </div>
+  );
+});
 
 function IconChevronDown({ className }: { className?: string }) {
   return (
@@ -120,21 +177,36 @@ export function OrderChat({
   initialHasUnreadChat = false,
 }: OrderChatProps) {
   const { data: session, status } = useSession();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const sessionReady = status !== "loading";
+  const {
+    data: messages = [],
+    isPending: loading,
+    error: loadError,
+  } = useOrderMessagesQuery(orderId, sessionReady);
   const supabase = useMemo(
     () => getSupabaseBrowserClient({ supabaseUrl, supabaseAnonKey }),
     [supabaseUrl, supabaseAnonKey],
   );
 
-  /** Инвариант: всегда отсортировано по createdAt (и id при равенстве). */
-  const [messages, setMessages] = useState<MessageDto[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const chatLoadError =
+    loadError instanceof Error
+      ? loadError.message === "forbidden"
+        ? "Нет доступа к чату"
+        : loadError.message === "load"
+          ? "Не удалось загрузить чат"
+          : null
+      : null;
   const [realtimeStatus, setRealtimeStatus] = useState<
     "idle" | "subscribed" | "error" | "unconfigured"
   >("idle");
   const scrollRef = useRef<HTMLDivElement>(null);
+  /** Обновляется только обработчиком scroll — чтобы не скроллить вниз, если пользователь читает историю. */
+  const nearBottomRef = useRef(true);
+  const prevLenRef = useRef(0);
+  const prevDockOpenRef = useRef(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const orderIdRef = useRef(orderId);
   orderIdRef.current = orderId;
@@ -150,8 +222,90 @@ export function OrderChat({
   /** Только непрочитанные сообщения (не «проект») — красная точка на чате. */
   const [showChatUnread, setShowChatUnread] = useState(!!initialHasUnreadChat);
 
+  const [peerTyping, setPeerTyping] = useState(false);
+  const peerTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingChannelRef = useRef<ReturnType<
+    NonNullable<ReturnType<typeof getSupabaseBrowserClient>>["channel"]
+  > | null>(null);
+  const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const soundSeenMsgIdRef = useRef<string | null>(null);
+
   const currentUserId = session?.user?.id;
   sessionUserIdRef.current = currentUserId;
+
+  type SendCtx = {
+    previous: MessageDto[] | undefined;
+    optimisticId: string;
+    msgKey: ReturnType<typeof queryKeys.orderMessages>;
+    previousInput: string;
+  };
+
+  const sendMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId, text }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw { status: res.status, body };
+      }
+      return res.json() as Promise<{ message?: unknown }>;
+    },
+    onMutate: async (text) => {
+      const role = session?.user?.role as MessageDto["role"];
+      const msgKey = queryKeys.orderMessages(orderId);
+      await queryClient.cancelQueries({ queryKey: msgKey });
+      const previous = queryClient.getQueryData<MessageDto[]>(msgKey);
+      const previousInput = input;
+      const optimisticId = `pending:${crypto.randomUUID()}`;
+      const optimistic: MessageDto = {
+        id: optimisticId,
+        orderId,
+        senderId: currentUserId!,
+        role,
+        text,
+        createdAt: new Date().toISOString(),
+      };
+      queryClient.setQueryData<MessageDto[]>(msgKey, (prev) =>
+        mergeMessages(prev ?? [], optimistic),
+      );
+      setInput("");
+      return {
+        previous,
+        optimisticId,
+        msgKey,
+        previousInput,
+      } satisfies SendCtx;
+    },
+    onError: (err, _text, ctx) => {
+      if (ctx?.msgKey) {
+        queryClient.setQueryData(ctx.msgKey, ctx.previous);
+      }
+      if (ctx?.previousInput !== undefined) setInput(ctx.previousInput);
+      const e = err as { status?: number; body?: { error?: string } };
+      const msg =
+        e?.status === 403
+          ? "Нельзя писать в этот заказ"
+          : e?.body?.error ?? "Не удалось отправить";
+      toast.error(msg);
+    },
+    onSuccess: (data, _text, ctx) => {
+      if (!ctx) return;
+      const added = normalizeMessageDto(data.message);
+      if (added) {
+        queryClient.setQueryData<MessageDto[]>(ctx.msgKey, (prev) => {
+          const without = removeMessageById(prev ?? [], ctx.optimisticId);
+          return mergeMessages(without, added);
+        });
+      } else {
+        queryClient.setQueryData<MessageDto[]>(ctx.msgKey, (prev) =>
+          removeMessageById(prev ?? [], ctx.optimisticId),
+        );
+      }
+    },
+  });
 
   const dockFabPos =
     "fixed right-4 z-40 max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6";
@@ -166,40 +320,16 @@ export function OrderChat({
     setShowChatUnread(Boolean(data.hasUnreadChat));
   }, [orderId]);
 
-  const loadMessages = useCallback(async () => {
-    setError(null);
-    const res = await fetch(
-      `/api/messages?order_id=${encodeURIComponent(orderId)}`,
-      { cache: "no-store" },
-    );
-    if (!res.ok) {
-      setError(res.status === 403 ? "Нет доступа к чату" : "Не удалось загрузить чат");
-      setMessages([]);
-      return;
-    }
-    const data = (await res.json()) as { messages?: unknown[] };
-    const raw = Array.isArray(data.messages) ? data.messages : [];
-    const list = raw
-      .map((x) => normalizeMessageDto(x))
-      .filter((m): m is MessageDto => m != null);
-    setMessages(mergeMessages([], list));
-  }, [orderId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      await loadMessages();
-      if (!cancelled) setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [loadMessages]);
-
   useEffect(() => {
     setShowChatUnread(!!initialHasUnreadChat);
   }, [orderId, initialHasUnreadChat]);
+
+  useEffect(() => {
+    prevLenRef.current = 0;
+    nearBottomRef.current = true;
+    prevDockOpenRef.current = false;
+    soundSeenMsgIdRef.current = null;
+  }, [orderId]);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -218,6 +348,67 @@ export function OrderChat({
 
   const isDock = variant === "dock";
   const isSidebar = variant === "sidebar";
+
+  useEffect(() => {
+    function onCloseOverlays() {
+      if (isDock) setDockOpen(false);
+    }
+    window.addEventListener("vd:close-overlays", onCloseOverlays);
+    return () => window.removeEventListener("vd:close-overlays", onCloseOverlays);
+  }, [isDock]);
+
+  useEffect(() => {
+    if (!supabase || !orderId) return;
+    const ch = supabase.channel(`typing:${orderId}`, {
+      config: { broadcast: { ack: false } },
+    });
+    ch.on("broadcast", { event: "typing" }, (payload) => {
+      const raw = payload as { payload?: { userId?: string } };
+      const p = raw.payload;
+      const uid = p?.userId;
+      if (!uid || uid === currentUserId) return;
+      setPeerTyping(true);
+      if (peerTypingTimerRef.current) clearTimeout(peerTypingTimerRef.current);
+      peerTypingTimerRef.current = setTimeout(() => setPeerTyping(false), 2500);
+    });
+    ch.subscribe((status) => {
+      if (status === "SUBSCRIBED") typingChannelRef.current = ch;
+    });
+    return () => {
+      typingChannelRef.current = null;
+      void supabase.removeChannel(ch);
+    };
+  }, [supabase, orderId, currentUserId]);
+
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || !currentUserId) return;
+    if (last.senderId === currentUserId) return;
+    if (soundSeenMsgIdRef.current === null) {
+      soundSeenMsgIdRef.current = last.id;
+      return;
+    }
+    if (soundSeenMsgIdRef.current === last.id) return;
+    soundSeenMsgIdRef.current = last.id;
+    if (document.hidden || !document.hasFocus()) {
+      playSoftPing();
+    }
+  }, [messages, currentUserId]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    function onScroll() {
+      const node = scrollRef.current;
+      if (!node) return;
+      const threshold = 72;
+      nearBottomRef.current =
+        node.scrollHeight - node.scrollTop - node.clientHeight < threshold;
+    }
+    el.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [orderId]);
 
   /** Открытый dock — переписка просмотрена: точку убираем сразу, затем синхронизация с сервером. */
   useEffect(() => {
@@ -284,11 +475,15 @@ export function OrderChat({
     ) {
       devLog("realtime messages", payload.eventType, payload);
 
+      const msgKey = queryKeys.orderMessages(orderId);
+
       if (payload.eventType === "DELETE") {
         const old = payload.old as Record<string, unknown> | null;
         const id = old?.id != null ? String(old.id) : null;
         if (!id) return;
-        setMessages((prev) => removeMessageById(prev, id));
+        queryClient.setQueryData<MessageDto[]>(msgKey, (prev) =>
+          removeMessageById(prev ?? [], id),
+        );
         return;
       }
 
@@ -300,18 +495,19 @@ export function OrderChat({
         devLog("строка пропущена", { parsed: m, expectedOrderId: orderIdRef.current });
         return;
       }
-      setMessages((prev) => {
+      queryClient.setQueryData<MessageDto[]>(msgKey, (prev) => {
+        const list = prev ?? [];
         const uid = sessionUserIdRef.current;
         if (uid != null && m.senderId === uid) {
-          const pending = prev.find(
+          const pending = list.find(
             (x) =>
               x.id.startsWith("pending:") && x.senderId === uid && x.text === m.text,
           );
           if (pending) {
-            return mergeMessages(removeMessageById(prev, pending.id), m);
+            return mergeMessages(removeMessageById(list, pending.id), m);
           }
         }
-        return mergeMessages(prev, m);
+        return mergeMessages(list, m);
       });
       const uid = sessionUserIdRef.current;
       const fromOther = uid != null && m.senderId !== uid;
@@ -353,21 +549,38 @@ export function OrderChat({
       devLog("removeChannel", `order-messages:${orderId}`);
       void supabase.removeChannel(channel);
     };
-  }, [orderId, supabase, variant]);
+  }, [orderId, supabase, variant, queryClient]);
 
-  /** Вниз к последнему сообщению: при смене ленты, после загрузки и при открытии dock (раньше messages не менялся — оставался скролл сверху). */
+  const lastMessageKey =
+    messages.length > 0 ? messages[messages.length - 1]!.id : "";
+
+  /** Скролл вниз только если пользователь у низа, своё сообщение, первая загрузка или только что открыли dock. */
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const scrollToBottom = () => {
-      el.scrollTop = el.scrollHeight;
-    };
-    scrollToBottom();
-    requestAnimationFrame(() => {
-      scrollToBottom();
-      requestAnimationFrame(scrollToBottom);
-    });
-  }, [messages, loading, dockOpen]);
+    if (loading) return;
+
+    const dockJustOpened = isDock && dockOpen && !prevDockOpenRef.current;
+    prevDockOpenRef.current = dockOpen;
+
+    const last = messages[messages.length - 1];
+    const prevLen = prevLenRef.current;
+    prevLenRef.current = messages.length;
+    const initialFill = prevLen === 0 && messages.length > 0;
+
+    const fromSelf = Boolean(
+      last && currentUserId && last.senderId === currentUserId,
+    );
+    const shouldStick = nearBottomRef.current;
+
+    if (initialFill || fromSelf || shouldStick || dockJustOpened) {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: initialFill ? "auto" : "smooth",
+      });
+      nearBottomRef.current = true;
+    }
+  }, [lastMessageKey, loading, currentUserId, dockOpen, isDock, messages]);
 
   /** Пока чат открыт/виден — любое новое входящее сообщение сразу считаем прочитанным. */
   const lastIncoming = useMemo(() => {
@@ -399,57 +612,16 @@ export function OrderChat({
     return () => window.clearTimeout(t);
   }, [lastIncoming?.id, isDock, dockOpen, orderId, fetchUnread]);
 
-  async function onSend(e: React.FormEvent) {
+  function onSend(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || sending || !currentUserId) return;
+    if (!text || sendMutation.isPending || !currentUserId) return;
     const role = session?.user?.role;
-    if (role !== "admin" && role !== "executor") return;
-
-    setSending(true);
-    setError(null);
-
-    const optimisticId = `pending:${crypto.randomUUID()}`;
-    const optimistic: MessageDto = {
-      id: optimisticId,
-      orderId,
-      senderId: currentUserId,
-      role,
-      text,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => mergeMessages(prev, optimistic));
-    setInput("");
-
-    try {
-      const res = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_id: orderId, text }),
-      });
-      if (!res.ok) {
-        setMessages((prev) => removeMessageById(prev, optimisticId));
-        if (res.status === 403) {
-          setError("Нельзя писать в этот заказ");
-        } else {
-          const err = (await res.json().catch(() => ({}))) as { error?: string };
-          setError(err.error ?? "Не удалось отправить");
-        }
-        return;
-      }
-      const data = (await res.json()) as { message?: unknown };
-      const added = normalizeMessageDto(data.message);
-      if (added) {
-        setMessages((prev) => {
-          const without = removeMessageById(prev, optimisticId);
-          return mergeMessages(without, added);
-        });
-      } else {
-        setMessages((prev) => removeMessageById(prev, optimisticId));
-      }
-    } finally {
-      setSending(false);
+    if (role !== "admin" && role !== "executor") {
+      toast.error("Нет прав на отправку");
+      return;
     }
+    sendMutation.mutate(text);
   }
 
   const tallMessages = isSidebar || isDock;
@@ -588,60 +760,48 @@ export function OrderChat({
         </p>
       )}
 
-      {error && (
+      {chatLoadError && (
         <p className="mt-2 text-sm text-red-700" role="alert">
-          {error}
+          {chatLoadError}
         </p>
       )}
 
       <div
         ref={scrollRef}
+        style={{ overflowAnchor: "none" } as CSSProperties}
         className={cn(
-          "mt-4 flex min-h-[10rem] flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-lg border border-zinc-100 bg-zinc-50/80 p-3",
+          "mt-4 flex min-h-[10rem] flex-col gap-3 overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-200/40 bg-zinc-50/40 p-3.5 [scrollbar-gutter:stable]",
           tallMessages ? "min-h-0 flex-1" : "max-h-[min(24rem,50vh)]",
         )}
       >
         {loading ? (
-          <p className="text-sm text-zinc-500">Загрузка сообщений…</p>
+          <div className="flex flex-col gap-3 py-1" aria-hidden>
+            <div className="flex justify-end">
+              <Skeleton className="h-11 w-[72%] max-w-sm rounded-2xl rounded-br-md" />
+            </div>
+            <div className="flex justify-start">
+              <Skeleton className="h-14 w-[78%] max-w-md rounded-2xl rounded-bl-md" />
+            </div>
+            <div className="flex justify-end">
+              <Skeleton className="h-9 w-[55%] max-w-xs rounded-2xl rounded-br-md" />
+            </div>
+          </div>
         ) : messages.length === 0 ? (
           <p className="text-sm text-zinc-500">Пока нет сообщений. Напишите первым.</p>
         ) : (
           messages.map((m) => {
-            const mine = currentUserId && m.senderId === currentUserId;
+            const mine = Boolean(currentUserId && m.senderId === currentUserId);
             const timeLabel = formatChatMessageTime(m.createdAt);
             return (
-              <div
-                key={m.id}
-                className={`flex ${mine ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                    mine
-                      ? "rounded-br-md bg-zinc-900 text-white"
-                      : "rounded-bl-md bg-white text-zinc-900 ring-1 ring-zinc-200"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap break-words leading-relaxed">
-                    {m.text}
-                  </p>
-                  <p
-                    className={`mt-1 text-[10px] tabular-nums ${
-                      mine ? "text-zinc-400" : "text-zinc-500"
-                    }`}
-                  >
-                    {timeLabel}
-                    {!mine && (
-                      <span className="ml-1 opacity-80">
-                        · {m.role === "admin" ? "студия" : "исполнитель"}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
+              <ChatMessageRow key={m.id} m={m} mine={mine} timeLabel={timeLabel} />
             );
           })
         )}
       </div>
+
+      {peerTyping ? (
+        <p className="mt-2 text-xs text-zinc-500 vd-fade-in">Собеседник печатает…</p>
+      ) : null}
 
       <form onSubmit={onSend} className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
         <label className="sr-only" htmlFor={`order-chat-input-${orderId}`}>
@@ -650,7 +810,20 @@ export function OrderChat({
         <textarea
           id={`order-chat-input-${orderId}`}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+            typingDebounceRef.current = setTimeout(() => {
+              const ch = typingChannelRef.current;
+              if (ch && currentUserId) {
+                void ch.send({
+                  type: "broadcast",
+                  event: "typing",
+                  payload: { userId: currentUserId },
+                });
+              }
+            }, 400);
+          }}
           placeholder="Введите сообщение…"
           rows={2}
           maxLength={8000}
@@ -660,10 +833,11 @@ export function OrderChat({
           type="submit"
           variant="primary"
           size="md"
-          disabled={sending || !input.trim() || !currentUserId}
-          className="w-full shrink-0 sm:w-auto"
+          loading={sendMutation.isPending}
+          disabled={sendMutation.isPending || !input.trim() || !currentUserId}
+          className="w-full shrink-0 cursor-pointer sm:w-auto"
         >
-          {sending ? "…" : "Отправить"}
+          Отправить
         </Button>
       </form>
     </Card>

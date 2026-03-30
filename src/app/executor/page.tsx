@@ -1,11 +1,8 @@
+import { Suspense } from "react";
 import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
-import { orderIsActive } from "@/lib/active-scope";
 import { redirect } from "next/navigation";
-import { ExecutorOrdersListClient } from "./executor-orders-list-client";
-import { serializeExecutorHomeOrders } from "@/lib/order-list-client-serialize";
-
-export const dynamic = "force-dynamic";
+import { PageLoadingSkeleton } from "@/components/page-loading-skeleton";
+import { ExecutorHomeClient } from "./executor-home-client";
 
 export default async function ExecutorHome() {
   const session = await auth();
@@ -13,23 +10,9 @@ export default async function ExecutorHome() {
   if (session.user.role !== "executor") redirect("/admin");
   if (session.user.onboarded !== true) redirect("/executor/onboarding");
 
-  const orders = await prisma.order.findMany({
-    where: {
-      ...orderIsActive,
-      executorId: session.user.id,
-      status: { not: "DONE" },
-    },
-    orderBy: { deadline: "asc" },
-  });
-
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Мои задачи</h1>
-
-      <ExecutorOrdersListClient
-        initialSerialized={serializeExecutorHomeOrders(orders)}
-        userId={session.user.id}
-      />
-    </div>
+    <Suspense fallback={<PageLoadingSkeleton />}>
+      <ExecutorHomeClient userId={session.user.id} />
+    </Suspense>
   );
 }

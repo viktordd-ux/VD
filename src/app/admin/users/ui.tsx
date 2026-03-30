@@ -2,8 +2,7 @@
 
 import type { User } from "@prisma/client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CredentialsModal } from "@/components/credentials-modal";
 import { Badge } from "@/components/ui/badge";
 import { formatUserDisplayName } from "@/lib/user-profile";
@@ -13,13 +12,15 @@ export function ExecutorSkillsEditor({
   user,
   score,
   embedded,
+  onSaved,
 }: {
   user: User;
   score?: number;
   /** Только форма навыков (для страницы карточки) */
   embedded?: boolean;
+  /** После успешного PATCH — обновить локальную модель без router.refresh */
+  onSaved?: (patch: Record<string, unknown>) => void;
 }) {
-  const router = useRouter();
   const [tags, setTags] = useState(user.skills.join(", "));
   const [saving, setSaving] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
@@ -28,11 +29,16 @@ export function ExecutorSkillsEditor({
     password: string;
   } | null>(null);
 
+  useEffect(() => {
+    setTags(user.skills.join(", "));
+  }, [user.id, user.skills.join(",")]);
+
   async function save() {
     const skills = tags
       .split(/[,;]+/)
       .map((s) => s.trim())
       .filter(Boolean);
+    const prevTags = user.skills.join(", ");
     setSaving(true);
     const res = await fetch(`/api/users/${user.id}`, {
       method: "PATCH",
@@ -41,10 +47,12 @@ export function ExecutorSkillsEditor({
     });
     setSaving(false);
     if (!res.ok) {
+      setTags(prevTags);
       alert("Не удалось сохранить");
       return;
     }
-    router.refresh();
+    const data = (await res.json()) as Record<string, unknown>;
+    onSaved?.(data);
   }
 
   async function resetPassword() {
@@ -67,7 +75,6 @@ export function ExecutorSkillsEditor({
       email: data.email,
       password: data.generated_password,
     });
-    router.refresh();
   }
 
   const form = (

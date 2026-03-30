@@ -2,7 +2,6 @@
 
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { OrderStatusBadge } from "@/components/order-status-badge";
@@ -13,10 +12,7 @@ import {
   trClass,
 } from "@/components/table-wrap";
 import { Card } from "@/components/ui/card";
-import {
-  getSupabaseBrowserClient,
-  isSupabaseRealtimeConfigured,
-} from "@/lib/supabase-client";
+import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 import { mergeOrderIntoListItem } from "@/lib/supabase-realtime-parsers";
 import {
   type OrderWithRelations,
@@ -37,7 +33,6 @@ type Props = {
 };
 
 export function ExecutorOrdersListClient({ initialSerialized, userId }: Props) {
-  const router = useRouter();
   const [orders, setOrders] = useState<OrderWithRelations[]>(() =>
     initialSerialized.map(hydrateOrderWithRelations),
   );
@@ -106,17 +101,6 @@ export function ExecutorOrdersListClient({ initialSerialized, userId }: Props) {
       void supabase.removeChannel(channel);
     };
   }, [userId, applyOrdersPayload]);
-
-  useEffect(() => {
-    if (isSupabaseRealtimeConfigured()) return;
-    const id = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
-        return;
-      }
-      router.refresh();
-    }, 120_000);
-    return () => clearInterval(id);
-  }, [router]);
 
   const visible = useMemo(
     () => orders.filter((o) => matchesExecutorHomeOrder(o)),
