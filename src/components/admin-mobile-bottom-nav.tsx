@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
-import { queryKeys } from "@/lib/query-keys";
-import { fetchNavBadges } from "@/lib/nav-badges-client";
+import {
+  getNavBadgesQueryOptions,
+  type NavBadgesPayload,
+} from "@/lib/nav-badges-client";
+import { NavBadgePill } from "@/components/nav-badge-pill";
 
 const links = [
   { href: "/admin", label: "Главная", icon: IconHome, badge: "notif" as const },
@@ -18,40 +21,18 @@ const links = [
 export function AdminMobileBottomNav() {
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const navOpts = useMemo(
+    () => ({
+      ...getNavBadgesQueryOptions(queryClient),
+      placeholderData: (prev: NavBadgesPayload | undefined) => prev,
+    }),
+    [queryClient],
+  );
 
-  const { data } = useQuery({
-    queryKey: queryKeys.navBadges(),
-    queryFn: fetchNavBadges,
-    staleTime: 30_000,
-  });
+  const { data } = useQuery(navOpts);
 
   const chatC = Math.max(0, Number(data?.unreadChatOrderCount ?? 0));
   const notifC = Math.max(0, Number(data?.notificationUnreadCount ?? 0));
-
-  const refreshBadges = useCallback(async () => {
-    try {
-      const next = await fetchNavBadges();
-      queryClient.setQueryData(queryKeys.navBadges(), next);
-    } catch {
-      /* ignore */
-    }
-  }, [queryClient]);
-
-  useEffect(() => {
-    void refreshBadges();
-  }, [refreshBadges]);
-
-  useEffect(() => {
-    const onBadges = () => {
-      void refreshBadges();
-    };
-    window.addEventListener("vd:order-unread-changed", onBadges);
-    window.addEventListener("vd:notifications-changed", onBadges);
-    return () => {
-      window.removeEventListener("vd:order-unread-changed", onBadges);
-      window.removeEventListener("vd:notifications-changed", onBadges);
-    };
-  }, [refreshBadges]);
 
   function active(href: string) {
     if (href === "/admin") return pathname === "/admin";
@@ -87,11 +68,9 @@ export function AdminMobileBottomNav() {
                   active(item.href) ? "text-[var(--text)]" : "text-[var(--muted)]",
                 )}
               />
-              {badge > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-[5px] text-[10px] font-bold leading-none text-white shadow-sm">
-                  {badge > 99 ? "99+" : badge}
-                </span>
-              ) : null}
+              <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center">
+                <NavBadgePill count={badge} className="h-[18px] min-w-[18px] px-[5px] text-[10px]" />
+              </span>
             </span>
             {item.label}
           </Link>

@@ -8,8 +8,11 @@ import { queryKeys } from "@/lib/query-keys";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 import { cn } from "@/lib/cn";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NavBadgePill } from "@/components/nav-badge-pill";
 import {
-  fetchNavBadges,
+  decrementNavNotificationByOne,
+  getNavBadgesQueryOptions,
+  setNavNotificationUnreadToZero,
   type NavBadgesPayload,
 } from "@/lib/nav-badges-client";
 import {
@@ -78,6 +81,10 @@ export function NotificationCenter() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  /** Уже уменьшили nav по клику; не дублировать при realtime UPDATE. */
+  const optimisticNotifReadIdsRef = useRef(new Set<string>());
+  /** Массовое read all — не декрементить по каждому UPDATE. */
+  const bulkNotifReadRef = useRef(false);
 
   const userId = session?.user?.id;
 
@@ -88,19 +95,24 @@ export function NotificationCenter() {
     staleTime: 15_000,
   });
 
+  const navBadgeOpts = useMemo(
+    () => ({
+      ...getNavBadgesQueryOptions(queryClient),
+      placeholderData: (prev: NavBadgesPayload | undefined) => prev,
+    }),
+    [queryClient],
+  );
+
+  const { data: navBadges } = useQuery({
+    ...navBadgeOpts,
+    enabled: !!userId,
+  });
+
   const list = data?.notifications ?? [];
   const unread = list.filter((n) => !n.readAt).length;
+  const bellCount = Math.max(0, Number(navBadges?.notificationUnreadCount ?? 0));
 
   const grouped = useMemo(() => groupNotificationsByDay(list), [list]);
-
-  const refreshNavBadges = useCallback(async () => {
-    try {
-      const data = await fetchNavBadges();
-      queryClient.setQueryData(queryKeys.navBadges(), data);
-    } catch {
-      /* ignore */
-    }
-  }, [queryClient]);
 
   useEffect(() => {
     if (!userId) return;
@@ -125,15 +137,17 @@ export function NotificationCenter() {
       queryClient.setQueryData(
         queryKeys.navBadges(),
         (old: NavBadgesPayload | undefined) => {
+          if (!old) {
+            return {
+              unreadChatOrderCount: 0,
+              notificationUnreadCount: 1,
+              isFallback: false,
+            };
+          }
           return {
-            unreadChatOrderCount: Math.max(
-              0,
-              Number(old?.unreadChatOrderCount ?? 0),
-            ),
-            notificationUnreadCount: Math.max(
-              0,
-              Number(old?.notificationUnreadCount ?? 0) + 1,
-            ),
+            ...old,
+            notificationUnreadCount: old.notificationUnreadCount + 1,
+            isFallback: false,
           };
         },
       );
@@ -143,6 +157,9 @@ export function NotificationCenter() {
     const onUpdate = (
       payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
     ) => {
+      const oldRow = parseNotificationRealtimeRow(
+        payload.old as Record<string, unknown>,
+      );
       const row = parseNotificationRealtimeRow(
         payload.new as Record<string, unknown>,
       );
@@ -158,7 +175,13 @@ export function NotificationCenter() {
           };
         },
       );
-      void refreshNavBadges();
+      if (oldRow?.readAt == null && row.readAt != null) {
+        if (optimisticNotifReadIdsRef.current.has(row.id)) {
+          optimisticNotifReadIdsRef.current.delete(row.id);
+        } else if (!bulkNotifReadRef.current) {
+          decrementNavNotificationByOne(queryClient);
+        }
+      }
       dispatchNotificationsChanged();
     };
 
@@ -188,7 +211,7 @@ export function NotificationCenter() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [userId, queryClient, refreshNavBadges]);
+  }, [userId, queryClient]);
 
   useEffect(() => {
     if (!open) return;
@@ -202,6 +225,8 @@ export function NotificationCenter() {
   const onOpenItem = useCallback(
     async (n: Row) => {
       if (!n.readAt) {
+        optimisticNotifReadIdsRef.current.add(n.id);
+        decrementNavNotificationByOne(queryClient);
         queryClient.setQueryData<{ notifications: Row[] }>(
           queryKeys.notifications(),
           (old) =>
@@ -216,29 +241,32 @@ export function NotificationCenter() {
               : old,
         );
         await markRead([n.id]);
-        await refreshNavBadges();
         dispatchNotificationsChanged();
       }
       if (n.linkHref) {
         setOpen(false);
       }
     },
-    [queryClient, refreshNavBadges],
+    [queryClient],
   );
 
   const markAllReadOnOpen = useCallback(async () => {
     const key = queryKeys.notifications();
     const snap = queryClient.getQueryData<{ notifications: Row[] }>(key);
     if (!snap?.notifications?.some((n) => !n.readAt)) return;
+    bulkNotifReadRef.current = true;
     const now = new Date().toISOString();
     await queryClient.cancelQueries({ queryKey: key });
     queryClient.setQueryData<{ notifications: Row[] }>(key, {
       notifications: snap.notifications.map((n) => ({ ...n, readAt: n.readAt ?? now })),
     });
     await markAllRead();
-    await refreshNavBadges();
+    setNavNotificationUnreadToZero(queryClient);
     dispatchNotificationsChanged();
-  }, [queryClient, refreshNavBadges]);
+    window.setTimeout(() => {
+      bulkNotifReadRef.current = false;
+    }, 2500);
+  }, [queryClient]);
 
   if (!userId) return null;
 
@@ -257,11 +285,9 @@ export function NotificationCenter() {
         aria-label="Уведомления"
       >
         <IconBell className="h-5 w-5" />
-        {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-            {unread > 99 ? "99+" : unread}
-          </span>
-        ) : null}
+        <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center">
+          <NavBadgePill count={bellCount} className="h-5 min-w-5 px-1 text-[10px]" />
+        </span>
       </button>
 
       {open && (
@@ -272,12 +298,16 @@ export function NotificationCenter() {
               <button
                 type="button"
                 onClick={async () => {
+                  bulkNotifReadRef.current = true;
                   await markAllRead();
                   queryClient.setQueryData<{ notifications: Row[] }>(queryKeys.notifications(), {
                     notifications: list.map((x) => ({ ...x, readAt: x.readAt ?? new Date().toISOString() })),
                   });
-                  await refreshNavBadges();
+                  setNavNotificationUnreadToZero(queryClient);
                   dispatchNotificationsChanged();
+                  window.setTimeout(() => {
+                    bulkNotifReadRef.current = false;
+                  }, 2500);
                 }}
                 className="text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)]"
               >

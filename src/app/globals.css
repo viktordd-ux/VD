@@ -73,6 +73,17 @@ html {
   }
 }
 
+@keyframes vd-nav-badge-in {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @keyframes vd-page-enter {
   from {
     opacity: 0;
@@ -94,6 +105,10 @@ html {
 
 .vd-status-badge-enter {
   animation: vd-status-badge-in 180ms ease-out forwards;
+}
+
+.vd-nav-badge-in {
+  animation: vd-nav-badge-in 200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .vd-page-enter {

@@ -2,11 +2,16 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { usePathname } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PushNotificationsToggle } from "@/components/push-notifications-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/cn";
+import {
+  getNavBadgesQueryOptions,
+  type NavBadgesPayload,
+} from "@/lib/nav-badges-client";
 
 const items: {
   href: string;
@@ -40,31 +45,17 @@ function navItemActive(pathname: string, href: string): boolean {
 
 export function ExecutorSidebarNav() {
   const pathname = usePathname();
-  const [chatUnreadAny, setChatUnreadAny] = useState(false);
-
-  useEffect(() => {
-    async function fetchChatUnread() {
-      try {
-        const res = await fetch("/api/orders/unread", { cache: "no-store" });
-        if (res.ok) {
-          const d = (await res.json()) as { unreadChatOrderCount?: number };
-          setChatUnreadAny((Number(d.unreadChatOrderCount ?? 0) || 0) > 0);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    void fetchChatUnread();
-    const id = setInterval(() => void fetchChatUnread(), 30_000);
-    function onChatUnreadEvent() {
-      void fetchChatUnread();
-    }
-    window.addEventListener("vd:order-unread-changed", onChatUnreadEvent);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener("vd:order-unread-changed", onChatUnreadEvent);
-    };
-  }, []);
+  const queryClient = useQueryClient();
+  const navOpts = useMemo(
+    () => ({
+      ...getNavBadgesQueryOptions(queryClient),
+      placeholderData: (prev: NavBadgesPayload | undefined) => prev,
+    }),
+    [queryClient],
+  );
+  const { data: navBadges } = useQuery(navOpts);
+  const chatUnreadAny =
+    Math.max(0, Number(navBadges?.unreadChatOrderCount ?? 0)) > 0;
 
   return (
     <nav className="flex min-h-0 flex-1 flex-col p-2">

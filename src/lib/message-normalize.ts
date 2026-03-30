@@ -1,3 +1,4 @@
+import type { MessageRole } from "@prisma/client";
 import type { MessageDto } from "@/lib/message-serialize";
 
 /**
@@ -72,9 +73,11 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
         ? String(o.sender_id)
         : "";
   const text = o.text != null ? String(o.text).trim() : "";
-  const role = o.role;
+  const roleRaw = o.role;
+  const roleStr =
+    typeof roleRaw === "string" ? roleRaw : String(roleRaw ?? "");
   if (!id || !orderId || !senderId || text === "") return null;
-  if (role !== "admin" && role !== "executor") return null;
+  if (roleStr !== "admin" && roleStr !== "executor") return null;
 
   const replyRaw = o.reply_to_id ?? o.replyToId;
   const replyToId =
@@ -93,7 +96,7 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
     id,
     orderId,
     senderId,
-    role,
+    role: roleStr as MessageRole,
     text,
     createdAt,
     replyToId,

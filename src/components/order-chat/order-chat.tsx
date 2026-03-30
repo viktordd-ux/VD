@@ -28,6 +28,10 @@ import {
 } from "@/lib/message-normalize";
 import { useOrderMessagesQuery } from "@/hooks/use-order-messages-query";
 import { queryKeys } from "@/lib/query-keys";
+import {
+  bumpNavChatOnIncomingMessage,
+  decrementNavChatOnOrderRead,
+} from "@/lib/nav-badges-client";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 
 const devLog = (...args: unknown[]) => {
@@ -338,6 +342,8 @@ export function OrderChat({
   const [unreadChatCount, setUnreadChatCount] = useState(() =>
     initialHasUnreadChat ? 1 : 0,
   );
+  const unreadChatCountRef = useRef(unreadChatCount);
+  unreadChatCountRef.current = unreadChatCount;
 
   const [peerTypingName, setPeerTypingName] = useState<string | null>(null);
   /** Максимальный lastSeen среди других участников (мс, клиентский heartbeat). */
@@ -346,13 +352,8 @@ export function OrderChat({
   const presenceChannelRef = useRef<ReturnType<
     NonNullable<ReturnType<typeof getSupabaseBrowserClient>>["channel"]
   > | null>(null);
-  const typingChannelRef = useRef<ReturnType<
-    NonNullable<ReturnType<typeof getSupabaseBrowserClient>>["channel"]
-  > | null>(null);
-  const lastTypingBroadcastRef = useRef(0);
-  const peerTypingClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+  const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const soundSeenMsgIdRef = useRef<string | null>(null);
   const [replyTo, setReplyTo] = useState<MessageDto | null>(null);
 
@@ -544,70 +545,59 @@ export function OrderChat({
     presenceCh.on("presence", { event: "sync" }, () => {
       const state = presenceCh.presenceState() as Record<
         string,
-        Array<{ userId?: string; lastSeen?: number }>
+        Array<{
+          userId?: string;
+          lastSeen?: number;
+          typing?: boolean;
+          typing_ts?: number;
+          name?: string;
+        }>
       >;
+      const now = Date.now();
       let best = 0;
+      let typingLabel: string | null = null;
       for (const [key, metas] of Object.entries(state)) {
         if (key === currentUserId) continue;
         const meta = Array.isArray(metas) ? metas[0] : undefined;
         const ls = typeof meta?.lastSeen === "number" ? meta.lastSeen : 0;
         if (ls > best) best = ls;
+        const ts = typeof meta?.typing_ts === "number" ? meta.typing_ts : 0;
+        if (meta?.typing && now - ts < 4000) {
+          const n = typeof meta.name === "string" ? meta.name.trim() : "";
+          typingLabel = n || "Собеседник";
+        }
       }
       setPeerLastSeenMs(best > 0 ? best : null);
+      setPeerTypingName(typingLabel);
     });
 
-    const typingCh = supabase.channel(`order-typing:${orderId}`, {
-      config: { broadcast: { self: false } },
-    });
-    typingCh.on(
-      "broadcast",
-      { event: "typing" },
-      ({ payload }) => {
-        const p = payload as { userId?: string; name?: string };
-        if (!p?.userId || p.userId === currentUserId) return;
-        setPeerTypingName(p.name?.trim() || "Собеседник");
-        if (peerTypingClearTimerRef.current) {
-          clearTimeout(peerTypingClearTimerRef.current);
-        }
-        peerTypingClearTimerRef.current = setTimeout(() => {
-          setPeerTypingName(null);
-        }, 3500);
-      },
-    );
-
-    typingCh.subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        typingChannelRef.current = typingCh;
-      }
-    });
-
-    const trackPresence = () => {
+    const trackIdlePresence = () => {
       void presenceCh.track({
         userId: currentUserId,
         lastSeen: Date.now(),
+        typing: false,
+        typing_ts: 0,
+        name: session?.user?.name ?? undefined,
       });
     };
 
     presenceCh.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         presenceChannelRef.current = presenceCh;
-        trackPresence();
+        trackIdlePresence();
       }
     });
 
-    const hb = window.setInterval(trackPresence, 18_000);
+    const hb = window.setInterval(trackIdlePresence, 18_000);
 
     return () => {
       window.clearInterval(hb);
       presenceChannelRef.current = null;
-      typingChannelRef.current = null;
-      if (peerTypingClearTimerRef.current) {
-        clearTimeout(peerTypingClearTimerRef.current);
-      }
-      void supabase.removeChannel(typingCh);
+      if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+      if (typingIdleTimerRef.current) clearTimeout(typingIdleTimerRef.current);
       void supabase.removeChannel(presenceCh);
     };
-  }, [supabase, orderId, currentUserId]);
+  }, [supabase, orderId, currentUserId, session?.user?.name]);
 
   useEffect(() => {
     const last = messages[messages.length - 1];
@@ -642,6 +632,7 @@ export function OrderChat({
   /** Открытый dock — переписка просмотрена: точку убираем сразу, затем синхронизация с сервером. */
   useEffect(() => {
     if (!isDock || !dockOpen) return;
+    const hadUnread = unreadChatCountRef.current > 0;
     setUnreadChatCount(0);
     void (async () => {
       await fetch(`/api/orders/${encodeURIComponent(orderId)}/read-state`, {
@@ -650,9 +641,12 @@ export function OrderChat({
         body: JSON.stringify({ markChat: true }),
       });
       await fetchUnread();
+      if (hadUnread) {
+        decrementNavChatOnOrderRead(queryClient, orderId);
+      }
       dispatchOrderUnreadChanged();
     })();
-  }, [isDock, dockOpen, orderId, fetchUnread]);
+  }, [isDock, dockOpen, orderId, fetchUnread, queryClient]);
 
   /** Встроенный чат: отметка при появлении в зоне видимости. */
   useEffect(() => {
@@ -666,6 +660,7 @@ export function OrderChat({
         const hit = !!e?.isIntersecting && e.intersectionRatio >= 0.22;
         chatSectionVisibleRef.current = hit;
         if (hit && !prevHit) {
+          const hadUnread = unreadChatCountRef.current > 0;
           setUnreadChatCount(0);
           void (async () => {
             await fetch(`/api/orders/${encodeURIComponent(orderId)}/read-state`, {
@@ -674,6 +669,9 @@ export function OrderChat({
               body: JSON.stringify({ markChat: true }),
             });
             await fetchUnread();
+            if (hadUnread) {
+              decrementNavChatOnOrderRead(queryClient, orderId);
+            }
             dispatchOrderUnreadChanged();
           })();
         }
@@ -683,7 +681,7 @@ export function OrderChat({
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [isDock, orderId, fetchUnread]);
+  }, [isDock, orderId, fetchUnread, queryClient]);
 
   useEffect(() => {
     if (!orderId || typeof orderId !== "string") return;
@@ -745,11 +743,13 @@ export function OrderChat({
       const fromOther = uid != null && m.senderId !== uid;
       if (!fromOther) return;
       if (variant === "dock" && !dockOpenRef.current) {
+        bumpNavChatOnIncomingMessage(queryClient, orderId, uid, m.senderId);
         void fetchUnread();
         dispatchOrderUnreadChanged();
         return;
       }
       if (variant !== "dock" && !chatSectionVisibleRef.current) {
+        bumpNavChatOnIncomingMessage(queryClient, orderId, uid, m.senderId);
         void fetchUnread();
         dispatchOrderUnreadChanged();
       }
@@ -1190,19 +1190,28 @@ export function OrderChat({
             value={input}
             onChange={(e) => {
               setInput(e.target.value);
-              const ch = typingChannelRef.current;
+              const ch = presenceChannelRef.current;
               if (!ch || !currentUserId) return;
-              const now = Date.now();
-              if (now - lastTypingBroadcastRef.current < 600) return;
-              lastTypingBroadcastRef.current = now;
-              void ch.send({
-                type: "broadcast",
-                event: "typing",
-                payload: {
+              if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+              typingDebounceRef.current = setTimeout(() => {
+                void ch.track({
                   userId: currentUserId,
+                  lastSeen: Date.now(),
+                  typing: true,
+                  typing_ts: Date.now(),
                   name: session?.user?.name ?? undefined,
-                },
-              });
+                });
+              }, 600);
+              if (typingIdleTimerRef.current) clearTimeout(typingIdleTimerRef.current);
+              typingIdleTimerRef.current = setTimeout(() => {
+                void ch.track({
+                  userId: currentUserId,
+                  lastSeen: Date.now(),
+                  typing: false,
+                  typing_ts: 0,
+                  name: session?.user?.name ?? undefined,
+                });
+              }, 2800);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {

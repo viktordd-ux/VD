@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 const ZEROS = {
   unreadChatOrderCount: 0,
   notificationUnreadCount: 0,
+  isFallback: false,
 } as const;
 
 function isRole(
@@ -21,15 +22,21 @@ function isRole(
   return r === "admin" || r === "executor";
 }
 
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log("[orders/unread]", ...args);
+  }
+};
+
 /**
  * Глобальный индикатор (сайдбар): непрочитанные чаты по заказам + непрочитанные уведомления.
- * Всегда 200 и тело { unreadChatOrderCount, notificationUnreadCount }.
+ * Всегда 200 и тело { unreadChatOrderCount, notificationUnreadCount, isFallback }.
  */
 export async function GET() {
-  console.log("unread route start");
+  devLog("GET start");
   try {
     const session = await auth();
-    console.log("userId:", session?.user?.id);
+    devLog("userId:", session?.user?.id);
 
     if (!session?.user?.id) {
       return NextResponse.json({ ...ZEROS });
@@ -41,26 +48,42 @@ export async function GET() {
     }
 
     const uid = session.user.id;
-    const [unreadChatOrderCount, notificationUnreadCount] = await Promise.all([
-      getUnreadChatOrderCount(uid, role).catch((err) => {
-        console.error("[orders/unread] unreadChatOrderCount failed", err);
+    let isFallback = false;
+
+    const unreadChatOrderCount = await getUnreadChatOrderCount(uid, role).catch(
+      (err) => {
+        isFallback = true;
+        if (process.env.NODE_ENV === "development") {
+          console.error("[orders/unread] unreadChatOrderCount failed", err);
+        }
         return 0;
-      }),
-      prisma.notification
-        .count({ where: { userId: uid, readAt: null } })
-        .catch((err) => {
+      },
+    );
+
+    const notificationUnreadCount = await prisma.notification
+      .count({ where: { userId: uid, readAt: null } })
+      .catch((err) => {
+        isFallback = true;
+        if (process.env.NODE_ENV === "development") {
           console.error("[orders/unread] notificationUnreadCount failed", err);
-          return 0;
-        }),
-    ]);
+        }
+        return 0;
+      });
 
     return NextResponse.json({
       unreadChatOrderCount,
       notificationUnreadCount,
+      isFallback,
     });
   } catch (err) {
-    console.error("[orders/unread] GET failed", err);
-    return NextResponse.json({ ...ZEROS });
+    if (process.env.NODE_ENV === "development") {
+      console.error("[orders/unread] GET failed", err);
+    }
+    return NextResponse.json({
+      unreadChatOrderCount: 0,
+      notificationUnreadCount: 0,
+      isFallback: true,
+    });
   }
 }
 
@@ -69,10 +92,10 @@ export async function GET() {
  * Body: { orderIds: string[] }
  */
 export async function POST(req: Request) {
-  console.log("unread route POST start");
+  devLog("POST start");
   try {
     const session = await auth();
-    console.log("userId:", session?.user?.id);
+    devLog("userId:", session?.user?.id);
 
     if (!session?.user?.id) {
       return NextResponse.json({ orders: [], ...ZEROS });
@@ -98,6 +121,7 @@ export async function POST(req: Request) {
       : [];
 
     let orders: OrderUnreadBatchRow[] = [];
+    let batchFailed = false;
     try {
       const accessible = await filterAccessibleOrderIds(uid, role, requested);
       const map = await getUnreadFlagsForOrders(uid, accessible);
@@ -111,29 +135,49 @@ export async function POST(req: Request) {
         };
       });
     } catch (err) {
-      console.error("[orders/unread] POST batch flags failed", err);
+      batchFailed = true;
+      if (process.env.NODE_ENV === "development") {
+        console.error("[orders/unread] POST batch flags failed", err);
+      }
     }
 
-    const [unreadChatOrderCount, notificationUnreadCount] = await Promise.all([
-      getUnreadChatOrderCount(uid, role).catch((e) => {
-        console.error("[orders/unread] unreadChatOrderCount failed", e);
+    let isFallback = batchFailed;
+
+    const unreadChatOrderCount = await getUnreadChatOrderCount(uid, role).catch(
+      (e) => {
+        isFallback = true;
+        if (process.env.NODE_ENV === "development") {
+          console.error("[orders/unread] unreadChatOrderCount failed", e);
+        }
         return 0;
-      }),
-      prisma.notification
-        .count({ where: { userId: uid, readAt: null } })
-        .catch((e) => {
+      },
+    );
+
+    const notificationUnreadCount = await prisma.notification
+      .count({ where: { userId: uid, readAt: null } })
+      .catch((e) => {
+        isFallback = true;
+        if (process.env.NODE_ENV === "development") {
           console.error("[orders/unread] notificationUnreadCount failed", e);
-          return 0;
-        }),
-    ]);
+        }
+        return 0;
+      });
 
     return NextResponse.json({
       orders,
       unreadChatOrderCount,
       notificationUnreadCount,
+      isFallback,
     });
   } catch (err) {
-    console.error("[orders/unread] POST failed", err);
-    return NextResponse.json({ orders: [], ...ZEROS });
+    if (process.env.NODE_ENV === "development") {
+      console.error("[orders/unread] POST failed", err);
+    }
+    return NextResponse.json({
+      orders: [],
+      unreadChatOrderCount: 0,
+      notificationUnreadCount: 0,
+      isFallback: true,
+    });
   }
 }

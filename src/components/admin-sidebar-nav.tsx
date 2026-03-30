@@ -2,11 +2,16 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PushNotificationsToggle } from "@/components/push-notifications-toggle";
 import { usePrefetchAdminOrdersList } from "@/hooks/use-prefetch-admin-orders-list";
 import { cn } from "@/lib/cn";
+import {
+  getNavBadgesQueryOptions,
+  type NavBadgesPayload,
+} from "@/lib/nav-badges-client";
 
 type Badges = { review: number; newLeads: number; overdue: number };
 
@@ -29,9 +34,20 @@ const items: {
 
 export function AdminSidebarNav() {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const prefetchOrdersList = usePrefetchAdminOrdersList();
   const [badges, setBadges] = useState<Badges>({ review: 0, newLeads: 0, overdue: 0 });
-  const [chatUnreadAny, setChatUnreadAny] = useState(false);
+
+  const navOpts = useMemo(
+    () => ({
+      ...getNavBadgesQueryOptions(queryClient),
+      placeholderData: (prev: NavBadgesPayload | undefined) => prev,
+    }),
+    [queryClient],
+  );
+  const { data: navBadges } = useQuery(navOpts);
+  const chatUnreadAny =
+    Math.max(0, Number(navBadges?.unreadChatOrderCount ?? 0)) > 0;
 
   useEffect(() => {
     async function fetchBadges() {
@@ -45,30 +61,6 @@ export function AdminSidebarNav() {
     void fetchBadges();
     const id = setInterval(() => void fetchBadges(), 30_000);
     return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    async function fetchChatUnread() {
-      try {
-        const res = await fetch("/api/orders/unread", { cache: "no-store" });
-        if (res.ok) {
-          const d = (await res.json()) as { unreadChatOrderCount?: number };
-          setChatUnreadAny((Number(d.unreadChatOrderCount ?? 0) || 0) > 0);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    void fetchChatUnread();
-    const id = setInterval(() => void fetchChatUnread(), 30_000);
-    function onChatUnreadEvent() {
-      void fetchChatUnread();
-    }
-    window.addEventListener("vd:order-unread-changed", onChatUnreadEvent);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener("vd:order-unread-changed", onChatUnreadEvent);
-    };
   }, []);
 
   function active(href: string): boolean {
