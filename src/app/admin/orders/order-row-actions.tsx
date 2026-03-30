@@ -133,7 +133,7 @@ export function OrderRowQuickActions({
     doneMutation.isPending;
 
   return (
-    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-1.5">
+    <div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto sm:max-w-[min(100%,28rem)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-1.5">
       <Button
         type="button"
         variant="secondary"
@@ -178,7 +178,7 @@ export function OrderRowQuickActions({
           type="button"
           variant="secondary"
           size="sm"
-          className="w-full cursor-pointer border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 sm:w-auto"
+          className="w-full cursor-pointer border-emerald-600/25 bg-emerald-50 text-emerald-900 shadow-none hover:bg-emerald-100/90 dark:border-emerald-500/45 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/18 dark:hover:shadow-[0_0_0_1px_rgba(52,211,153,0.25)] sm:w-auto"
           disabled={busy}
           loading={doneMutation.isPending}
           onClick={() => doneMutation.mutate()}
@@ -190,7 +190,7 @@ export function OrderRowQuickActions({
         type="button"
         variant="secondary"
         size="sm"
-        className="w-full cursor-pointer border-red-200 text-red-800 hover:bg-red-50 sm:w-auto"
+        className="w-full cursor-pointer border-red-300/80 bg-red-50 text-red-800 shadow-none hover:bg-red-100 dark:border-red-500/45 dark:bg-red-950/35 dark:text-red-100 dark:hover:bg-red-950/55 dark:hover:shadow-[0_0_0_1px_rgba(248,113,113,0.3)] sm:w-auto"
         disabled={busy}
         onClick={() => setDeleteOpen(true)}
       >

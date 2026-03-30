@@ -10,16 +10,16 @@ export function AdminOrderDelete({ orderId }: { orderId: string }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-xl border border-red-200 bg-red-50/50 p-4">
-      <p className="text-sm font-medium text-red-900">Опасная зона</p>
-      <p className="mt-1 text-xs text-red-800/90">
+    <div className="rounded-xl border border-red-200/90 bg-red-50/80 p-4 dark:border-red-900/55 dark:bg-red-950/45">
+      <p className="text-sm font-medium text-red-900 dark:text-red-200">Опасная зона</p>
+      <p className="mt-1 text-xs text-red-800/95 dark:text-red-300/95">
         Удаление заказа из списков и отчётов или полное удаление из базы.
       </p>
       <Button
         type="button"
         variant="secondary"
         size="sm"
-        className="mt-3 border-red-300 text-red-900 hover:bg-red-100"
+        className="mt-3 border-red-300 bg-red-100/90 text-red-950 shadow-sm hover:bg-red-200/90 dark:border-red-500/45 dark:bg-red-950/60 dark:text-red-100 dark:hover:bg-red-900/55 dark:hover:shadow-[0_0_0_1px_rgba(248,113,113,0.25)]"
         onClick={() => setOpen(true)}
       >
         Удалить заказ…

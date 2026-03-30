@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/components/toast-provider";
 import { postFormDataWithProgress } from "@/lib/upload-form-xhr";
 
+const inputClass =
+  "w-full rounded-md border border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--text)] shadow-sm placeholder:text-[var(--muted)]";
+
 export function OrderFileUpload({
   orderId,
   onUploaded,
@@ -120,14 +123,14 @@ export function OrderFileUpload({
       <form
         ref={formRef}
         onSubmit={onUpload}
-        className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4"
+        className="space-y-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--muted-bg)] p-4 shadow-sm dark:shadow-black/20"
       >
         <div>
-          <label className="text-xs font-medium text-zinc-600">
+          <label className="text-xs font-medium text-[var(--muted)]">
             Загрузить документ (ТЗ, бриф, референсы…)
           </label>
           <div className="mt-1 flex items-center gap-3">
-            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100">
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--text)] shadow-sm transition-colors hover:bg-[color:var(--muted-bg)]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
@@ -138,7 +141,7 @@ export function OrderFileUpload({
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="shrink-0 text-zinc-500"
+                className="shrink-0 text-[var(--muted)]"
               >
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
@@ -155,7 +158,7 @@ export function OrderFileUpload({
               />
             </label>
             {fileName && (
-              <span className="max-w-xs truncate text-xs text-zinc-500">{fileName}</span>
+              <span className="max-w-xs truncate text-xs text-[var(--muted)]">{fileName}</span>
             )}
           </div>
         </div>
@@ -163,18 +166,18 @@ export function OrderFileUpload({
           <input
             name="comment"
             placeholder="Комментарий (необязательно)"
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
         {uploadProgress !== null && (
           <div className="space-y-1">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-[color:var(--muted-bg)] ring-1 ring-[color:var(--border)]">
               <div
-                className="h-full rounded-full bg-zinc-900 transition-[width] duration-150"
+                className="h-full rounded-full bg-zinc-900 transition-[width] duration-150 dark:bg-white"
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
-            <p className="text-xs tabular-nums text-zinc-500">{uploadProgress}%</p>
+            <p className="text-xs tabular-nums text-[var(--muted)]">{uploadProgress}%</p>
           </div>
         )}
         <Button type="submit" variant="primary" size="md" disabled={uploading || !fileName}>
@@ -185,9 +188,9 @@ export function OrderFileUpload({
       <form
         ref={linkFormRef}
         onSubmit={onAddLink}
-        className="space-y-3 rounded-xl border border-slate-200 bg-white p-4"
+        className="space-y-3 rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-4 shadow-sm dark:shadow-black/30"
       >
-        <p className="text-xs font-medium text-zinc-600">Или добавить ссылку</p>
+        <p className="text-xs font-medium text-[var(--muted)]">Или добавить ссылку</p>
         <div>
           <label className="sr-only" htmlFor={`link-url-${orderId}`}>
             URL
@@ -198,7 +201,7 @@ export function OrderFileUpload({
             type="url"
             inputMode="url"
             placeholder="https://…"
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={inputClass}
             autoComplete="off"
           />
         </div>
@@ -206,17 +209,17 @@ export function OrderFileUpload({
           <input
             name="linkTitle"
             placeholder="Название (необязательно)"
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
         <div>
           <input
             name="comment"
             placeholder="Комментарий (необязательно)"
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
-        <Button type="submit" variant="secondary" size="md" disabled={linkSaving}>
+        <Button type="submit" variant="primary" size="md" disabled={linkSaving}>
           {linkSaving ? "Сохраняю…" : "Добавить ссылку"}
         </Button>
       </form>

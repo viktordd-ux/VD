@@ -19,13 +19,15 @@ export function AdminOrderFilesSection({ orderId }: { orderId: string }) {
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-zinc-900">Файлы</h2>
-          <p className="mt-0.5 text-xs text-zinc-500">ТЗ, брифы, референсы и результаты работы</p>
+          <h2 className="text-base font-semibold text-[var(--text)]">Файлы</h2>
+          <p className="mt-0.5 text-xs text-[var(--muted)]">
+            ТЗ, брифы, референсы и результаты работы
+          </p>
         </div>
         {files.length > 0 && (
           <a
             href={`/api/orders/${orderId}/files/archive`}
-            className="text-sm font-medium text-zinc-800 underline-offset-2 hover:underline"
+            className="text-sm font-medium text-[var(--text)] underline-offset-2 hover:underline"
           >
             Скачать архив (ZIP)
           </a>
@@ -39,13 +41,13 @@ export function AdminOrderFilesSection({ orderId }: { orderId: string }) {
           {files.map((f: FileModel) => (
             <li
               key={f.id}
-              className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm shadow-sm"
+              className="flex items-start gap-3 rounded-xl border border-[color:var(--border)] bg-[var(--card)] px-3 py-3 text-sm shadow-sm dark:shadow-black/25"
             >
               <span
                 className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                   f.uploadedBy === "admin"
-                    ? "bg-zinc-200 text-zinc-800"
-                    : "bg-zinc-100 text-zinc-600"
+                    ? "bg-[color:var(--muted-bg)] text-[var(--text)] ring-1 ring-[color:var(--border)]"
+                    : "bg-[color:var(--muted-bg)]/80 text-[var(--muted)] ring-1 ring-[color:var(--border)]"
                 }`}
               >
                 {f.uploadedBy === "admin" ? "Админ" : "Исполнитель"}
@@ -54,22 +56,22 @@ export function AdminOrderFilesSection({ orderId }: { orderId: string }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <a
                     href={`/api/files/${f.id}`}
-                    className="min-w-0 truncate font-medium text-zinc-900 underline-offset-2 hover:underline"
+                    className="min-w-0 truncate font-medium text-[var(--text)] underline-offset-2 hover:underline"
                     target="_blank"
                     rel="noreferrer"
                   >
                     {displayFileEntryLabel(f)}
                   </a>
                   {f.kind === "link" && (
-                    <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-600">
+                    <span className="shrink-0 rounded bg-[color:var(--muted-bg)] px-1.5 py-0.5 text-[10px] font-medium uppercase text-[var(--muted)] ring-1 ring-[color:var(--border)]">
                       Ссылка
                     </span>
                   )}
                 </div>
                 {f.comment && (
-                  <p className="mt-0.5 text-xs text-zinc-500">{f.comment}</p>
+                  <p className="mt-0.5 text-xs text-[var(--muted)]">{f.comment}</p>
                 )}
-                <p className="mt-0.5 text-xs text-zinc-400">
+                <p className="mt-0.5 text-xs text-[var(--muted)]">
                   {new Date(f.createdAt).toLocaleString("ru-RU", {
                     day: "2-digit",
                     month: "2-digit",
@@ -84,7 +86,7 @@ export function AdminOrderFilesSection({ orderId }: { orderId: string }) {
         </ul>
       )}
       {files.length === 0 && (
-        <p className="mt-4 text-sm text-zinc-400">Файлов пока нет.</p>
+        <p className="mt-4 text-sm text-[var(--muted)]">Файлов пока нет.</p>
       )}
     </>
   );

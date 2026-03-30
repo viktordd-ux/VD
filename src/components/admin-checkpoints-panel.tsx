@@ -73,16 +73,19 @@ function SortableRow({
     opacity: isDragging ? 0.55 : 1,
   };
 
+  const field =
+    "rounded border border-[color:var(--border)] bg-[var(--card)] px-2 py-1 text-[var(--text)] shadow-sm placeholder:text-[var(--muted)]";
+
   return (
     <li
       ref={setNodeRef}
       style={style}
-      className="flex flex-col gap-3 rounded-lg border border-zinc-100 bg-zinc-50/80 p-3 min-w-0 xl:flex-row xl:items-start xl:justify-between xl:gap-3"
+      className="flex min-w-0 flex-col gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--muted-bg)] p-3 xl:flex-row xl:items-start xl:justify-between xl:gap-3"
     >
       <div className="flex min-w-0 w-full flex-1 flex-col gap-2 xl:flex-row xl:flex-wrap xl:items-center">
         <button
           type="button"
-          className="touch-none shrink-0 cursor-grab select-none rounded px-1 text-zinc-400 active:cursor-grabbing"
+          className="touch-none shrink-0 cursor-grab select-none rounded px-1 text-[var(--muted)] active:cursor-grabbing"
           title="Перетащить"
           {...attributes}
           {...listeners}
@@ -91,7 +94,7 @@ function SortableRow({
         </button>
         <input
           defaultValue={c.title}
-          className="min-w-0 w-full max-w-full rounded border border-zinc-200 bg-white px-2 py-1 text-sm font-medium xl:min-w-[8rem] xl:flex-1"
+          className={`min-w-0 w-full max-w-full text-sm font-medium xl:min-w-[8rem] xl:flex-1 ${field}`}
           onBlur={(e) => {
             const v = e.target.value.trim();
             if (v && v !== c.title) void onSave(c.id, { title: v });
@@ -100,7 +103,7 @@ function SortableRow({
         <input
           type="datetime-local"
           defaultValue={dueInputValue(c.dueDate)}
-          className="min-w-0 shrink-0 rounded border border-zinc-200 bg-white px-2 py-1 text-xs"
+          className={`min-w-0 shrink-0 text-xs ${field} [color-scheme:light] dark:[color-scheme:dark]`}
           onBlur={(e) => {
             const v = e.target.value;
             const prevIso = c.dueDate
@@ -119,7 +122,7 @@ function SortableRow({
           step={0.01}
           title="Выплата исполнителю за этап (₽)"
           defaultValue={Number(c.paymentAmount)}
-          className="w-[min(100%,7rem)] shrink-0 rounded border border-zinc-200 bg-white px-2 py-1 text-xs tabular-nums"
+          className={`w-[min(100%,7rem)] shrink-0 tabular-nums text-xs ${field}`}
           onBlur={(e) => {
             const v = Number(e.target.value);
             if (!Number.isFinite(v) || v < 0) return;
@@ -133,7 +136,7 @@ function SortableRow({
             const status = e.target.value as "pending" | "awaiting_approval" | "done";
             void onSave(c.id, { status });
           }}
-          className="min-w-0 max-w-full shrink rounded border border-zinc-200 bg-white px-2 py-1 text-sm"
+          className={`min-w-0 max-w-full shrink text-sm ${field}`}
         >
           <option value="pending">{checkpointStatusLabel.pending}</option>
           <option value="awaiting_approval">{checkpointStatusLabel.awaiting_approval}</option>
@@ -144,7 +147,7 @@ function SortableRow({
         type="button"
         onClick={() => onRemove(c.id)}
         disabled={busy === c.id}
-        className="shrink-0 self-start text-xs text-red-600 hover:underline disabled:opacity-50 xl:self-center"
+        className="shrink-0 self-start text-xs text-red-600 hover:underline disabled:opacity-50 dark:text-red-400 xl:self-center"
       >
         Удалить
       </button>
@@ -339,36 +342,36 @@ export function AdminCheckpointsPanel({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-[var(--muted)]">
         Перетаскивание за ⋮⋮ (мышь и сенсор). Дедлайн — дата и время. Укажите сумму выплаты в поле «₽» —
         её меняете только вы; исполнитель сдаёт этап на проверку, после принятия этапа выплата
         фиксируется в его «Заработке».
       </p>
       <form
         onSubmit={add}
-        className="flex flex-wrap items-end gap-2 border-b border-zinc-100 pb-4"
+        className="flex flex-wrap items-end gap-2 border-b border-[color:var(--border)] pb-4"
       >
         <div className="min-w-[160px] flex-1">
-          <label className="text-xs text-zinc-500">Новый этап</label>
+          <label className="text-xs text-[var(--muted)]">Новый этап</label>
           <input
             name="title"
             required
             placeholder="Название"
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] shadow-sm"
           />
         </div>
         <div>
-          <label className="text-xs text-zinc-500">Дедлайн</label>
+          <label className="text-xs text-[var(--muted)]">Дедлайн</label>
           <input
             type="datetime-local"
             name="dueDate"
-            className="mt-1 rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className="mt-1 rounded-md border border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--text)] shadow-sm [color-scheme:light] dark:[color-scheme:dark]"
           />
         </div>
         <button
           type="submit"
           disabled={busy === "new"}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           {busy === "new" ? "…" : "Добавить"}
         </button>
@@ -395,7 +398,7 @@ export function AdminCheckpointsPanel({
       </DndContext>
 
       {items.length === 0 && (
-        <p className="text-sm text-zinc-500">Этапов пока нет — добавьте первый ниже.</p>
+        <p className="text-sm text-[var(--muted)]">Этапов пока нет — добавьте первый ниже.</p>
       )}
     </div>
   );

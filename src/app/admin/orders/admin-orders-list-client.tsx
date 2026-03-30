@@ -386,7 +386,7 @@ export function AdminOrdersListClient({
                 return (
                   <div
                     key={o.id}
-                    className="group relative flex min-h-[3.5rem] origin-center items-stretch will-change-transform transition-all duration-200 ease-out first:rounded-t-xl last:rounded-b-xl hover:z-[1] hover:scale-[1.005] hover:bg-[color:var(--muted-bg)] hover:shadow-[0_1px_0_rgba(15,23,42,0.06)] active:scale-[0.99] dark:hover:shadow-[0_1px_0_rgba(255,255,255,0.08)]"
+                    className="group relative flex min-h-[3.5rem] items-stretch transition-[background-color,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] first:rounded-t-xl last:rounded-b-xl hover:bg-[color:var(--muted-bg)] hover:shadow-[inset_3px_0_0_0_rgba(15,23,42,0.12),inset_0_1px_0_0_rgba(255,255,255,0.04)] dark:hover:shadow-[inset_3px_0_0_0_rgba(255,255,255,0.14),inset_0_1px_0_0_rgba(255,255,255,0.06)]"
                   >
                     <div
                       className="flex shrink-0 items-center pl-2 pr-0.5"
@@ -455,10 +455,10 @@ export function AdminOrdersListClient({
                         <span className="text-xs font-medium tabular-nums text-[var(--text)]">
                           {o.profit.toString()}
                         </span>
-                        <span className="text-[11px] tabular-nums text-[var(--muted)]">
+                        <span className="text-[11px] tabular-nums text-[var(--text)]/90">
                           {marginPct}%
                         </span>
-                        <span className="max-w-[7rem] truncate text-[11px] text-[var(--muted)]">
+                        <span className="max-w-[7rem] truncate text-[11px] text-[var(--text)]/85">
                           {orderStatusLabel[o.status]}
                         </span>
                       </div>
@@ -474,7 +474,7 @@ export function AdminOrdersListClient({
                     </PrefetchOrderLink>
 
                     <div
-                      className="flex shrink-0 items-center pr-1 opacity-100 transition-opacity md:pr-2 md:opacity-0 md:group-hover:opacity-100"
+                      className="flex max-w-full shrink-0 items-center border-l border-[color:var(--border)]/50 py-2 pl-2 pr-1 md:max-w-none md:pl-3 md:pr-3"
                       onClick={(e) => e.stopPropagation()}
                       onPointerDown={(e) => e.stopPropagation()}
                     >
