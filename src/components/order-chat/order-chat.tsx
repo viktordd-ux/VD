@@ -281,7 +281,7 @@ const MessageBubble = memo(function MessageBubble({
   return (
     <div
       className={cn(
-        "group relative w-full max-w-[min(70%,20rem)]",
+        "group relative w-full max-w-[min(75%,18rem)]",
         mine ? "ml-auto" : "mr-auto",
       )}
     >
@@ -342,7 +342,7 @@ const MessageBubble = memo(function MessageBubble({
       </div>
       <div
         className={cn(
-          "px-3.5 py-2.5 text-[14.5px] leading-relaxed transition-[transform,box-shadow] duration-200 ease-out",
+          "px-2.5 py-1.5 text-[13.5px] leading-snug transition-[transform,box-shadow] duration-200 ease-out",
           radiusClass,
           mine
             ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md shadow-blue-900/25 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/40"
@@ -352,7 +352,7 @@ const MessageBubble = memo(function MessageBubble({
         {m.replyToId && replyPreview ? (
           <div
             className={cn(
-              "mb-2 rounded-lg border-l-[3px] px-2.5 py-1.5 text-[12.5px] leading-snug",
+              "mb-1 rounded-md border-l-2 px-2 py-1 text-[11px] leading-snug",
               mine
                 ? "border-white/50 bg-white/10 text-blue-100"
                 : "border-blue-500/40 bg-[color:var(--muted-bg)] text-[var(--muted)] dark:border-blue-400/30",
@@ -1499,50 +1499,46 @@ export function OrderChat({
       )}
     >
       {isDock ? (
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--border)] bg-[var(--card)] px-3.5 py-2.5">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--border)] bg-[var(--card)] px-2.5 py-1.5">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold tracking-tight text-[var(--text)]">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-[13px] font-semibold tracking-tight text-[var(--text)]">
                 Чат
               </h2>
               {onlinePeerNames.length > 0 ? (
-                <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                   В сети
                 </span>
               ) : (
-                <span className="text-[11px] text-[var(--muted)]">Оффлайн</span>
+                <span className="text-[10px] text-[var(--muted)]">Оффлайн</span>
               )}
             </div>
-            <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">
-              {participantSummary}
-              {onlinePeerNames.length > 0 ? ` · ${onlinePeerNames.join(", ")}` : ""}
-            </p>
           </div>
           <button
             type="button"
             onClick={() => setDockOpen(false)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)]"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)]"
             aria-label="Свернуть чат"
           >
-            <IconChevronDown className="h-4 w-4" />
+            <IconChevronDown className="h-3.5 w-3.5" />
           </button>
         </div>
       ) : (
-        <div className="shrink-0 border-b border-[color:var(--border)] bg-[var(--card)] px-3.5 py-2.5">
-          <div className="flex items-center gap-3">
-            <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-[var(--text)]">
+        <div className="shrink-0 border-b border-[color:var(--border)] bg-[var(--card)] px-2.5 py-1.5">
+          <div className="flex items-center gap-2">
+            <h2 className="flex items-center gap-1.5 text-[13px] font-semibold tracking-tight text-[var(--text)]">
               Чат
               {unreadChatCount > 0 ? (
                 <span
-                  className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white dark:bg-blue-500"
+                  className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] font-bold text-white dark:bg-blue-500"
                   aria-hidden
                 >
                   {unreadChatCount > 99 ? "99+" : unreadChatCount}
                 </span>
               ) : null}
             </h2>
-            <span className="flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
+            <span className="flex items-center gap-1 text-[10px] text-[var(--muted)]">
               {onlinePeerNames.length > 0 ? (
                 <>
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
@@ -1557,37 +1553,36 @@ export function OrderChat({
       )}
 
       {participants.length > 0 ? (
-        <div className="flex max-h-14 shrink-0 items-center gap-1 overflow-y-auto border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]/50 px-3.5 py-1.5">
-          {participants.map((p) => {
-            const isOnline = onlinePeerNames.includes(p.name);
-            return (
-              <div
-                key={p.userId}
-                className="flex max-w-[10rem] items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[var(--card)] px-2 py-1 text-[10px] shadow-sm shadow-black/[0.02] dark:shadow-none"
-              >
-                <div className="relative shrink-0">
-                  <Avatar size="sm" name={p.name} seed={p.userId} />
+        <div className="flex shrink-0 items-center border-b border-[color:var(--border)] px-2.5 py-[3px]">
+          <div className="flex items-center -space-x-1.5">
+            {participants.map((p) => {
+              const isOnline = onlinePeerNames.includes(p.name);
+              return (
+                <div key={p.userId} className="relative" title={p.name}>
+                  <Avatar size="sm" name={p.name} seed={p.userId} ringClassName="ring-[1.5px] ring-[var(--card)]" />
                   {isOnline ? (
-                    <span className="absolute -bottom-px -right-px h-2 w-2 rounded-full border border-[var(--card)] bg-emerald-500" />
+                    <span className="absolute -bottom-px -right-px h-[6px] w-[6px] rounded-full border-[1.5px] border-[var(--card)] bg-emerald-500" />
                   ) : null}
                 </div>
-                <span className="min-w-0 truncate font-medium text-[var(--text)]">{p.name}</span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          <span className="ml-2 truncate text-[10px] text-[var(--muted)]">
+            {participantSummary}
+          </span>
         </div>
       ) : null}
 
       {peerTypingNames.length > 0 ? (
         <div
-          className="flex shrink-0 items-center gap-2 border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]/60 px-3.5 py-1.5 text-[12px] text-[var(--muted)]"
+          className="flex shrink-0 items-center gap-1.5 border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]/60 px-2.5 py-1 text-[11px] text-[var(--muted)]"
           role="status"
           aria-live="polite"
         >
           <span className="flex gap-0.5">
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:0ms]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:150ms]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:300ms]" />
+            <span className="h-1 w-1 animate-bounce rounded-full bg-blue-500 [animation-delay:0ms]" />
+            <span className="h-1 w-1 animate-bounce rounded-full bg-blue-500 [animation-delay:150ms]" />
+            <span className="h-1 w-1 animate-bounce rounded-full bg-blue-500 [animation-delay:300ms]" />
           </span>
           <span className="font-medium">{typingLine(peerTypingNames)}</span>
         </div>
@@ -1620,38 +1615,35 @@ export function OrderChat({
         ref={scrollRef}
         style={{ overflowAnchor: "none" } as CSSProperties}
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--bg)] px-3 pt-3 pb-1 [scrollbar-gutter:stable]",
+          "flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--bg)] px-2 pt-2 pb-0 [scrollbar-gutter:stable]",
           tallMessages ? "min-h-0" : "max-h-[min(28rem,60vh)]",
         )}
       >
         {loading ? (
-          <div className="flex flex-1 flex-col justify-end gap-3 py-3" aria-hidden>
+          <div className="flex flex-1 flex-col justify-end gap-1.5 py-2" aria-hidden>
             <div className="flex justify-end">
-              <Skeleton className="h-11 w-[60%] max-w-[14rem] rounded-2xl" />
+              <Skeleton className="h-8 w-[55%] max-w-[12rem] rounded-xl" />
             </div>
-            <div className="flex items-end justify-start gap-2.5">
-              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
-              <div className="flex flex-col gap-1">
-                <Skeleton className="h-4 w-24 rounded-lg" />
-                <Skeleton className="h-14 w-[min(65%,16rem)] rounded-2xl" />
-              </div>
+            <div className="flex items-end justify-start gap-1.5">
+              <Skeleton className="h-7 w-7 shrink-0 rounded-full" />
+              <Skeleton className="h-10 w-[60%] max-w-[14rem] rounded-xl" />
             </div>
             <div className="flex justify-end">
-              <Skeleton className="h-9 w-[45%] max-w-[12rem] rounded-2xl" />
+              <Skeleton className="h-7 w-[40%] max-w-[10rem] rounded-xl" />
             </div>
-            <div className="flex items-end justify-start gap-2.5">
-              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
-              <Skeleton className="h-10 w-[50%] max-w-[13rem] rounded-2xl" />
+            <div className="flex items-end justify-start gap-1.5">
+              <Skeleton className="h-7 w-7 shrink-0 rounded-full" />
+              <Skeleton className="h-8 w-[45%] max-w-[11rem] rounded-xl" />
             </div>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--muted-bg)]">
-              <IconChatBubble className="h-6 w-6 text-[var(--muted)]" />
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-4 text-center">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--muted-bg)]">
+              <IconChatBubble className="h-4.5 w-4.5 text-[var(--muted)]" />
             </div>
             <div>
-              <p className="text-sm font-medium text-[var(--text)]">Нет сообщений</p>
-              <p className="mt-0.5 text-xs text-[var(--muted)]">Начните переписку по заказу</p>
+              <p className="text-[12px] font-medium text-[var(--text)]">Нет сообщений</p>
+              <p className="mt-0.5 text-[11px] text-[var(--muted)]">Начните переписку</p>
             </div>
           </div>
         ) : (
@@ -1661,10 +1653,10 @@ export function OrderChat({
                 <div
                   key={`unread-${ti}`}
                   ref={unreadDividerRef}
-                  className="flex items-center gap-3 py-2 vd-fade-in"
+                  className="flex items-center gap-2 py-1 vd-fade-in"
                 >
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-500/40 dark:to-blue-400/30" />
-                  <span className="shrink-0 rounded-full border border-blue-500/20 bg-blue-500/8 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:border-blue-400/20 dark:text-blue-400">
+                  <span className="shrink-0 rounded-full border border-blue-500/20 bg-blue-500/8 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:border-blue-400/20 dark:text-blue-400">
                     Новые
                   </span>
                   <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/40 dark:to-blue-400/30" />
@@ -1675,10 +1667,10 @@ export function OrderChat({
               return (
                 <div
                   key={`day-${item.dayKey}-${ti}`}
-                  className="flex items-center gap-3 py-2 vd-fade-in"
+                  className="flex items-center gap-2 py-1 vd-fade-in"
                 >
                   <div className="h-px flex-1 bg-[color:var(--border)]" />
-                  <span className="shrink-0 rounded-full bg-[color:var(--muted-bg)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  <span className="shrink-0 rounded-full bg-[color:var(--muted-bg)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     {item.label}
                   </span>
                   <div className="h-px flex-1 bg-[color:var(--border)]" />
@@ -1697,15 +1689,15 @@ export function OrderChat({
             return (
               <div
                 key={`${g.senderId}-${ti}-${last.id}`}
-                className="vd-message-enter pb-1"
+                className="vd-message-enter pb-0.5"
               >
                 {!g.mine ? (
-                  <div className="mb-1 flex items-center gap-1.5 pl-[calc(2.5rem+0.5rem)]">
-                    <span className="text-[12px] font-semibold text-[var(--text)]">
+                  <div className="mb-0.5 flex items-center gap-1 pl-[calc(1.75rem+0.375rem)]">
+                    <span className="text-[11px] font-semibold text-[var(--text)]">
                       {displayName}
                     </span>
                     {roleLabel ? (
-                      <span className="rounded bg-[color:var(--muted-bg)] px-1.5 py-px text-[10px] font-medium text-[var(--muted)]">
+                      <span className="rounded bg-[color:var(--muted-bg)] px-1 py-px text-[9px] font-medium text-[var(--muted)]">
                         {roleLabel}
                       </span>
                     ) : null}
@@ -1713,17 +1705,17 @@ export function OrderChat({
                 ) : null}
                 <div
                   className={cn(
-                    "flex gap-2",
+                    "flex gap-1.5",
                     g.mine ? "flex-row-reverse items-end" : "flex-row items-end",
                   )}
                 >
                   {!g.mine ? (
-                    <div className="flex w-10 shrink-0 flex-col justify-end">
+                    <div className="flex w-7 shrink-0 flex-col justify-end">
                       <Avatar
-                        size="md"
+                        size="sm"
                         name={displayName}
                         seed={g.senderId}
-                        ringClassName="ring-2 ring-[var(--bg)]"
+                        ringClassName="ring-[1.5px] ring-[var(--bg)]"
                       />
                     </div>
                   ) : null}
@@ -1756,10 +1748,10 @@ export function OrderChat({
                 {groupTime ? (
                   <div
                     className={cn(
-                      "mt-1 flex text-[10px] font-medium tabular-nums leading-none tracking-wide text-[var(--muted)]/70",
+                      "mt-0.5 flex text-[9px] font-medium tabular-nums leading-none tracking-wide text-[var(--muted)]/60",
                       g.mine
-                        ? "justify-end pr-1"
-                        : "justify-start pl-[calc(2.5rem+0.5rem)]",
+                        ? "justify-end pr-0.5"
+                        : "justify-start pl-[calc(1.75rem+0.375rem)]",
                     )}
                   >
                     {groupTime}
@@ -1769,17 +1761,16 @@ export function OrderChat({
             );
           })
         )}
-      </div>
 
       <form
         onSubmit={onSend}
-        className="z-10 shrink-0 border-t border-[color:var(--border)] bg-[var(--card)] px-3 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))] pt-2"
+        className="sticky bottom-0 z-10 mt-auto border-t border-[color:var(--border)] bg-[var(--card)]/95 px-2 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))] pt-1.5 backdrop-blur-sm"
       >
         <label className="sr-only" htmlFor={`order-chat-input-${orderId}`}>
           Сообщение
         </label>
         {replyTo ? (
-          <div className="mb-2 flex w-full items-center justify-between gap-2 rounded-xl border-l-[3px] border-l-blue-500 bg-[color:var(--muted-bg)] px-3 py-1.5 text-left text-[12px] dark:border-l-blue-400">
+          <div className="mb-1 flex w-full items-center justify-between gap-1.5 rounded-lg border-l-2 border-l-blue-500 bg-[color:var(--muted-bg)] px-2 py-1 text-left text-[11px] dark:border-l-blue-400">
             <p className="min-w-0 truncate text-[var(--muted)]">
               <span className="font-semibold text-[var(--text)]">Ответ </span>
               {getReplyPreview(replyTo) ?? "…"}
@@ -1795,11 +1786,11 @@ export function OrderChat({
           </div>
         ) : null}
         {pendingAttachments.length > 0 ? (
-          <div className="mb-2 flex flex-wrap gap-1.5">
+          <div className="mb-1 flex flex-wrap gap-1">
             {pendingAttachments.map((a) => (
               <span
                 key={a.fileId}
-                className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[var(--bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--text)] shadow-sm shadow-black/[0.02] dark:shadow-none"
+                className="inline-flex max-w-full items-center gap-1 rounded-md border border-[color:var(--border)] bg-[var(--bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text)]"
               >
                 <svg className="h-3 w-3 shrink-0 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>
                 <span className="min-w-0 truncate">{a.name}</span>
@@ -1830,23 +1821,23 @@ export function OrderChat({
             if (f) void uploadChatFile(f);
           }}
         />
-        <div className="relative rounded-2xl border border-[color:var(--border)] bg-[var(--bg)] shadow-sm shadow-black/[0.03] dark:bg-[color:var(--muted-bg)] dark:shadow-black/10">
+        <div className="relative rounded-xl border border-[color:var(--border)] bg-[var(--bg)] dark:bg-[color:var(--muted-bg)]">
           <button
             type="button"
-            className="absolute bottom-1.5 left-1.5 z-[1] flex h-9 w-9 touch-manipulation items-center justify-center rounded-xl text-[var(--muted)] transition-all duration-150 hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
+            className="absolute bottom-1 left-1 z-[1] flex h-7 w-7 touch-manipulation items-center justify-center rounded-lg text-[var(--muted)] transition-all duration-150 hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
             aria-label="Прикрепить файл"
             disabled={fileUploading || Boolean(chatLoadError)}
             onClick={() => fileInputRef.current?.click()}
           >
             {fileUploading ? (
-              <Skeleton className="h-4 w-4 shrink-0 rounded-full bg-[color:var(--skeleton)]" />
+              <Skeleton className="h-3.5 w-3.5 shrink-0 rounded-full bg-[color:var(--skeleton)]" />
             ) : (
-              <IconPaperclip className="h-[17px] w-[17px]" />
+              <IconPaperclip className="h-[15px] w-[15px]" />
             )}
           </button>
           {mentionQuery !== null && mentionCandidates.length > 0 ? (
             <ul
-              className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-40 overflow-y-auto rounded-xl border border-[color:var(--border)] bg-[var(--card)] py-1 shadow-xl shadow-black/15 dark:shadow-black/40"
+              className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-36 overflow-y-auto rounded-lg border border-[color:var(--border)] bg-[var(--card)] py-0.5 shadow-lg shadow-black/15 dark:shadow-black/40"
               role="listbox"
               aria-label="Упоминание участника"
             >
@@ -1854,7 +1845,7 @@ export function OrderChat({
                 <li key={p.userId}>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-[var(--text)] transition-colors hover:bg-[color:var(--muted-bg)]"
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-[var(--text)] transition-colors hover:bg-[color:var(--muted-bg)]"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       insertMention(p.name);
@@ -1908,7 +1899,7 @@ export function OrderChat({
             placeholder="Сообщение…"
             rows={1}
             maxLength={8000}
-            className="max-h-[120px] min-h-[40px] w-full resize-none border-0 bg-transparent py-1.5 pl-10 pr-[3rem] text-[14.5px] leading-relaxed text-[var(--text)] outline-none ring-0 placeholder:text-[var(--muted)]/60 focus:ring-0"
+            className="max-h-[100px] min-h-[32px] w-full resize-none border-0 bg-transparent py-1 pl-8 pr-9 text-[13px] leading-snug text-[var(--text)] outline-none ring-0 placeholder:text-[var(--muted)]/60 focus:ring-0"
           />
           <button
             type="submit"
@@ -1918,17 +1909,18 @@ export function OrderChat({
               (!input.trim() && pendingAttachments.length === 0) ||
               !currentUserId
             }
-            className="absolute bottom-1.5 right-1.5 flex h-9 w-9 touch-manipulation items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md shadow-blue-900/20 transition-all duration-150 hover:from-blue-500 hover:to-blue-600 hover:shadow-lg hover:scale-[1.03] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/30"
+            className="absolute bottom-1 right-1 flex h-7 w-7 touch-manipulation items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-sm shadow-blue-900/20 transition-all duration-150 hover:from-blue-500 hover:to-blue-600 hover:shadow-md hover:scale-[1.03] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/30"
             aria-label="Отправить"
           >
             {sendMutation.isPending ? (
-              <Skeleton className="h-4 w-4 shrink-0 rounded-full bg-white/30" />
+              <Skeleton className="h-3.5 w-3.5 shrink-0 rounded-full bg-white/30" />
             ) : (
-              <IconSendArrow className="h-[17px] w-[17px]" />
+              <IconSendArrow className="h-[15px] w-[15px]" />
             )}
           </button>
         </div>
       </form>
+      </div>
     </Card>
   );
 
