@@ -1,19 +1,19 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { queryKeys } from "@/lib/query-keys";
 import { isSupabaseRealtimeConfigured } from "@/lib/supabase-client";
 
 /** Без Realtime — редкий fallback; при настроенном Realtime не опрашиваем RSC. */
 const FALLBACK_MS_NO_REALTIME = 300_000;
 
 /**
- * Раньше вызывал `router.refresh()` часто — полный перерендер RSC.
- * Сейчас: при активном Supabase Realtime компонент ничего не делает.
- * Без Realtime — очень редкий refresh только для экранов без своих подписок (напр. заработок).
+ * При активном Supabase Realtime компонент ничего не делает.
+ * Без Realtime — редкая инвалидация React Query (каталог заказов, бейджи).
  */
 export function OrderLiveRefresh({ intervalMs }: { intervalMs?: number }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (isSupabaseRealtimeConfigured()) return;
@@ -22,13 +22,14 @@ export function OrderLiveRefresh({ intervalMs }: { intervalMs?: number }) {
 
     const tick = () => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      router.refresh();
+      void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.adminOrdersCatalog() });
     };
 
     const id = setInterval(tick, effective);
 
     return () => clearInterval(id);
-  }, [router, intervalMs]);
+  }, [queryClient, intervalMs]);
 
   return null;
 }

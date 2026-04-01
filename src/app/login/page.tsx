@@ -25,7 +25,6 @@ export default function LoginPage() {
       setError("Неверный email или пароль");
       return;
     }
-    router.refresh();
     router.push("/");
   }
 

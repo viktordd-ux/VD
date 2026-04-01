@@ -201,8 +201,10 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
     staleTime: STALE_MS.notifications,
     gcTime: 10 * 60_000,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    retry: 2,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    /** При открытии панели сразу показываем кеш, фоновый refetch не очищает список. */
+    placeholderData: (prev) => prev,
   });
 
   const navBadgeOpts = useMemo(
@@ -260,23 +262,24 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
     [queryClient],
   );
 
-  const handleBellClick = useCallback(async () => {
+  const handleBellClick = useCallback(() => {
     if (open) {
       setOpen(false);
       return;
     }
     setOpen(true);
-    try {
-      const result = await refetch();
-      if (process.env.NODE_ENV === "development") {
-        console.log("notifications loaded", result.data);
-      }
-      await applyMarkAllReadAfterFetch(result.data);
-    } catch (e) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("[NotificationCenter] refetch on open failed", e);
-      }
-    }
+    void refetch()
+      .then((result) => {
+        if (process.env.NODE_ENV === "development") {
+          console.log("notifications loaded", result.data);
+        }
+        return applyMarkAllReadAfterFetch(result.data);
+      })
+      .catch((e) => {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[NotificationCenter] refetch on open failed", e);
+        }
+      });
   }, [open, refetch, applyMarkAllReadAfterFetch]);
 
   useEffect(() => {

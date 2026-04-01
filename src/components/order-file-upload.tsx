@@ -1,10 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/components/toast-provider";
 import { postFormDataWithProgress } from "@/lib/upload-form-xhr";
+import { queryKeys } from "@/lib/query-keys";
 
 const inputClass =
   "w-full rounded-md border border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--text)] shadow-sm placeholder:text-[var(--muted)]";
@@ -14,10 +15,10 @@ export function OrderFileUpload({
   onUploaded,
 }: {
   orderId: string;
-  /** Если задан — после успеха вызывается вместо router.refresh (локальный state). */
+  /** Если задан — после успеха вызывается вместо инвалидации React Query. */
   onUploaded?: (fileJson: Record<string, unknown>) => void;
 }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const toast = useAppToast();
   const formRef = useRef<HTMLFormElement>(null);
   const linkFormRef = useRef<HTMLFormElement>(null);
@@ -54,7 +55,11 @@ export function OrderFileUpload({
       setFileName(null);
       toast("Файл загружен", "success");
       if (onUploaded) onUploaded(fileJson);
-      else router.refresh();
+      else {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.adminOrder(orderId),
+        });
+      }
     } catch (err) {
       toast(err instanceof Error ? err.message : "Ошибка загрузки файла", "error");
     } finally {
@@ -115,7 +120,11 @@ export function OrderFileUpload({
     linkFormRef.current?.reset();
     toast("Ссылка добавлена", "success");
     if (onUploaded) onUploaded(fileJson);
-    else router.refresh();
+    else {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.adminOrder(orderId),
+      });
+    }
   }
 
   return (

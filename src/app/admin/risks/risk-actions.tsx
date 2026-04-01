@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { queryKeys } from "@/lib/query-keys";
 import {
   formatExecutorMetricsLine,
   useExecutorsOptional,
@@ -22,7 +23,7 @@ export function RiskOrderActions({
   executors: Exec[];
   currentExecutorId: string | null;
 }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const executorsCtx = useExecutorsOptional();
   const [open, setOpen] = useState<"deadline" | "executor" | null>(null);
   const [loading, setLoading] = useState(false);
@@ -45,7 +46,12 @@ export function RiskOrderActions({
       return;
     }
     setOpen(null);
-    router.refresh();
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.adminOrder(orderId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.adminOrdersCatalog(),
+    });
   }
 
   async function patchExecutor() {
@@ -63,7 +69,12 @@ export function RiskOrderActions({
       return;
     }
     setOpen(null);
-    router.refresh();
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.adminOrder(orderId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.adminOrdersCatalog(),
+    });
   }
 
   return (

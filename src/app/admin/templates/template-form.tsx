@@ -1,14 +1,17 @@
 "use client";
 
 import type { OrderTemplate } from "@prisma/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { parseDefaultCheckpoints } from "@/lib/order-template";
+import { queryKeys } from "@/lib/query-keys";
 
 type Row = { title: string; due_offset_days: string };
 
 export function TemplateForm({ template }: { template?: OrderTemplate | null }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const isEdit = Boolean(template?.id);
   const initialRows = (() => {
     if (!template) return [{ title: "", due_offset_days: "" }] as Row[];
@@ -71,8 +74,8 @@ export function TemplateForm({ template }: { template?: OrderTemplate | null }) 
       alert((await res.json().catch(() => ({}))).error ?? "Ошибка сохранения");
       return;
     }
+    void queryClient.invalidateQueries({ queryKey: queryKeys.adminTemplates() });
     router.push("/admin/templates");
-    router.refresh();
   }
 
   return (

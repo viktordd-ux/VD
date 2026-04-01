@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { CredentialsModal } from "@/components/credentials-modal";
+import { queryKeys } from "@/lib/query-keys";
 
 const MEMBERSHIP_ROLES: { value: string; label: string }[] = [
   { value: "OWNER", label: "Владелец" },
@@ -15,10 +16,10 @@ const MEMBERSHIP_ROLES: { value: string; label: string }[] = [
 export function CreateExecutorDialog({
   onCreated,
 }: {
-  /** После успешного создания (например refetch списка без полного router.refresh). */
+  /** После успешного создания (доп. локальный callback). */
   onCreated?: () => void;
 }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [role, setRole] = useState("EXECUTOR");
@@ -67,7 +68,9 @@ export function CreateExecutorDialog({
     e.currentTarget.reset();
     setModal({ email: data.email, password: data.generated_password });
     onCreated?.();
-    if (!onCreated) router.refresh();
+    void queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers() });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.adminOrdersCatalog() });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
   }
 
   return (

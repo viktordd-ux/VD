@@ -26,3 +26,13 @@ export function toPrismaAttachmentsJson(
 ): Prisma.InputJsonValue {
   return list as unknown as Prisma.InputJsonValue;
 }
+
+export function mergeAttachmentsByFileId(
+  a: ChatAttachment[],
+  b: ChatAttachment[],
+): ChatAttachment[] {
+  const map = new Map<string, ChatAttachment>();
+  for (const x of a) map.set(x.fileId, x);
+  for (const x of b) map.set(x.fileId, x);
+  return [...map.values()];
+}

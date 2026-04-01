@@ -156,7 +156,6 @@ export function OnboardingClient({ skillOptions }: Props) {
     }
     await update({ onboarded: true });
     router.push("/executor");
-    router.refresh();
   }
 
   if (loading) {

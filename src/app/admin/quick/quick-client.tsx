@@ -56,7 +56,6 @@ function QuickForm({ templates }: { templates: TemplateOpt[] }) {
     }
     const data = (await res.json()) as { id: string };
     router.push(`/admin/orders/${data.id}`);
-    router.refresh();
   }
 
   return (

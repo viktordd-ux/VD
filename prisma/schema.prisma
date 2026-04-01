@@ -236,13 +236,15 @@ model Order {
   lead        Lead?        @relation(fields: [leadId], references: [id])
   files       File[]
   checkpoints Checkpoint[]
-  messages    Message[]
-  userReadStates OrderUserReadState[]
+  messages         Message[]
+  messageReactions MessageReaction[]
+  userReadStates   OrderUserReadState[]
 
   @@index([executorId])
   @@index([status])
   @@index([templateId])
   @@index([organizationId])
+  @@index([organizationId, status])
   @@index([teamId])
   @@index([deletedAt])
   @@map("orders")
@@ -309,15 +311,18 @@ model Message {
 model MessageReaction {
   id        String   @id @default(uuid()) @db.Uuid
   messageId String   @map("message_id") @db.Uuid
+  orderId   String   @map("order_id")
   userId    String   @map("user_id")
   emoji     String   @db.VarChar(16)
   createdAt DateTime @default(now()) @map("created_at")
 
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
+  @@index([orderId])
   @@map("message_reactions")
 }
 

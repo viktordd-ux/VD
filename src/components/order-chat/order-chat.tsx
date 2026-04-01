@@ -13,8 +13,9 @@ import {
   useState,
 } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { postFormDataWithProgress } from "@/lib/upload-form-xhr";
-import type { ChatAttachment } from "@/lib/chat-attachments";
+import { mergeAttachmentsByFileId, type ChatAttachment } from "@/lib/chat-attachments";
 import { CHAT_REACTION_EMOJIS } from "@/lib/chat-reaction-emojis";
 import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
@@ -242,16 +243,6 @@ function IconSendArrow({ className }: { className?: string }) {
       <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
     </svg>
   );
-}
-
-function mergeAttachmentsByFileId(
-  a: ChatAttachment[],
-  b: ChatAttachment[],
-): ChatAttachment[] {
-  const map = new Map<string, ChatAttachment>();
-  for (const x of a) map.set(x.fileId, x);
-  for (const x of b) map.set(x.fileId, x);
-  return [...map.values()];
 }
 
 /** INSERT/DELETE message_reactions из Realtime → агрегат в MessageDto. */
@@ -605,10 +596,16 @@ export function OrderChat({
     [],
   );
   const [fileUploading, setFileUploading] = useState(false);
-  /** Загрузки в процессе — не блокируют отправку; mutationFn ждёт их перед POST. */
+  /** Загрузки в процессе — не блокируют отправку текста; догрузка через /attachments после POST. */
   const uploadPromisesRef = useRef<Promise<unknown>[]>([]);
   const pendingAttachmentsRef = useRef<ChatAttachment[]>([]);
+  /** Пока идёт отправка — сюда попадают вложения (уже в очереди + дорезавшиеся с загрузки). */
+  const sendAttachBufferRef = useRef<{ collected: ChatAttachment[] } | null>(
+    null,
+  );
   const lastSendOptimisticIdRef = useRef<string | null>(null);
+  /** Защита от двойного Enter; не блокируем второе сообщение на время сети. */
+  const lastSendAtRef = useRef(0);
   const failedSendRetryRef = useRef<{
     text: string;
     replyToId: string | null;
@@ -735,6 +732,16 @@ export function OrderChat({
     return map;
   }, [messages]);
 
+  const showVirtualList = !loading && messages.length > 0;
+  const timelineRows = chatTimelineWithUnread;
+
+  const virtualizer = useVirtualizer({
+    count: showVirtualList ? timelineRows.length : 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 96,
+    overscan: 12,
+  });
+
   useEffect(() => {
     const id = window.setInterval(() => setPresenceTick((t) => t + 1), 10_000);
     return () => window.clearInterval(id);
@@ -769,37 +776,10 @@ export function OrderChat({
 
   const sendMutation = useMutation({
     mutationFn: async (vars: SendVars) => {
-      await waitForAllUploads();
-      const msgKey = queryKeys.orderMessages(orderId);
-      const oid = lastSendOptimisticIdRef.current;
-      const merged = mergeAttachmentsByFileId(
-        vars.preSendAttachments,
-        pendingAttachmentsRef.current,
-      );
-      const mergedIds = new Set(merged.map((a) => a.fileId));
-      setPendingAttachments((prev) => {
-        const next = prev.filter((a) => !mergedIds.has(a.fileId));
-        pendingAttachmentsRef.current = next;
-        return next;
-      });
-
-      if (oid) {
-        queryClient.setQueryData<OrderMessagesQueryData>(msgKey, (prev) => {
-          const base = prev ?? { messages: [], participants };
-          return {
-            ...base,
-            messages: base.messages.map((m) =>
-              m.id === oid
-                ? {
-                    ...m,
-                    ...(merged.length ? { attachments: merged } : {}),
-                    clientSendStatus: "sending",
-                  }
-                : m,
-            ),
-          };
-        });
-      }
+      const allowPending =
+        !vars.text.trim() &&
+        (vars.preSendAttachments.length > 0 ||
+          uploadPromisesRef.current.length > 0);
 
       const res = await fetch("/api/messages", {
         method: "POST",
@@ -807,7 +787,7 @@ export function OrderChat({
         body: JSON.stringify({
           order_id: orderId,
           text: vars.text,
-          ...(merged.length ? { attachments: merged } : {}),
+          ...(allowPending ? { allow_attachments_pending: true } : {}),
           ...(vars.replyToId ? { reply_to_id: vars.replyToId } : {}),
         }),
       });
@@ -815,7 +795,42 @@ export function OrderChat({
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw { status: res.status, body };
       }
-      return res.json() as Promise<{ message?: unknown }>;
+      const data = (await res.json()) as {
+        message?: unknown;
+        messageId?: string;
+      };
+      const normalized = normalizeMessageDto(data.message);
+      const realId =
+        (typeof data.messageId === "string" ? data.messageId : null) ??
+        normalized?.id ??
+        null;
+      if (!realId) {
+        throw { status: 500, body: { error: "no message id" } };
+      }
+
+      await waitForAllUploads();
+      const buf = sendAttachBufferRef.current;
+      const merged = buf?.collected ?? [];
+      sendAttachBufferRef.current = null;
+
+      if (merged.length > 0) {
+        const r2 = await fetch(
+          `/api/messages/${encodeURIComponent(realId)}/attachments`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ attachments: merged }),
+          },
+        );
+        if (!r2.ok) {
+          const body = (await r2.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw { status: r2.status, body };
+        }
+        return (await r2.json()) as { message?: unknown };
+      }
+      return data;
     },
     onMutate: async (vars) => {
       const me = currentUserId ? participantById.get(currentUserId) : undefined;
@@ -855,6 +870,9 @@ export function OrderChat({
           messages: mergeMessages(base.messages, optimistic),
         };
       });
+      sendAttachBufferRef.current = {
+        collected: [...pendingAttachments],
+      };
       pendingAttachmentsRef.current = [];
       setInput("");
       setReplyTo(null);
@@ -869,6 +887,7 @@ export function OrderChat({
       } satisfies SendCtx;
     },
     onError: (err, vars, ctx) => {
+      sendAttachBufferRef.current = null;
       const e = err as { status?: number; body?: { error?: string } };
       if (!ctx?.msgKey) return;
       if (e?.status === 403) {
@@ -1014,7 +1033,7 @@ export function OrderChat({
 
   const toggleReaction = useCallback(
     (messageId: string, emoji: string) => {
-      if (!currentUserId || reactionMutation.isPending) return;
+      if (!currentUserId) return;
       const msg = messages.find((x) => x.id === messageId);
       const agg = msg?.reactions?.find((r) => r.emoji === emoji);
       const has = agg?.userIds.includes(currentUserId);
@@ -1024,7 +1043,7 @@ export function OrderChat({
         nextActive: !has,
       });
     },
-    [currentUserId, messages, reactionMutation.mutate, reactionMutation.isPending],
+    [currentUserId, messages, reactionMutation.mutate],
   );
 
   /** Одна загрузка без блокировки отправки сообщения (несколько — параллельно). */
@@ -1060,11 +1079,16 @@ export function OrderChat({
           fileId: id,
           name: file.name,
         };
-        setPendingAttachments((prev) => {
-          const next = [...prev, att];
-          pendingAttachmentsRef.current = next;
-          return next;
-        });
+        const buf = sendAttachBufferRef.current;
+        if (buf) {
+          buf.collected = mergeAttachmentsByFileId(buf.collected, [att]);
+        } else {
+          setPendingAttachments((prev) => {
+            const next = [...prev, att];
+            pendingAttachmentsRef.current = next;
+            return next;
+          });
+        }
       })();
       uploadPromisesRef.current.push(work);
       try {
@@ -1420,19 +1444,37 @@ export function OrderChat({
         }
         const uid = sessionUserIdRef.current;
         if (uid != null && m!.senderId === uid) {
-          const pending = list.find(
-            (x) =>
-              x.id.startsWith("pending:") &&
-              x.senderId === uid &&
-              x.text === m!.text &&
-              (x.replyToId ?? null) === (m!.replyToId ?? null) &&
+          const pending = list.find((x) => {
+            if (!x.id.startsWith("pending:") || x.senderId !== uid) return false;
+            if (
+              x.text !== m!.text ||
+              (x.replyToId ?? null) !== (m!.replyToId ?? null)
+            ) {
+              return false;
+            }
+            const sameAtt =
               JSON.stringify(x.attachments ?? []) ===
-                JSON.stringify(m!.attachments ?? []),
-          );
+              JSON.stringify(m!.attachments ?? []);
+            const serverEmpty = !(m!.attachments?.length);
+            const optimisticHas = (x.attachments?.length ?? 0) > 0;
+            return sameAtt || (serverEmpty && optimisticHas);
+          });
           if (pending) {
+            const mergedFromOptimistic =
+              (m!.attachments?.length ?? 0) > 0
+                ? m!
+                : {
+                    ...m!,
+                    ...(pending.attachments?.length
+                      ? { attachments: pending.attachments }
+                      : {}),
+                  };
             return {
               ...base,
-              messages: mergeMessages(removeMessageById(list, pending.id), m!),
+              messages: mergeMessages(
+                removeMessageById(list, pending.id),
+                mergedFromOptimistic,
+              ),
             };
           }
         }
@@ -1454,7 +1496,9 @@ export function OrderChat({
       }
     }
 
-    const channel = supabase
+    const reactionFilter = `order_id=eq.${orderId}`;
+
+    const channelMessages = supabase
       .channel(`order-messages:${orderId}`)
       .on(
         "postgres_changes",
@@ -1466,12 +1510,25 @@ export function OrderChat({
         },
         onMessageChange,
       )
+      .subscribe((status, err) => {
+        devLog("subscribe status messages", status, err ?? "");
+        if (status === "SUBSCRIBED") {
+          setRealtimeStatus("subscribed");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRealtimeStatus("error");
+          devLog("ошибка канала messages", status, err);
+        }
+      });
+
+    const channelReactions = supabase
+      .channel(`order-reactions:${orderId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "message_reactions",
+          filter: reactionFilter,
         },
         onReactionChange,
       )
@@ -1481,27 +1538,31 @@ export function OrderChat({
           event: "DELETE",
           schema: "public",
           table: "message_reactions",
+          filter: reactionFilter,
         },
         onReactionChange,
       )
       .subscribe((status, err) => {
-        devLog("subscribe status", status, err ?? "");
-        if (status === "SUBSCRIBED") {
-          setRealtimeStatus("subscribed");
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          setRealtimeStatus("error");
-          devLog("ошибка канала", status, err);
-        }
+        devLog("subscribe status reactions", status, err ?? "");
       });
 
     return () => {
       devLog("removeChannel", `order-messages:${orderId}`);
-      void supabase.removeChannel(channel);
+      void supabase.removeChannel(channelMessages);
+      void supabase.removeChannel(channelReactions);
     };
   }, [orderId, supabase, variant, queryClient, fetchUnread]);
 
   const lastMessageKey =
     messages.length > 0 ? messages[messages.length - 1]!.id : "";
+
+  const unreadDividerIndex = useMemo(() => {
+    for (let i = 0; i < timelineRows.length; i++) {
+      const it = timelineRows[i];
+      if (it && "kind" in it && it.kind === "unread") return i;
+    }
+    return -1;
+  }, [timelineRows]);
 
   /** Скролл к «Новые сообщения» один раз; иначе вниз — только если пользователь у низа / своё / первая загрузка / dock. */
   useLayoutEffect(() => {
@@ -1513,9 +1574,12 @@ export function OrderChat({
       !scrollToUnreadDoneRef.current &&
       initialHasUnreadChat &&
       messages.length > 0 &&
-      unreadDividerRef.current
+      unreadDividerIndex >= 0 &&
+      showVirtualList
     ) {
-      unreadDividerRef.current.scrollIntoView({ block: "center", behavior: "auto" });
+      requestAnimationFrame(() => {
+        virtualizer.scrollToIndex(unreadDividerIndex, { align: "center" });
+      });
       scrollToUnreadDoneRef.current = true;
       nearBottomRef.current = false;
       return;
@@ -1535,10 +1599,16 @@ export function OrderChat({
     const shouldStick = nearBottomRef.current;
 
     if (initialFill || fromSelf || shouldStick || dockJustOpened) {
-      el.scrollTo({
-        top: el.scrollHeight,
-        behavior: initialFill ? "auto" : "smooth",
-      });
+      if (showVirtualList && timelineRows.length > 0) {
+        requestAnimationFrame(() => {
+          virtualizer.scrollToIndex(timelineRows.length - 1, { align: "end" });
+        });
+      } else {
+        el.scrollTo({
+          top: el.scrollHeight,
+          behavior: initialFill ? "auto" : "smooth",
+        });
+      }
       nearBottomRef.current = true;
     }
   }, [
@@ -1549,7 +1619,10 @@ export function OrderChat({
     isDock,
     messages,
     initialHasUnreadChat,
-    chatTimelineWithUnread,
+    timelineRows,
+    showVirtualList,
+    unreadDividerIndex,
+    virtualizer,
   ]);
 
   /** Пока чат открыт/виден — любое новое входящее сообщение сразу считаем прочитанным. */
@@ -1590,9 +1663,12 @@ export function OrderChat({
       pendingAttachments.length > 0 ||
       fileUploading ||
       uploadPromisesRef.current.length > 0;
-    if (!canSend || sendMutation.isPending || !currentUserId) {
+    if (!canSend || !currentUserId) {
       return;
     }
+    const now = Date.now();
+    if (now - lastSendAtRef.current < 200) return;
+    lastSendAtRef.current = now;
     if (chatLoadError) return;
     sendMutation.mutate({
       text,
@@ -1830,7 +1906,9 @@ export function OrderChat({
         <p className="border-b border-amber-200/60 bg-amber-50/90 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
           Не удалось подключить Realtime. В Supabase:{" "}
           <strong>Database → Publications</strong> или <strong>Replication</strong> — включите
-          таблицу <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">messages</code> для Realtime.
+          таблицы <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">messages</code> и{" "}
+          <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">message_reactions</code>{" "}
+          (после миграции с <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">order_id</code>).
         </p>
       )}
 
@@ -1841,166 +1919,184 @@ export function OrderChat({
         </div>
       )}
 
-      <div
-        ref={scrollRef}
-        style={{ overflowAnchor: "none" } as CSSProperties}
-        className={cn(
-          "flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--bg)] px-[5px] pt-1.5 pb-0 [scrollbar-gutter:stable]",
-          tallMessages ? "min-h-0" : "max-h-[min(28rem,60vh)]",
-        )}
-      >
-        {loading ? (
-          <div className="flex flex-1 flex-col justify-end gap-1.5 py-2" aria-hidden>
-            <div className="flex justify-end">
-              <Skeleton className="h-8 w-[55%] max-w-[12rem] rounded-xl" />
-            </div>
-            <div className="flex items-end justify-start gap-1.5">
-              <Skeleton className="h-7 w-7 shrink-0 rounded-full" />
-              <Skeleton className="h-10 w-[60%] max-w-[14rem] rounded-xl" />
-            </div>
-            <div className="flex justify-end">
-              <Skeleton className="h-7 w-[40%] max-w-[10rem] rounded-xl" />
-            </div>
-            <div className="flex items-end justify-start gap-1.5">
-              <Skeleton className="h-7 w-7 shrink-0 rounded-full" />
-              <Skeleton className="h-8 w-[45%] max-w-[11rem] rounded-xl" />
-            </div>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-4 text-center">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--muted-bg)]">
-              <IconChatBubble className="h-4.5 w-4.5 text-[var(--muted)]" />
-            </div>
-            <div>
-              <p className="text-[12px] font-medium text-[var(--text)]">Нет сообщений</p>
-              <p className="mt-0.5 text-[11px] text-[var(--muted)]">Начните переписку</p>
-            </div>
-          </div>
-        ) : (
-          chatTimelineWithUnread.map((item, ti) => {
-            if (item.kind === "unread") {
-              return (
-                <div
-                  key={`unread-${ti}`}
-                  ref={unreadDividerRef}
-                  className="flex items-center gap-2 py-1 vd-fade-in"
-                >
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-500/40 dark:to-blue-400/30" />
-                  <span className="shrink-0 rounded-full border border-blue-500/20 bg-blue-500/8 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:border-blue-400/20 dark:text-blue-400">
-                    Новые
-                  </span>
-                  <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/40 dark:to-blue-400/30" />
-                </div>
-              );
-            }
-            if (item.kind === "day") {
-              return (
-                <div
-                  key={`day-${item.dayKey}-${ti}`}
-                  className="flex items-center gap-2 py-1 vd-fade-in"
-                >
-                  <div className="h-px flex-1 bg-[color:var(--border)]" />
-                  <span className="shrink-0 rounded-full bg-[color:var(--muted-bg)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    {item.label}
-                  </span>
-                  <div className="h-px flex-1 bg-[color:var(--border)]" />
-                </div>
-              );
-            }
-            const g = item.group;
-            const last = g.items[g.items.length - 1]!;
-            const displayName = getSenderName(g.senderId);
-            const groupTime = last.id.startsWith("pending:")
-              ? ""
-              : formatChatMessageTime(last.createdAt);
-            const roleLabel = !g.mine
-              ? roleShortLabel(g.role, g.senderId, participantById)
-              : null;
-            return (
-              <div
-                key={`${g.senderId}-${ti}-${last.id}`}
-                className="vd-message-enter pb-0.5"
-              >
-                {!g.mine ? (
-                  <div className="mb-0.5 flex items-center gap-1 pl-[calc(1.75rem+0.375rem)]">
-                    <span className="text-[11px] font-semibold text-[var(--text)]">
-                      {displayName}
-                    </span>
-                    {roleLabel ? (
-                      <span className="rounded bg-[color:var(--muted-bg)] px-1 py-px text-[9px] font-medium text-[var(--muted)]">
-                        {roleLabel}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-                <div
-                  className={cn(
-                    "flex gap-1.5",
-                    g.mine ? "flex-row-reverse items-end" : "flex-row items-end",
-                  )}
-                >
-                  {!g.mine ? (
-                    <div className="flex w-7 shrink-0 flex-col justify-end">
-                      <Avatar
-                        size="sm"
-                        name={displayName}
-                        seed={g.senderId}
-                        ringClassName="ring-[1.5px] ring-[var(--bg)]"
-                      />
-                    </div>
-                  ) : null}
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    {g.items.map((m, mi) => (
-                      <MessageBubble
-                        key={m.id}
-                        m={m}
-                        mine={g.mine}
-                        radiusClass={bubbleRadiusClass(mi, g.items.length, g.mine)}
-                        replyPreview={getReplyPreview(
-                          m.replyToId ? messageById.get(m.replyToId) : undefined,
-                        )}
-                        onReply={() => setReplyTo(m)}
-                        onCopy={() => {
-                          const t = m.text.trim();
-                          const names = m.attachments?.map((a) => a.name).join(", ");
-                          const line =
-                            t || (names ? `Вложения: ${names}` : "");
-                          void navigator.clipboard.writeText(line).then(() => {
-                            toast.success("Скопировано");
-                          });
-                        }}
-                        currentUserId={currentUserId}
-                        onToggleReaction={(emoji) => toggleReaction(m.id, emoji)}
-                        onRetrySend={
-                          m.id.startsWith("pending:") &&
-                          m.clientSendStatus === "failed"
-                            ? () => retryFailedSend(m.id)
-                            : undefined
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-                {groupTime ? (
-                  <div
-                    className={cn(
-                      "mt-0.5 flex text-[9px] font-medium tabular-nums leading-none tracking-wide text-[var(--muted)]/60",
-                      g.mine
-                        ? "justify-end pr-0.5"
-                        : "justify-start pl-[calc(1.75rem+0.375rem)]",
-                    )}
-                  >
-                    {groupTime}
-                  </div>
-                ) : null}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div
+          ref={scrollRef}
+          style={{ overflowAnchor: "none" } as CSSProperties}
+          className={cn(
+            "flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--bg)] px-[5px] pt-1.5 pb-1 [scrollbar-gutter:stable]",
+            tallMessages ? "min-h-0" : "max-h-[min(28rem,60vh)]",
+          )}
+        >
+          {loading ? (
+            <div className="flex flex-1 flex-col justify-end gap-1.5 py-2" aria-hidden>
+              <div className="flex justify-end">
+                <Skeleton className="h-8 w-[55%] max-w-[12rem] rounded-xl" />
               </div>
-            );
-          })
-        )}
+              <div className="flex items-end justify-start gap-1.5">
+                <Skeleton className="h-7 w-7 shrink-0 rounded-full" />
+                <Skeleton className="h-10 w-[60%] max-w-[14rem] rounded-xl" />
+              </div>
+              <div className="flex justify-end">
+                <Skeleton className="h-7 w-[40%] max-w-[10rem] rounded-xl" />
+              </div>
+              <div className="flex items-end justify-start gap-1.5">
+                <Skeleton className="h-7 w-7 shrink-0 rounded-full" />
+                <Skeleton className="h-8 w-[45%] max-w-[11rem] rounded-xl" />
+              </div>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-4 text-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--muted-bg)]">
+                <IconChatBubble className="h-4.5 w-4.5 text-[var(--muted)]" />
+              </div>
+              <div>
+                <p className="text-[12px] font-medium text-[var(--text)]">Нет сообщений</p>
+                <p className="mt-0.5 text-[11px] text-[var(--muted)]">Начните переписку</p>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="relative w-full"
+              style={{ height: virtualizer.getTotalSize() }}
+            >
+              {virtualizer.getVirtualItems().map((vi) => {
+                const item = timelineRows[vi.index];
+                if (!item) return null;
+                const ti = vi.index;
+                const row = (() => {
+                  if (item.kind === "unread") {
+                    return (
+                      <div
+                        ref={unreadDividerRef}
+                        className="flex items-center gap-2 py-1 vd-fade-in"
+                      >
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-500/40 dark:to-blue-400/30" />
+                        <span className="shrink-0 rounded-full border border-blue-500/20 bg-blue-500/8 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:border-blue-400/20 dark:text-blue-400">
+                          Новые
+                        </span>
+                        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/40 dark:to-blue-400/30" />
+                      </div>
+                    );
+                  }
+                  if (item.kind === "day") {
+                    return (
+                      <div className="flex items-center gap-2 py-1 vd-fade-in">
+                        <div className="h-px flex-1 bg-[color:var(--border)]" />
+                        <span className="shrink-0 rounded-full bg-[color:var(--muted-bg)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                          {item.label}
+                        </span>
+                        <div className="h-px flex-1 bg-[color:var(--border)]" />
+                      </div>
+                    );
+                  }
+                  const g = item.group;
+                  const last = g.items[g.items.length - 1]!;
+                  const displayName = getSenderName(g.senderId);
+                  const groupTime = last.id.startsWith("pending:")
+                    ? ""
+                    : formatChatMessageTime(last.createdAt);
+                  const roleLabel = !g.mine
+                    ? roleShortLabel(g.role, g.senderId, participantById)
+                    : null;
+                  return (
+                    <div className="vd-message-enter pb-0.5">
+                      {!g.mine ? (
+                        <div className="mb-0.5 flex items-center gap-1 pl-[calc(1.75rem+0.375rem)]">
+                          <span className="text-[11px] font-semibold text-[var(--text)]">
+                            {displayName}
+                          </span>
+                          {roleLabel ? (
+                            <span className="rounded bg-[color:var(--muted-bg)] px-1 py-px text-[9px] font-medium text-[var(--muted)]">
+                              {roleLabel}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <div
+                        className={cn(
+                          "flex gap-1.5",
+                          g.mine ? "flex-row-reverse items-end" : "flex-row items-end",
+                        )}
+                      >
+                        {!g.mine ? (
+                          <div className="flex w-7 shrink-0 flex-col justify-end">
+                            <Avatar
+                              size="sm"
+                              name={displayName}
+                              seed={g.senderId}
+                              ringClassName="ring-[1.5px] ring-[var(--bg)]"
+                            />
+                          </div>
+                        ) : null}
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          {g.items.map((m, mi) => (
+                            <MessageBubble
+                              key={m.id}
+                              m={m}
+                              mine={g.mine}
+                              radiusClass={bubbleRadiusClass(mi, g.items.length, g.mine)}
+                              replyPreview={getReplyPreview(
+                                m.replyToId ? messageById.get(m.replyToId) : undefined,
+                              )}
+                              onReply={() => setReplyTo(m)}
+                              onCopy={() => {
+                                const t = m.text.trim();
+                                const names = m.attachments?.map((a) => a.name).join(", ");
+                                const line =
+                                  t || (names ? `Вложения: ${names}` : "");
+                                void navigator.clipboard.writeText(line).then(() => {
+                                  toast.success("Скопировано");
+                                });
+                              }}
+                              currentUserId={currentUserId}
+                              onToggleReaction={(emoji) => toggleReaction(m.id, emoji)}
+                              onRetrySend={
+                                m.id.startsWith("pending:") &&
+                                m.clientSendStatus === "failed"
+                                  ? () => retryFailedSend(m.id)
+                                  : undefined
+                              }
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {groupTime ? (
+                        <div
+                          className={cn(
+                            "mt-0.5 flex text-[9px] font-medium tabular-nums leading-none tracking-wide text-[var(--muted)]/60",
+                            g.mine
+                              ? "justify-end pr-0.5"
+                              : "justify-start pl-[calc(1.75rem+0.375rem)]",
+                          )}
+                        >
+                          {groupTime}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })();
+                return (
+                  <div
+                    key={`tl-${ti}-${vi.key}`}
+                    data-index={vi.index}
+                    ref={virtualizer.measureElement}
+                    className="absolute left-0 top-0 w-full"
+                    style={{
+                      transform: `translateY(${vi.start}px)`,
+                    }}
+                  >
+                    {row}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
       <form
         onSubmit={onSend}
-        className="sticky bottom-0 z-10 mt-auto border-t border-[color:var(--border)] bg-[var(--card)]/95 px-[5px] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-sm"
+        className="z-10 shrink-0 border-t border-[color:var(--border)] bg-[var(--card)]/95 px-[5px] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-sm"
       >
         <label className="sr-only" htmlFor={`order-chat-input-${orderId}`}>
           Сообщение
@@ -2142,21 +2238,16 @@ export function OrderChat({
           <button
             type="submit"
             disabled={
-              sendMutation.isPending ||
               (!input.trim() &&
                 pendingAttachments.length === 0 &&
                 !fileUploading &&
                 uploadPromisesRef.current.length === 0) ||
               !currentUserId
             }
-            className="absolute bottom-1 right-1 flex h-7 w-7 touch-manipulation items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-sm shadow-blue-900/20 transition-all duration-150 hover:from-blue-500 hover:to-blue-600 hover:shadow-md hover:scale-[1.03] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/30"
+            className="absolute bottom-1 right-1 flex h-7 w-7 touch-manipulation items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-sm shadow-blue-900/20 transition-[transform,opacity,box-shadow] duration-150 hover:from-blue-500 hover:to-blue-600 hover:shadow-md hover:scale-[1.03] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/30"
             aria-label="Отправить"
           >
-            {sendMutation.isPending ? (
-              <Skeleton className="h-3.5 w-3.5 shrink-0 rounded-full bg-white/30" />
-            ) : (
-              <IconSendArrow className="h-[15px] w-[15px]" />
-            )}
+            <IconSendArrow className="h-[15px] w-[15px]" />
           </button>
         </div>
       </form>

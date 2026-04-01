@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ExecutorCheckpoints } from "@/components/executor-checkpoints";
 import { ExecutorOrderPanel } from "@/app/executor/orders/[id]/ui";
@@ -8,8 +9,15 @@ import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
 import { displayFileEntryLabel } from "@/lib/uploads";
 import { OrderProjectReadMarker } from "@/components/order-project-read-marker";
-import { OrderChat } from "@/components/order-chat/order-chat";
 import { useExecutorOrder } from "./executor-order-context";
+
+const OrderChat = dynamic(
+  () =>
+    import("@/components/order-chat/order-chat").then((m) => ({
+      default: m.OrderChat,
+    })),
+  { ssr: false, loading: () => null },
+);
 import { useMarkNotificationsReadForOrder } from "@/hooks/use-mark-notifications-read-for-order";
 
 export function ExecutorOrderView({

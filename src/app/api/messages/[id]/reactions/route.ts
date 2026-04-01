@@ -46,7 +46,12 @@ export async function POST(req: Request, { params }: Params) {
           emoji,
         },
       },
-      create: { messageId, userId: user.id, emoji },
+      create: {
+        messageId,
+        orderId: msg.orderId,
+        userId: user.id,
+        emoji,
+      },
       update: {},
     });
   } catch (e) {
@@ -88,7 +93,12 @@ export async function DELETE(req: Request, { params }: Params) {
   }
 
   await prisma.messageReaction.deleteMany({
-    where: { messageId, userId: user.id, emoji },
+    where: {
+      messageId,
+      orderId: msg.orderId,
+      userId: user.id,
+      emoji,
+    },
   });
 
   return NextResponse.json({ ok: true });

@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
+const SLOW_MS = 100;
+
 /**
  * На Vercel (serverless) нельзя создавать новый PrismaClient на каждый запрос —
  * иначе исчерпывается пул Supabase (MaxClientsInSessionMode / too many connections).
@@ -29,9 +31,13 @@ function prismaDatabaseUrl(): string | undefined {
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient(): PrismaClient {
+  const log =
+    process.env.NODE_ENV === "development"
+      ? ([{ level: "query" as const, emit: "event" as const }, "warn", "error"] as const)
+      : (["error"] as const);
+
+  const client = new PrismaClient({
     datasources: {
       db: {
         url: prismaDatabaseUrl() ?? process.env.DATABASE_URL,
@@ -42,8 +48,24 @@ export const prisma =
       maxWait: 30_000,
       timeout: 120_000,
     },
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log: [...log],
   });
+
+  if (process.env.NODE_ENV === "development") {
+    client.$on("query", (e) => {
+      if (e.duration >= SLOW_MS) {
+        const q = e.query.slice(0, 200);
+        console.warn(
+          `[slow query] ${e.duration}ms ${q}${e.query.length > 200 ? "…" : ""}`,
+        );
+      }
+    });
+  }
+
+  return client;
+}
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 globalForPrisma.prisma = prisma;
 

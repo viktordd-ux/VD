@@ -8,9 +8,9 @@ import { useToast } from "@/components/toast-provider";
 import { Button } from "@/components/ui/button";
 import { useAdminOrdersListActions } from "@/context/admin-orders-list-actions";
 import { parseCheckpointsFromListApi } from "@/lib/order-list-api-merge";
-import { useState } from "react";
+import { memo, useState } from "react";
 
-export function OrderRowQuickActions({
+export const OrderRowQuickActions = memo(function OrderRowQuickActions({
   orderId,
   status,
   checkpointCount,
@@ -222,4 +222,4 @@ export function OrderRowQuickActions({
       />
     </div>
   );
-}
+});

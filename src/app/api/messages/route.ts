@@ -71,6 +71,8 @@ export async function POST(req: Request) {
     typeof body.reply_to_id === "string" ? body.reply_to_id.trim() : "";
   const replyToId = replyToIdRaw || null;
 
+  const allowAttachmentsPending = body.allow_attachments_pending === true;
+
   let attachments: ChatAttachment[] = [];
   if (Array.isArray(body.attachments)) {
     attachments = parseChatAttachmentsJson(body.attachments);
@@ -79,9 +81,9 @@ export async function POST(req: Request) {
   if (!orderId) {
     return NextResponse.json({ error: "order_id required" }, { status: 400 });
   }
-  if (!textRaw && attachments.length === 0) {
+  if (!textRaw && attachments.length === 0 && !allowAttachmentsPending) {
     return NextResponse.json(
-      { error: "text or attachments required" },
+      { error: "text, attachments, or allow_attachments_pending required" },
       { status: 400 },
     );
   }
@@ -100,15 +102,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  for (const a of attachments) {
-    const f = await prisma.file.findFirst({
-      where: { id: a.fileId, orderId },
-    });
-    if (!f) {
-      return NextResponse.json(
-        { error: "attachment file not found in order" },
-        { status: 400 },
-      );
+  if (attachments.length > 0) {
+    for (const a of attachments) {
+      const f = await prisma.file.findFirst({
+        where: { id: a.fileId, orderId },
+      });
+      if (!f) {
+        return NextResponse.json(
+          { error: "attachment file not found in order" },
+          { status: 400 },
+        );
+      }
     }
   }
 
@@ -226,7 +230,10 @@ export async function POST(req: Request) {
     }
   });
 
-  return NextResponse.json({ message: serializeMessageWithSender(created) });
+  return NextResponse.json({
+    message: serializeMessageWithSender(created),
+    messageId: created.id,
+  });
 }
 
 async function notifyChatTelegram(userId: string): Promise<void> {
