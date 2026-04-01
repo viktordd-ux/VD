@@ -38,6 +38,9 @@ export type AdminOrdersListQueryPayload = {
   viewSnapshot: AdminOrderListViewSnapshot;
   sort: OrderListSort;
   baseUrlParams: string;
+  /** true — БД недоступна, отдан пустой список без 500 */
+  degraded?: boolean;
+  degradedMessage?: string;
 };
 
 const ADMIN_ORDERS_PREFIX = ["admin", "orders"] as const;

@@ -6,6 +6,8 @@ import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
 import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import { buildDailyProfitSeries } from "@/lib/daily-profit";
+import { AdminDbUnavailableBanner } from "@/components/admin-db-unavailable-banner";
+import { dbUnavailableUserMessage } from "@/lib/db-unavailable-message";
 import { buildMarginSeriesByExecutor } from "@/lib/finance-margin-series";
 import {
   FinanceMarginBarChartLazy,
@@ -41,17 +43,19 @@ export default async function FinancePage({
   if (session.user.role !== "admin") {
     redirect(session.user.role === "executor" ? "/executor" : "/login");
   }
-  const orgIds = await getAccessibleOrganizationIds(session.user.id);
-  const orgScope: Prisma.OrderWhereInput =
-    orgIds.length === 0
-      ? { id: { in: [] } }
-      : { organizationId: { in: orgIds } };
 
   const sp = await searchParams;
   const dateFromStr = sp.dateFrom?.trim();
   const dateToStr = sp.dateTo?.trim();
   const executorId = sp.executorId?.trim();
   const lowMargin = sp.lowMargin === "1";
+
+  try {
+  const orgIds = await getAccessibleOrganizationIds(session.user.id);
+  const orgScope: Prisma.OrderWhereInput =
+    orgIds.length === 0
+      ? { id: { in: [] } }
+      : { organizationId: { in: orgIds } };
 
   const dateFrom = dateFromStr
     ? new Date(`${dateFromStr}T00:00:00.000Z`)
@@ -357,6 +361,17 @@ export default async function FinancePage({
       </section>
     </div>
   );
+  } catch (e) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[admin/finance]", e);
+    }
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Финансы</h1>
+        <AdminDbUnavailableBanner message={dbUnavailableUserMessage(e)} />
+      </div>
+    );
+  }
 }
 
 function IconWallet() {

@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
+import { dbUnavailableUserMessage } from "@/lib/db-unavailable-message";
 import { getAccessibleOrganizationIds } from "@/lib/org-scope";
+import { AdminDbUnavailableBanner } from "@/components/admin-db-unavailable-banner";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
 import { getOrderRiskFlags } from "@/lib/order-risk";
@@ -17,7 +19,9 @@ export default async function RisksPage() {
   if (session.user.role !== "admin") {
     redirect(session.user.role === "executor" ? "/executor" : "/login");
   }
-  const orgIds = await getAccessibleOrganizationIds(session.user.id);
+
+  try {
+    const orgIds = await getAccessibleOrganizationIds(session.user.id);
   const orgScope =
     orgIds.length === 0
       ? { id: { in: [] as string[] } }
@@ -141,4 +145,15 @@ export default async function RisksPage() {
       </section>
     </div>
   );
+  } catch (e) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[admin/risks]", e);
+    }
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Риски</h1>
+        <AdminDbUnavailableBanner message={dbUnavailableUserMessage(e)} />
+      </div>
+    );
+  }
 }

@@ -12,6 +12,7 @@ import {
 import { useAdminOrdersListQuery } from "@/hooks/use-admin-orders-list-query";
 import { useInvalidateAdminOrders } from "@/hooks/use-invalidate-admin-orders";
 import { AdminOrdersListClient } from "./admin-orders-list-client";
+import { AdminDbUnavailableBanner } from "@/components/admin-db-unavailable-banner";
 import { OrdersBulkProvider, OrdersBulkToolbar } from "./orders-bulk";
 import { OrdersFilterForm } from "./orders-filter-form";
 import { OrdersFilterHydration } from "./orders-filter-hydration";
@@ -134,6 +135,9 @@ export function AdminOrdersPageClient() {
   return (
     <OrdersBulkProvider>
       <div className="vd-page-enter space-y-6">
+        {data.degraded && data.degradedMessage ? (
+          <AdminDbUnavailableBanner message={data.degradedMessage} />
+        ) : null}
         <OrdersFilterHydration />
         <OnboardingHintsBanner />
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">

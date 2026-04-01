@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { AdminDbUnavailableBanner } from "@/components/admin-db-unavailable-banner";
 import { loadAdminDashboardData } from "./admin-dashboard-data";
 import { ProfitAreaChartLazy } from "@/components/charts-lazy";
 import { Card } from "@/components/ui/card";
@@ -34,27 +35,15 @@ export default async function AdminDashboard() {
     return (
       <div className="space-y-6 animate-in fade-in-0 duration-300">
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Дашборд</h1>
-        <Card className="border-amber-500/30 bg-amber-500/[0.06] p-6 dark:bg-amber-950/30">
-          <p className="font-medium text-[var(--text)]">Не удалось загрузить сводку</p>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-            Чаще всего это временная проблема с базой данных или незавершённые миграции на сервере.
-            Раздел «Заказы» может открываться отдельно — попробуйте перейти ниже.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link
-              href="/admin/orders"
-              className="rounded-lg bg-[var(--text)] px-4 py-2 text-sm font-medium text-[var(--bg)] transition hover:opacity-90"
-            >
-              Перейти к заказам
-            </Link>
-            <Link
-              href="/admin"
-              className="rounded-lg border border-[color:var(--border)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:bg-[color:var(--muted-bg)]"
-            >
-              Обновить страницу
-            </Link>
-          </div>
-        </Card>
+        <AdminDbUnavailableBanner message={result.message} />
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/admin/orders"
+            className="rounded-lg bg-[var(--text)] px-4 py-2 text-sm font-medium text-[var(--bg)] transition hover:opacity-90"
+          >
+            Перейти к заказам
+          </Link>
+        </div>
       </div>
     );
   }

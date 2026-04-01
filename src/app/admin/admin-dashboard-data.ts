@@ -1,3 +1,4 @@
+import { dbUnavailableUserMessage } from "@/lib/db-unavailable-message";
 import prisma from "@/lib/prisma";
 import { leadIsActive, orderIsActive } from "@/lib/active-scope";
 import { buildDailyProfitSeries } from "@/lib/daily-profit";
@@ -105,13 +106,12 @@ export async function loadAdminDashboardData(
       },
     };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
     if (process.env.NODE_ENV === "development") {
       console.error("[loadAdminDashboardData]", e);
     }
     return {
       ok: false,
-      message: msg,
+      message: dbUnavailableUserMessage(e),
     };
   }
 }

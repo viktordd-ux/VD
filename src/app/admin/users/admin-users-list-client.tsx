@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { AdminDbUnavailableBanner } from "@/components/admin-db-unavailable-banner";
 import { CreateExecutorDialog } from "@/components/create-executor-dialog";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -35,8 +36,11 @@ export type AdminExecutorListRow = {
 
 export function AdminUsersListClient({
   initialRows,
+  loadError,
 }: {
   initialRows: AdminExecutorListRow[];
+  /** Ошибка загрузки с сервера (БД) — список может быть пустым */
+  loadError?: string | null;
 }) {
   const [rows, setRows] = useState(initialRows);
 
@@ -49,6 +53,7 @@ export function AdminUsersListClient({
 
   return (
     <div className="space-y-6">
+      {loadError ? <AdminDbUnavailableBanner message={loadError} /> : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Исполнители</h1>
         <div className="w-full sm:w-auto [&_button]:w-full [&_button]:sm:w-auto">
