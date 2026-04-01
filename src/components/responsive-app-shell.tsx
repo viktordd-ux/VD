@@ -24,12 +24,15 @@ export function ResponsiveAppShell({
   variant,
   sidebarNav,
   bottomNav,
+  /** Кнопки справа в мобильной шапке (тема, уведомления и т.д.). */
+  mobileHeaderActions,
   children,
 }: {
   variant: Variant;
   sidebarNav: React.ReactNode;
   /** Нижняя навигация (например PWA / мобильный админ). */
   bottomNav?: React.ReactNode;
+  mobileHeaderActions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -64,19 +67,19 @@ export function ResponsiveAppShell({
       </aside>
 
       <div
-        className={cn("fixed inset-0 z-50 md:hidden", open ? "block" : "hidden")}
+        className={cn("fixed inset-0 z-[100] md:hidden", open ? "block" : "hidden")}
         aria-hidden={!open}
       >
         <button
           type="button"
-          className="absolute inset-0 z-40 bg-black/50 transition-opacity dark:bg-black/60"
+          className="absolute inset-0 z-0 bg-black/50 transition-opacity dark:bg-black/60"
           onClick={() => setOpen(false)}
           aria-label="Закрыть меню"
         />
         <aside
           id="app-mobile-drawer"
           className={cn(
-            "absolute inset-y-0 left-0 z-50 flex w-[min(100%,18rem)] flex-col border-r border-[color:var(--border)] bg-[var(--card)] shadow-xl transition-transform duration-200 ease-out",
+            "absolute inset-y-0 left-0 z-10 flex w-[min(100%,18rem)] flex-col border-r border-[color:var(--border)] bg-[var(--card)] shadow-xl transition-transform duration-200 ease-out",
             open ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -103,10 +106,10 @@ export function ResponsiveAppShell({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-[3.5rem] items-center gap-3 border-b border-[color:var(--border)] bg-[var(--card)]/90 px-3 py-2.5 backdrop-blur-md supports-[backdrop-filter]:bg-[var(--card)]/80 md:hidden">
+        <header className="sticky top-0 z-40 flex min-h-[3.25rem] items-center gap-2 border-b border-[color:var(--border)] bg-[var(--card)]/90 px-2 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-[var(--card)]/80 md:hidden">
           <button
             type="button"
-            className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-xl border border-[color:var(--border)] text-[var(--text)] transition-colors hover:bg-[color:var(--muted-bg)] active:scale-[0.98]"
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-[color:var(--border)] text-[var(--text)] transition-colors hover:bg-[color:var(--muted-bg)] active:scale-[0.98]"
             onClick={() => setOpen(true)}
             aria-expanded={open}
             aria-controls="app-mobile-drawer"
@@ -114,7 +117,7 @@ export function ResponsiveAppShell({
           >
             <IconMenu className="h-5 w-5" />
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-[var(--text)]">
               V<span className="text-[var(--muted)]">|</span>D
             </p>
@@ -122,13 +125,16 @@ export function ResponsiveAppShell({
               {variant === "admin" ? "Админ" : "Исполнитель"}
             </p>
           </div>
+          {mobileHeaderActions ? (
+            <div className="flex shrink-0 items-center gap-1">{mobileHeaderActions}</div>
+          ) : null}
         </header>
         <main
           id="app-main"
           className={cn(
             "min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 md:px-8 md:py-8 lg:px-10 lg:py-10",
             bottomNav != null
-              ? "pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] md:pb-8 lg:pb-10"
+              ? "pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-8 lg:pb-10"
               : undefined,
           )}
         >

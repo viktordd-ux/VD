@@ -89,7 +89,7 @@ export function ExecutorSidebarNav() {
       })}
       </div>
       <div className="mt-auto flex flex-col gap-2 border-t border-[color:var(--border)] pt-3">
-        <div className="flex justify-center">
+        <div className="hidden justify-center md:flex">
           <ThemeToggle />
         </div>
         <PushNotificationsToggle layout="nav" />

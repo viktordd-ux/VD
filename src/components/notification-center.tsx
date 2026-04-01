@@ -76,7 +76,9 @@ function formatNotificationDayLabel(dayYmd: string): string {
   });
 }
 
-export function NotificationCenter() {
+type NotificationCenterProps = { triggerClassName?: string };
+
+export function NotificationCenter({ triggerClassName }: NotificationCenterProps) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -281,7 +283,10 @@ export function NotificationCenter() {
             return next;
           });
         }}
-        className="relative flex h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm transition-all duration-200 ease-out hover:bg-[color:var(--muted-bg)] hover:scale-[1.02] active:scale-[0.98] md:h-9 md:min-w-9"
+        className={cn(
+          "relative flex h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm transition-all duration-200 ease-out hover:bg-[color:var(--muted-bg)] hover:scale-[1.02] active:scale-[0.98] md:h-9 md:min-w-9",
+          triggerClassName,
+        )}
         aria-label="Уведомления"
       >
         <IconBell className="h-5 w-5" />

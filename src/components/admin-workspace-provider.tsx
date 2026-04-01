@@ -115,7 +115,7 @@ export function AdminWorkspaceProvider({ children }: { children: React.ReactNode
   return (
     <QuickCreateContext.Provider value={{ open: openQuick }}>
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="pointer-events-none fixed right-3 top-[calc(3.25rem+env(safe-area-inset-top,0px))] z-40 flex items-center gap-2 md:right-6 md:top-4 md:pt-0">
+        <div className="pointer-events-none fixed right-3 top-[calc(3.25rem+env(safe-area-inset-top,0px))] z-40 hidden items-center gap-2 md:right-6 md:top-4 md:flex md:pt-0">
           <div className="pointer-events-auto flex items-center gap-2">
             <ThemeToggle />
             <NotificationCenter />
