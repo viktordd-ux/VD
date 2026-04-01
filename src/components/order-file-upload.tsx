@@ -180,8 +180,14 @@ export function OrderFileUpload({
             <p className="text-xs tabular-nums text-[var(--muted)]">{uploadProgress}%</p>
           </div>
         )}
-        <Button type="submit" variant="primary" size="md" disabled={uploading || !fileName}>
-          {uploading ? "Загружаю…" : "Загрузить"}
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          loading={uploading}
+          disabled={uploading || !fileName}
+        >
+          Загрузить
         </Button>
       </form>
 
@@ -219,8 +225,14 @@ export function OrderFileUpload({
             className={inputClass}
           />
         </div>
-        <Button type="submit" variant="primary" size="md" disabled={linkSaving}>
-          {linkSaving ? "Сохраняю…" : "Добавить ссылку"}
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          loading={linkSaving}
+          disabled={linkSaving}
+        >
+          Добавить ссылку
         </Button>
       </form>
     </div>

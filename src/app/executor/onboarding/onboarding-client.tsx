@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
+import { PageLoadingSkeleton } from "@/components/page-loading-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SKILL_CATEGORIES, DEFAULT_SKILLS } from "@/lib/skill-tags";
@@ -160,8 +161,8 @@ export function OnboardingClient({ skillOptions }: Props) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-zinc-500">
-        Загрузка…
+      <div className="mx-auto w-full max-w-lg px-4 py-8">
+        <PageLoadingSkeleton compact />
       </div>
     );
   }

@@ -105,7 +105,7 @@ export function ResponsiveAppShell({
         </aside>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 flex min-h-[3.25rem] items-center gap-2 border-b border-[color:var(--border)] bg-[var(--card)]/90 px-2 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-[var(--card)]/80 md:hidden">
           <button
             type="button"
@@ -131,12 +131,7 @@ export function ResponsiveAppShell({
         </header>
         <main
           id="app-main"
-          className={cn(
-            "min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 md:px-8 md:py-8 lg:px-10 lg:py-10",
-            bottomNav != null
-              ? "pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-8 lg:pb-10"
-              : undefined,
-          )}
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-6 md:px-8 md:py-8 lg:px-10 lg:py-10"
         >
           {children}
         </main>

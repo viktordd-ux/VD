@@ -10,6 +10,7 @@ import { useToast } from "@/components/toast-provider";
 import { useExecutors } from "@/context/executors-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   normalizeOrderForClient,
   parseAdminOrderFromApiJson,
@@ -357,13 +358,7 @@ export function AdminOrderForm({
           className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:opacity-50"
         >
           {saveMutation.isPending ? (
-            <>
-              <span
-                className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-white/90"
-                aria-hidden
-              />
-              Сохранение…
-            </>
+            <Skeleton className="mx-auto h-4 w-32 rounded-md bg-white/25" />
           ) : (
             "Сохранить заказ"
           )}

@@ -41,7 +41,7 @@ export function AdminOrdersPageClient() {
   const spString = searchParams.toString();
   const invalidateOrders = useInvalidateAdminOrders();
 
-  const { data, isPending, isError, error, isFetching } = useAdminOrdersListQuery(spString);
+  const { data, isPending, isError, error } = useAdminOrdersListQuery(spString);
 
   const initial = useMemo(
     () => ({
@@ -101,12 +101,6 @@ export function AdminOrdersPageClient() {
           allSkills={data.allSkills}
           initial={initial}
         />
-
-        {isFetching && !isPending ? (
-          <p className="text-xs text-zinc-500" aria-live="polite">
-            Обновление…
-          </p>
-        ) : null}
 
         <AdminOrdersListClient
           spString={spString}

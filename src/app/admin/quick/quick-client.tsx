@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { PageLoadingSkeleton } from "@/components/page-loading-skeleton";
 
 type TemplateOpt = { id: string; title: string };
 
@@ -96,7 +97,7 @@ function QuickForm({ templates }: { templates: TemplateOpt[] }) {
 
 export function QuickClient({ templates }: { templates: TemplateOpt[] }) {
   return (
-    <Suspense fallback={<div className="text-sm text-[var(--muted)]">Загрузка…</div>}>
+    <Suspense fallback={<PageLoadingSkeleton compact />}>
       <QuickForm templates={templates} />
     </Suspense>
   );

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { Skeleton } from "@/components/ui/skeleton";
 import { pushLogClient } from "@/lib/push-debug-client";
 import { isIOS, isPWA } from "@/lib/pwa";
 
@@ -291,7 +292,7 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
   const statusEl = (
     <>
       {status === "loading" && (
-        <p className="text-xs text-zinc-500">Сохранение…</p>
+        <Skeleton className="h-3 w-24 rounded-md" />
       )}
       {status === "success" && (
         <p className="text-xs text-emerald-700">Готово</p>
@@ -305,15 +306,15 @@ export function PushNotificationsToggle({ layout = "default" }: { layout?: "defa
   if (supported === null) {
     if (layout === "nav") {
       return (
-        <div className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-zinc-400 md:min-h-0 md:py-2 md:text-xs">
-          <IconBell className="h-[18px] w-[18px] shrink-0 animate-pulse text-zinc-300" />
-          <span>Проверка уведомлений…</span>
+        <div className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 md:min-h-0 md:py-2">
+          <Skeleton className="h-[18px] w-[18px] shrink-0 rounded-md" />
+          <Skeleton className="h-4 flex-1 max-w-[12rem] rounded-md" />
         </div>
       );
     }
     return (
-      <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/80 px-3 py-2.5 text-xs text-zinc-400">
-        Проверка поддержки push…
+      <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-3 py-2.5">
+        <Skeleton className="h-4 w-full max-w-xs rounded-md" />
       </div>
     );
   }

@@ -944,8 +944,17 @@ export function OrderChat({
             </button>
           </div>
         )}
-        <div className="flex flex-1 items-center justify-center px-3 py-6">
-          <p className="text-sm text-[var(--muted)]">Загрузка чата…</p>
+        <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 py-4">
+          <div className="flex justify-end">
+            <Skeleton className="h-10 w-[min(70%,18rem)] rounded-[16px]" />
+          </div>
+          <div className="flex justify-start gap-2">
+            <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+            <Skeleton className="h-14 w-[min(70%,20rem)] rounded-[16px]" />
+          </div>
+          <div className="flex justify-end">
+            <Skeleton className="h-9 w-[55%] max-w-xs rounded-[16px]" />
+          </div>
         </div>
       </Card>
     );
@@ -1232,7 +1241,7 @@ export function OrderChat({
             aria-label="Отправить"
           >
             {sendMutation.isPending ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <Skeleton className="h-4 w-4 shrink-0 rounded-full bg-white/40" />
             ) : (
               <IconSendArrow className="h-4 w-4" />
             )}

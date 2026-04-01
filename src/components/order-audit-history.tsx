@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Row = {
   id: string;
@@ -28,7 +29,11 @@ export function OrderAuditHistory({ orderId }: { orderId: string }) {
 
   if (rows === null) {
     return (
-      <p className="text-sm text-zinc-500">Загрузка истории…</p>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-full max-w-md rounded-md" />
+        <Skeleton className="h-4 w-full max-w-lg rounded-md" />
+        <Skeleton className="h-4 w-2/3 rounded-md" />
+      </div>
     );
   }
 

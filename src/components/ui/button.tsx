@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Variant = "primary" | "secondary" | "destructive" | "ghost";
 type Size = "sm" | "md";
@@ -38,6 +39,7 @@ export function Button({
     <button
       type={type}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={cn(
         "inline-flex cursor-pointer items-center justify-center rounded-lg transition-all duration-150 ease-out will-change-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400 disabled:pointer-events-none",
         loading && "relative opacity-90",
@@ -48,13 +50,7 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <span className="inline-flex items-center gap-2 opacity-90">
-          <span
-            className="inline-flex h-1 w-1 animate-pulse rounded-full bg-current opacity-70"
-            aria-hidden
-          />
-          <span className="animate-pulse">{children}</span>
-        </span>
+        <Skeleton className="h-4 w-24 rounded-md bg-current/20" />
       ) : (
         children
       )}

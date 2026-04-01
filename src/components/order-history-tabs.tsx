@@ -3,6 +3,7 @@
 import type { CheckpointStatus } from "@prisma/client";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   auditActionLabel,
   auditEntityLabel,
@@ -84,7 +85,17 @@ export function OrderHistoryTabs({
   ];
 
   if (loading) {
-    return <p className="text-sm text-zinc-500">Загрузка…</p>;
+    return (
+      <div className="space-y-3">
+        <div className="flex gap-2 border-b border-[color:var(--border)] pb-2">
+          <Skeleton className="h-9 w-36 rounded-lg" />
+          <Skeleton className="h-9 w-24 rounded-lg" />
+          <Skeleton className="h-9 w-20 rounded-lg" />
+        </div>
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-16 w-full rounded-xl" />
+      </div>
+    );
   }
 
   return (

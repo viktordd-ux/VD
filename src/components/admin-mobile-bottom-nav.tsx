@@ -41,7 +41,7 @@ export function AdminMobileBottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 z-30 flex w-full max-w-[100vw] border-t border-[color:var(--border)] bg-[var(--card)]/88 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl md:hidden dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]"
+      className="flex w-full max-w-[100vw] shrink-0 border-t border-[color:var(--border)] bg-[var(--card)]/88 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl md:hidden dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]"
       aria-label="Нижнее меню"
     >
       {links.map((item) => {
@@ -57,7 +57,7 @@ export function AdminMobileBottomNav() {
             href={item.href}
             prefetch
             className={cn(
-              "relative flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 pb-0.5 text-[11px] font-medium leading-tight transition-all duration-200 ease-out active:scale-[0.98] active:duration-100",
+              "relative flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 pb-0.5 text-[11px] font-medium leading-tight transition-colors duration-150 ease-out",
               active(item.href) ? "text-[var(--text)]" : "text-[var(--muted)]",
             )}
           >
