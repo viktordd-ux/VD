@@ -281,7 +281,7 @@ const MessageBubble = memo(function MessageBubble({
   return (
     <div
       className={cn(
-        "group relative w-full max-w-[min(75%,18rem)]",
+        "group relative w-full max-w-[min(92%,min(28rem,100%))]",
         mine ? "ml-auto" : "mr-auto",
       )}
     >
@@ -922,8 +922,8 @@ export function OrderChat({
 
   const dockFabPos =
     dockFabBottom === "default"
-      ? "fixed right-3 z-[90] bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] lg:bottom-6"
-      : "fixed right-3 z-[90] max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6";
+      ? "fixed right-2 z-[90] bottom-[max(0.5rem,env(safe-area-inset-bottom,0px))] sm:right-3 lg:bottom-6"
+      : "fixed right-2 z-[90] max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:right-3 lg:bottom-6";
 
   const fetchUnread = useCallback(async () => {
     const res = await fetch(
@@ -1400,7 +1400,8 @@ export function OrderChat({
       <div
         className={cn(
           dockFabPos,
-          "flex w-[min(24rem,calc(100vw-0.75rem))] flex-col",
+          /* Раньше max 24rem — на десктопе панель казалась «узкой полоской» с огромными полями по бокам */
+          "flex w-[min(42rem,calc(100vw-0.75rem))] flex-col sm:w-[min(44rem,calc(100vw-1rem))]",
           "h-[min(44rem,72vh)] max-h-[calc(100dvh-1rem)]",
         )}
       >
@@ -1499,7 +1500,7 @@ export function OrderChat({
       )}
     >
       {isDock ? (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--border)] bg-[var(--card)] px-2.5 py-1.5">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--border)] bg-[var(--card)] px-[5px] py-1">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <h2 className="text-[13px] font-semibold tracking-tight text-[var(--text)]">
@@ -1525,7 +1526,7 @@ export function OrderChat({
           </button>
         </div>
       ) : (
-        <div className="shrink-0 border-b border-[color:var(--border)] bg-[var(--card)] px-2.5 py-1.5">
+        <div className="shrink-0 border-b border-[color:var(--border)] bg-[var(--card)] px-[5px] py-1">
           <div className="flex items-center gap-2">
             <h2 className="flex items-center gap-1.5 text-[13px] font-semibold tracking-tight text-[var(--text)]">
               Чат
@@ -1553,7 +1554,7 @@ export function OrderChat({
       )}
 
       {participants.length > 0 ? (
-        <div className="flex shrink-0 items-center border-b border-[color:var(--border)] px-2.5 py-[3px]">
+        <div className="flex shrink-0 items-center border-b border-[color:var(--border)] px-[5px] py-[3px]">
           <div className="flex items-center -space-x-1.5">
             {participants.map((p) => {
               const isOnline = onlinePeerNames.includes(p.name);
@@ -1575,7 +1576,7 @@ export function OrderChat({
 
       {peerTypingNames.length > 0 ? (
         <div
-          className="flex shrink-0 items-center gap-1.5 border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]/60 px-2.5 py-1 text-[11px] text-[var(--muted)]"
+          className="flex shrink-0 items-center gap-1.5 border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]/60 px-[5px] py-1 text-[11px] text-[var(--muted)]"
           role="status"
           aria-live="polite"
         >
@@ -1605,7 +1606,7 @@ export function OrderChat({
       )}
 
       {chatLoadError && (
-        <div className="flex items-center gap-2 border-b border-red-500/15 bg-red-500/5 px-3.5 py-2 text-[12px] font-medium text-red-600 dark:border-red-500/10 dark:bg-red-500/10 dark:text-red-400" role="alert">
+        <div className="flex items-center gap-2 border-b border-red-500/15 bg-red-500/5 px-[5px] py-1.5 text-[11px] font-medium text-red-600 dark:border-red-500/10 dark:bg-red-500/10 dark:text-red-400" role="alert">
           <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
           {chatLoadError}
         </div>
@@ -1615,7 +1616,7 @@ export function OrderChat({
         ref={scrollRef}
         style={{ overflowAnchor: "none" } as CSSProperties}
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--bg)] px-2 pt-2 pb-0 [scrollbar-gutter:stable]",
+          "flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--bg)] px-[5px] pt-1.5 pb-0 [scrollbar-gutter:stable]",
           tallMessages ? "min-h-0" : "max-h-[min(28rem,60vh)]",
         )}
       >
@@ -1764,7 +1765,7 @@ export function OrderChat({
 
       <form
         onSubmit={onSend}
-        className="sticky bottom-0 z-10 mt-auto border-t border-[color:var(--border)] bg-[var(--card)]/95 px-2 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))] pt-1.5 backdrop-blur-sm"
+        className="sticky bottom-0 z-10 mt-auto border-t border-[color:var(--border)] bg-[var(--card)]/95 px-[5px] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-sm"
       >
         <label className="sr-only" htmlFor={`order-chat-input-${orderId}`}>
           Сообщение

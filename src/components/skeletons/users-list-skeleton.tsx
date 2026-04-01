@@ -6,7 +6,7 @@ export function UsersListSkeleton() {
     <div className="space-y-4">
       <Skeleton className="h-8 w-48" />
       <Card className="overflow-hidden">
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-[color:var(--border)]">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex flex-wrap items-center gap-4 p-4">
               <Skeleton className="h-10 w-10 shrink-0 rounded-full" />

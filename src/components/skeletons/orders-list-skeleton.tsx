@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function IssueRowSkeleton() {
   return (
-    <div className="flex min-h-[3.25rem] items-center gap-3 border-b border-zinc-100/90 px-2 py-3 last:border-b-0 md:gap-4">
+    <div className="flex min-h-[3.25rem] items-center gap-3 border-b border-[color:var(--border)] px-2 py-3 last:border-b-0 md:gap-4">
       <Skeleton className="h-4 w-4 shrink-0 rounded" />
       <Skeleton className="h-2 w-2 shrink-0 rounded-full" />
       <div className="min-w-0 flex-1 space-y-2">
@@ -35,8 +35,8 @@ export function OrdersListSkeleton() {
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-4 w-20" />
       </div>
-      <div className="overflow-hidden rounded-xl border border-zinc-200/60 bg-white shadow-sm shadow-zinc-950/[0.025]">
-        <div className="divide-y divide-zinc-100/90">
+      <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-[var(--card)] shadow-sm shadow-black/[0.04] dark:shadow-black/30">
+        <div className="divide-y divide-[color:var(--border)]">
           {Array.from({ length: 8 }).map((_, i) => (
             <IssueRowSkeleton key={i} />
           ))}
