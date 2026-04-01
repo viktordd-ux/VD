@@ -72,7 +72,7 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
     <div className="space-y-8">
       <Link
         href="/admin/users"
-        className="inline-flex text-sm text-zinc-500 hover:text-zinc-800"
+        className="inline-flex text-sm text-[var(--muted)] transition hover:text-[var(--text)]"
       >
         ← К списку исполнителей
       </Link>
@@ -80,14 +80,14 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
       <Card className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--text)] text-sm font-semibold text-[var(--bg)]">
               {initials || "EX"}
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+              <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">
                 {formatUserDisplayName(user)}
               </h1>
-              <p className="mt-1 text-sm text-zinc-500">{user.email}</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">{user.email}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -99,44 +99,44 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Рейтинг
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text)]">
             ⭐ {metrics.rating.toFixed(0)}
           </p>
         </Card>
         <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Просрочки (доля)
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text)]">
             {metrics.latePercent.toFixed(1)}%
           </p>
         </Card>
         <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Завершено заказов
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text)]">
             {metrics.completedOrders}
           </p>
         </Card>
         <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Средний срок (часы)
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text)]">
             {metrics.avgResponseTime != null
               ? `${metrics.avgResponseTime.toFixed(1)} ч`
               : "—"}
           </p>
         </Card>
         <Card className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Прибыль (завершённые)
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900">
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text)]">
             {metrics.totalProfit.toFixed(0)}
           </p>
         </Card>
@@ -144,28 +144,28 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-zinc-900">Контакты</h2>
+          <h2 className="text-base font-semibold text-[var(--text)]">Контакты</h2>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-              <dt className="text-xs font-medium uppercase text-zinc-500">Телефон</dt>
-              <dd className="mt-1 text-sm font-medium text-zinc-900">{user.phone?.trim() || "—"}</dd>
+            <div className="rounded-xl border border-[color:var(--border)] bg-[var(--bg)] p-3">
+              <dt className="text-xs font-medium uppercase text-[var(--muted)]">Телефон</dt>
+              <dd className="mt-1 text-sm font-medium text-[var(--text)]">{user.phone?.trim() || "—"}</dd>
             </div>
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-              <dt className="text-xs font-medium uppercase text-zinc-500">Telegram</dt>
-              <dd className="mt-1 text-sm font-medium text-zinc-900">{user.telegram?.trim() || "—"}</dd>
+            <div className="rounded-xl border border-[color:var(--border)] bg-[var(--bg)] p-3">
+              <dt className="text-xs font-medium uppercase text-[var(--muted)]">Telegram</dt>
+              <dd className="mt-1 text-sm font-medium text-[var(--text)]">{user.telegram?.trim() || "—"}</dd>
             </div>
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 sm:col-span-2">
-              <dt className="text-xs font-medium uppercase text-zinc-500">
+            <div className="rounded-xl border border-[color:var(--border)] bg-[var(--bg)] p-3 sm:col-span-2">
+              <dt className="text-xs font-medium uppercase text-[var(--muted)]">
                 Telegram ID (уведомления бота)
               </dt>
-              <dd className="mt-1 font-mono text-sm font-medium text-zinc-900">
+              <dd className="mt-1 font-mono text-sm font-medium text-[var(--text)]">
                 {user.telegramId?.trim() || "—"}
               </dd>
             </div>
           </dl>
         </Card>
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-zinc-900">Управление аккаунтом</h2>
+          <h2 className="text-base font-semibold text-[var(--text)]">Управление аккаунтом</h2>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Badge tone="neutral">{user.onboarded ? "Онбординг пройден" : "Нужен онбординг"}</Badge>
           </div>
@@ -182,24 +182,24 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
       </div>
 
       <Card className="p-6">
-        <h2 className="text-base font-semibold text-zinc-900">Навыки</h2>
+        <h2 className="text-base font-semibold text-[var(--text)]">Навыки</h2>
         <ExecutorSkillsSection user={user} />
       </Card>
 
       <section>
-        <h2 className="text-base font-semibold text-zinc-900">Последние заказы</h2>
+        <h2 className="text-base font-semibold text-[var(--text)]">Последние заказы</h2>
         <div className="mt-3">
           {orders.length === 0 ? (
-            <Card className="border-dashed border-zinc-300 bg-zinc-50 py-10 text-center shadow-none">
-              <p className="text-sm font-medium text-zinc-700">Заказов пока нет</p>
-              <p className="mt-1 text-xs text-zinc-500">
+            <Card className="border-dashed border-[color:var(--border)] bg-[color:var(--muted-bg)] py-10 text-center shadow-none">
+              <p className="text-sm font-medium text-[var(--text)]">Заказов пока нет</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
                 После назначения исполнителя на заказ здесь появится история работ.
               </p>
             </Card>
           ) : (
             <TableWrap>
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-zinc-100 bg-zinc-50/90">
+                <thead className="border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]">
                   <tr>
                     <th className={thClass}>Название</th>
                     <th className={thClass}>Статус</th>
@@ -214,7 +214,7 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
                       <td className={tdClass}>
                         <Link
                           href={`/admin/orders/${o.id}`}
-                          className="font-medium text-zinc-900 hover:underline"
+                          className="font-medium text-[var(--text)] hover:underline"
                         >
                           {o.title}
                         </Link>
@@ -222,11 +222,11 @@ export default async function AdminExecutorDetailPage({ params }: Props) {
                       <td className={tdClass}>
                         <OrderStatusBadge status={o.status} />
                       </td>
-                      <td className={`${tdClass} tabular-nums text-zinc-600`}>
+                      <td className={`${tdClass} tabular-nums text-[var(--muted)]`}>
                         {o.deadline ? o.deadline.toISOString().slice(0, 10) : "—"}
                       </td>
                       <td className={`${tdClass} tabular-nums`}>{o.profit.toString()}</td>
-                      <td className={`${tdClass} text-xs text-zinc-500`}>
+                      <td className={`${tdClass} text-xs text-[var(--muted)]`}>
                         {o.updatedAt.toISOString().slice(0, 16).replace("T", " ")}
                       </td>
                     </tr>

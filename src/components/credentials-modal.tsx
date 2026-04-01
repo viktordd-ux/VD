@@ -21,40 +21,40 @@ export function CredentialsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]">
       <div
-        className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl"
+        className="w-full max-w-md rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-6 shadow-xl shadow-black/10 dark:shadow-black/50"
         role="dialog"
         aria-labelledby="cred-title"
       >
-        <h2 id="cred-title" className="text-lg font-semibold text-zinc-900">
+        <h2 id="cred-title" className="text-lg font-semibold text-[var(--text)]">
           {title}
         </h2>
-        <p className="mt-4 text-sm text-zinc-600">
+        <p className="mt-4 text-sm text-[var(--muted)]">
           Сохраните данные — пароль больше не будет показан.
         </p>
-        <dl className="mt-4 space-y-2 rounded-lg bg-zinc-50 p-4 font-mono text-sm">
+        <dl className="mt-4 space-y-2 rounded-lg border border-[color:var(--border)] bg-[var(--bg)] p-4 font-mono text-sm">
           <div>
-            <dt className="text-xs uppercase text-zinc-500">Логин</dt>
-            <dd className="break-all text-zinc-900">{email}</dd>
+            <dt className="text-xs uppercase text-[var(--muted)]">Логин</dt>
+            <dd className="break-all text-[var(--text)]">{email}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase text-zinc-500">Пароль</dt>
-            <dd className="break-all text-zinc-900">{password}</dd>
+            <dt className="text-xs uppercase text-[var(--muted)]">Пароль</dt>
+            <dd className="break-all text-[var(--text)]">{password}</dd>
           </div>
         </dl>
         <div className="mt-6 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={copy}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            className="rounded-md bg-[var(--text)] px-4 py-2 text-sm font-medium text-[var(--bg)] transition hover:opacity-90"
           >
             Скопировать
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+            className="rounded-md border border-[color:var(--border)] px-4 py-2 text-sm text-[var(--text)] transition hover:bg-[color:var(--muted-bg)]"
           >
             Закрыть
           </button>

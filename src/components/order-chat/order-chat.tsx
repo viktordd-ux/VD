@@ -104,8 +104,8 @@ function messageWithMentions(text: string, mine: boolean) {
           key={i}
           className={
             mine
-              ? "font-medium text-blue-200 underline decoration-blue-300/80"
-              : "font-medium text-blue-600 underline decoration-blue-400/70 dark:text-blue-400 dark:decoration-blue-500/50"
+              ? "rounded-sm bg-white/10 px-0.5 font-semibold text-white"
+              : "rounded-sm bg-blue-500/10 px-0.5 font-semibold text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
           }
         >
           {part}
@@ -182,15 +182,45 @@ function splitGroupsAtReadBoundary(
 }
 
 function bubbleRadiusClass(i: number, n: number, mine: boolean): string {
-  if (n === 1) return "rounded-xl";
+  if (n === 1) return "rounded-2xl";
   if (mine) {
-    if (i === 0) return "rounded-xl rounded-br-md";
-    if (i === n - 1) return "rounded-xl rounded-tr-md";
-    return "rounded-lg rounded-r-md";
+    if (i === 0) return "rounded-2xl rounded-br-[5px]";
+    if (i === n - 1) return "rounded-2xl rounded-tr-[5px]";
+    return "rounded-2xl rounded-r-[5px]";
   }
-  if (i === 0) return "rounded-xl rounded-bl-md";
-  if (i === n - 1) return "rounded-xl rounded-tl-md";
-  return "rounded-lg rounded-l-md";
+  if (i === 0) return "rounded-2xl rounded-bl-[5px]";
+  if (i === n - 1) return "rounded-2xl rounded-tl-[5px]";
+  return "rounded-2xl rounded-l-[5px]";
+}
+
+function IconReplyAction({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="9 17 4 12 9 7" />
+      <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+    </svg>
+  );
+}
+
+function IconSmilePlus({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="9" cy="12" r="8" />
+      <path d="M15 5v4M13 7h4" />
+      <path d="M6.5 13.5s1 1.5 2.5 1.5 2.5-1.5 2.5-1.5" />
+      <circle cx="7" cy="10.5" r=".5" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="10.5" r=".5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function IconCopyAction({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
 }
 
 function typingLine(names: string[]): string {
@@ -257,48 +287,39 @@ const MessageBubble = memo(function MessageBubble({
     >
       <div
         className={cn(
-          "pointer-events-none absolute right-1 top-1 z-[2] flex gap-0.5 opacity-0 transition-opacity duration-200 ease-out group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-sm:pointer-events-auto max-sm:opacity-100",
+          "pointer-events-none absolute -top-8 z-[5] flex items-center gap-0.5 rounded-full border bg-[var(--card)] px-1 py-0.5 shadow-lg shadow-black/10 opacity-0 transition-all duration-150 ease-out group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 dark:shadow-black/30 max-sm:pointer-events-auto max-sm:opacity-100",
+          mine ? "right-0 border-white/20" : "left-0 border-[color:var(--border)]",
         )}
       >
         <button
           type="button"
           title="Ответить"
           onClick={onReply}
-          className={cn(
-            "rounded-md px-1.5 py-0.5 text-[10px] font-medium backdrop-blur-sm transition-transform duration-150 active:scale-[0.96]",
-            mine
-              ? "bg-white/15 text-white"
-              : "bg-black/10 text-[var(--text)] dark:bg-white/10",
-          )}
+          className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.92]"
         >
-          ↩
+          <IconReplyAction className="h-3.5 w-3.5" />
         </button>
         <div className="relative" ref={pickerRef}>
           <button
             type="button"
             title="Реакция"
             onClick={() => setPickerOpen((v) => !v)}
-            className={cn(
-              "rounded-md px-1.5 py-0.5 text-[11px] font-semibold backdrop-blur-sm transition-transform duration-150 active:scale-[0.96]",
-              mine
-                ? "bg-white/15 text-white"
-                : "bg-black/10 text-[var(--text)] dark:bg-white/10",
-            )}
+            className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.92]"
           >
-            +
+            <IconSmilePlus className="h-3.5 w-3.5" />
           </button>
           {pickerOpen ? (
             <div
               className={cn(
-                "pointer-events-auto absolute right-0 top-full z-30 mt-1 flex flex-wrap gap-0.5 rounded-lg border border-[color:var(--border)] bg-[var(--card)] p-1 shadow-lg shadow-black/10 vd-fade-in",
-                "min-w-[7rem]",
+                "pointer-events-auto absolute right-0 top-full z-30 mt-1.5 flex flex-wrap gap-0.5 rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-1.5 shadow-xl shadow-black/15 dark:shadow-black/40 vd-fade-in",
+                "min-w-[8rem]",
               )}
             >
               {CHAT_REACTION_EMOJIS.map((em) => (
                 <button
                   key={em}
                   type="button"
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-base transition-colors hover:bg-[color:var(--muted-bg)] active:scale-95"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-base transition-all hover:bg-[color:var(--muted-bg)] hover:scale-110 active:scale-95"
                   onClick={() => {
                     onToggleReaction(em);
                     setPickerOpen(false);
@@ -314,38 +335,33 @@ const MessageBubble = memo(function MessageBubble({
           type="button"
           title="Копировать"
           onClick={onCopy}
-          className={cn(
-            "rounded-md px-1.5 py-0.5 text-[10px] font-medium backdrop-blur-sm transition-transform duration-150 active:scale-[0.96]",
-            mine
-              ? "bg-white/15 text-white"
-              : "bg-black/10 text-[var(--text)] dark:bg-white/10",
-          )}
+          className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.92]"
         >
-          ⧉
+          <IconCopyAction className="h-3.5 w-3.5" />
         </button>
       </div>
       <div
         className={cn(
-          "px-2.5 py-1.5 text-[15px] leading-snug transition-[transform,box-shadow] duration-200 ease-out",
+          "px-3.5 py-2.5 text-[14.5px] leading-relaxed transition-[transform,box-shadow] duration-200 ease-out",
           radiusClass,
           mine
-            ? "bg-blue-600/95 text-white shadow-sm dark:bg-blue-500/95"
-            : "border border-[color:var(--border)]/80 bg-[var(--card)] text-[var(--text)] shadow-sm shadow-black/[0.03] dark:shadow-none",
+            ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md shadow-blue-900/25 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/40"
+            : "border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm shadow-black/[0.04] dark:shadow-black/20",
         )}
       >
         {m.replyToId && replyPreview ? (
-          <p
+          <div
             className={cn(
-              "mb-1 border-l-2 pl-2 text-xs leading-snug",
+              "mb-2 rounded-lg border-l-[3px] px-2.5 py-1.5 text-[12.5px] leading-snug",
               mine
-                ? "border-white/40 text-blue-100/90"
-                : "border-[color:var(--border)] text-[var(--muted)]",
+                ? "border-white/50 bg-white/10 text-blue-100"
+                : "border-blue-500/40 bg-[color:var(--muted-bg)] text-[var(--muted)] dark:border-blue-400/30",
             )}
           >
             {replyPreview}
-          </p>
+          </div>
         ) : m.replyToId ? (
-          <p className="mb-1 text-xs text-[var(--muted)]">Сообщение недоступно</p>
+          <p className="mb-1.5 text-xs italic text-[var(--muted)]">Сообщение недоступно</p>
         ) : null}
         {bodyText ? (
           <p className="whitespace-pre-wrap break-words">
@@ -355,8 +371,8 @@ const MessageBubble = memo(function MessageBubble({
         {hasAttachments ? (
           <ul
             className={cn(
-              "space-y-0.5",
-              bodyText ? "mt-1.5" : null,
+              "space-y-1",
+              bodyText ? "mt-2" : null,
             )}
           >
             {m.attachments!.map((a) => (
@@ -366,13 +382,14 @@ const MessageBubble = memo(function MessageBubble({
                   target="_blank"
                   rel="noreferrer"
                   className={cn(
-                    "inline-flex max-w-full items-center gap-1 rounded-md border px-1.5 py-0.5 text-[13px] font-medium underline-offset-2 transition-colors hover:underline",
+                    "inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] font-medium underline-offset-2 transition-all hover:underline hover:shadow-sm",
                     mine
-                      ? "border-white/25 bg-white/10 text-white"
-                      : "border-[color:var(--border)] bg-[color:var(--muted-bg)] text-[var(--text)]",
+                      ? "border-white/20 bg-white/10 text-white hover:bg-white/15"
+                      : "border-[color:var(--border)] bg-[color:var(--muted-bg)] text-[var(--text)] hover:bg-[color:var(--surface-hover)]",
                   )}
                   onClick={(e) => e.stopPropagation()}
                 >
+                  <svg className="h-3.5 w-3.5 shrink-0 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>
                   <span className="truncate">{a.name}</span>
                 </a>
               </li>
@@ -384,7 +401,7 @@ const MessageBubble = memo(function MessageBubble({
         ? (
             <div
               className={cn(
-                "mt-0.5 flex flex-wrap gap-0.5",
+                "mt-1 flex flex-wrap gap-1",
                 mine ? "justify-end" : "justify-start",
               )}
             >
@@ -399,22 +416,22 @@ const MessageBubble = memo(function MessageBubble({
                     title={mineR ? "Снять реакцию" : "Добавить такую же"}
                     onClick={() => onToggleReaction(r.emoji)}
                     className={cn(
-                      "inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[12px] leading-none transition-all duration-150 ease-out hover:scale-[1.03] active:scale-[0.97]",
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[13px] leading-none transition-all duration-150 ease-out hover:scale-105 active:scale-95",
                       mine
                         ? mineR
-                          ? "border-white/35 bg-white/15 text-white"
-                          : "border-white/20 bg-white/5 text-white/90"
+                          ? "border-white/30 bg-white/20 text-white shadow-sm"
+                          : "border-white/15 bg-white/5 text-white/90"
                         : mineR
-                          ? "border-blue-400/50 bg-blue-500/15 text-[var(--text)] dark:bg-blue-500/20"
-                          : "border-[color:var(--border)] bg-[color:var(--muted-bg)] text-[var(--text)]",
+                          ? "border-blue-500/40 bg-blue-500/10 text-[var(--text)] shadow-sm dark:bg-blue-500/15"
+                          : "border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm shadow-black/[0.02] dark:shadow-none",
                     )}
                   >
                     <span>{r.emoji}</span>
                     {r.userIds.length > 1 ? (
                       <span
                         className={cn(
-                          "text-[10px] tabular-nums",
-                          mine ? "text-blue-100/75" : "text-[var(--muted)]",
+                          "text-[10px] font-medium tabular-nums",
+                          mine ? "text-blue-100/80" : "text-[var(--muted)]",
                         )}
                       >
                         {r.userIds.length}
@@ -1383,8 +1400,8 @@ export function OrderChat({
       <div
         className={cn(
           dockFabPos,
-          "flex w-[min(22rem,calc(100vw-0.75rem))] flex-col",
-          "h-[min(42rem,70vh)] max-h-[calc(100dvh-1rem)]",
+          "flex w-[min(24rem,calc(100vw-0.75rem))] flex-col",
+          "h-[min(44rem,72vh)] max-h-[calc(100dvh-1rem)]",
         )}
       >
         {node}
@@ -1398,7 +1415,7 @@ export function OrderChat({
         <button
           type="button"
           onClick={() => setDockOpen(true)}
-          className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] shadow-lg shadow-black/20 ring-2 ring-[var(--border)] transition hover:opacity-90 focus-visible:outline focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-900 dark:ring-white/20"
+          className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-xl shadow-blue-900/30 ring-1 ring-white/10 transition-all duration-200 hover:shadow-2xl hover:scale-[1.04] active:scale-[0.97] focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/50"
           aria-label={
             unreadChatCount > 0
               ? `Открыть чат — непрочитанных: ${unreadChatCount}`
@@ -1408,7 +1425,7 @@ export function OrderChat({
           <IconChatBubble className="h-7 w-7" />
           {unreadChatCount > 0 ? (
             <span
-              className="absolute -right-1 -top-1 z-10 flex h-[22px] min-w-[22px] items-center justify-center overflow-visible rounded-full border-2 border-[var(--text)] bg-red-500 px-1 text-[11px] font-bold leading-none text-white dark:border-white"
+              className="absolute -right-1.5 -top-1.5 z-10 flex h-[22px] min-w-[22px] items-center justify-center overflow-visible rounded-full border-2 border-white bg-red-500 px-1.5 text-[10px] font-bold leading-none text-white shadow-sm dark:border-blue-600"
               aria-hidden
             >
               {unreadChatCount > 99 ? "99+" : unreadChatCount}
@@ -1477,84 +1494,102 @@ export function OrderChat({
         isSidebar &&
           "min-h-[18rem] max-h-[min(32rem,70vh)] lg:min-h-0 lg:max-h-[calc(100dvh-2rem)] lg:overflow-hidden",
         isDock &&
-          "min-h-0 flex-1 rounded-2xl border border-[color:var(--border)] ring-1 ring-black/[0.04] dark:ring-white/10",
+          "min-h-0 flex-1 rounded-2xl border border-[color:var(--border)] shadow-2xl shadow-black/15 ring-1 ring-black/[0.03] dark:shadow-black/50 dark:ring-white/[0.06]",
         !isDock && !isSidebar && "min-h-[min(28rem,min(72vh,36rem))]",
       )}
     >
       {isDock ? (
-        <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[color:var(--border)] px-2 py-1.5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--border)] bg-[var(--card)] px-3.5 py-2.5">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              <h2 className="text-sm font-semibold tracking-tight text-[var(--text)]">
                 Чат
               </h2>
-            </div>
-            <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">
-              <span className="font-medium text-[var(--text)]">{participantSummary}</span>
-              <span className="mx-1">·</span>
               {onlinePeerNames.length > 0 ? (
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                  {onlineSubline}
+                <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                  В сети
                 </span>
               ) : (
-                <span>{onlineSubline}</span>
+                <span className="text-[11px] text-[var(--muted)]">Оффлайн</span>
               )}
+            </div>
+            <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">
+              {participantSummary}
+              {onlinePeerNames.length > 0 ? ` · ${onlinePeerNames.join(", ")}` : ""}
             </p>
           </div>
           <button
             type="button"
             onClick={() => setDockOpen(false)}
-            className="shrink-0 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)]"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)]"
             aria-label="Свернуть чат"
           >
-            <IconChevronDown className="h-5 w-5" />
+            <IconChevronDown className="h-4 w-4" />
           </button>
         </div>
       ) : (
-        <div className="shrink-0 border-b border-[color:var(--border)] px-2 py-1.5">
-          <div className="flex flex-wrap items-end gap-x-2 gap-y-0.5">
-            <h2 className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+        <div className="shrink-0 border-b border-[color:var(--border)] bg-[var(--card)] px-3.5 py-2.5">
+          <div className="flex items-center gap-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-[var(--text)]">
               Чат
               {unreadChatCount > 0 ? (
                 <span
-                  className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+                  className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white dark:bg-blue-500"
                   aria-hidden
                 >
                   {unreadChatCount > 99 ? "99+" : unreadChatCount}
                 </span>
               ) : null}
             </h2>
-            <span className="text-[11px] text-[var(--muted)]">
-              {participantSummary} · {onlineSubline}
+            <span className="flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
+              {onlinePeerNames.length > 0 ? (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                  <span className="font-medium text-emerald-600 dark:text-emerald-400">{onlinePeerNames.join(", ")}</span>
+                </>
+              ) : (
+                <>{participantSummary} · Оффлайн</>
+              )}
             </span>
           </div>
         </div>
       )}
 
       {participants.length > 0 ? (
-        <div className="flex max-h-16 shrink-0 flex-wrap gap-1.5 overflow-y-auto border-b border-[color:var(--border)] px-2 py-1.5">
-          {participants.map((p) => (
-            <div
-              key={p.userId}
-              className="flex max-w-[11rem] items-center gap-1 rounded-full border border-[color:var(--border)]/80 bg-[color:var(--muted-bg)] px-1.5 py-0.5 text-[10px]"
-            >
-              <Avatar size="sm" name={p.name} seed={p.userId} />
-              <span className="min-w-0 truncate font-medium text-[var(--text)]">{p.name}</span>
-              <span className="shrink-0 text-[var(--muted)]">
-                {p.kind === "staff" ? "студия" : "исполн."}
-              </span>
-            </div>
-          ))}
+        <div className="flex max-h-14 shrink-0 items-center gap-1 overflow-y-auto border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]/50 px-3.5 py-1.5">
+          {participants.map((p) => {
+            const isOnline = onlinePeerNames.includes(p.name);
+            return (
+              <div
+                key={p.userId}
+                className="flex max-w-[10rem] items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[var(--card)] px-2 py-1 text-[10px] shadow-sm shadow-black/[0.02] dark:shadow-none"
+              >
+                <div className="relative shrink-0">
+                  <Avatar size="sm" name={p.name} seed={p.userId} />
+                  {isOnline ? (
+                    <span className="absolute -bottom-px -right-px h-2 w-2 rounded-full border border-[var(--card)] bg-emerald-500" />
+                  ) : null}
+                </div>
+                <span className="min-w-0 truncate font-medium text-[var(--text)]">{p.name}</span>
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
       {peerTypingNames.length > 0 ? (
         <div
-          className="shrink-0 border-b border-[color:var(--border)] bg-blue-500/[0.06] px-2.5 py-1.5 text-[12px] font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+          className="flex shrink-0 items-center gap-2 border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]/60 px-3.5 py-1.5 text-[12px] text-[var(--muted)]"
           role="status"
           aria-live="polite"
         >
-          {typingLine(peerTypingNames)}
+          <span className="flex gap-0.5">
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:0ms]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:150ms]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:300ms]" />
+          </span>
+          <span className="font-medium">{typingLine(peerTypingNames)}</span>
         </div>
       ) : null}
 
@@ -1575,36 +1610,50 @@ export function OrderChat({
       )}
 
       {chatLoadError && (
-        <p className="border-b border-red-200 px-3 py-2 text-xs text-red-700 dark:border-red-900/40 dark:text-red-300" role="alert">
+        <div className="flex items-center gap-2 border-b border-red-500/15 bg-red-500/5 px-3.5 py-2 text-[12px] font-medium text-red-600 dark:border-red-500/10 dark:bg-red-500/10 dark:text-red-400" role="alert">
+          <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
           {chatLoadError}
-        </p>
+        </div>
       )}
 
       <div
         ref={scrollRef}
         style={{ overflowAnchor: "none" } as CSSProperties}
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--bg)] px-1.5 pt-1 pb-0.5 [scrollbar-gutter:stable]",
+          "flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--bg)] px-3 pt-3 pb-1 [scrollbar-gutter:stable]",
           tallMessages ? "min-h-0" : "max-h-[min(28rem,60vh)]",
         )}
       >
         {loading ? (
-          <div className="flex flex-col gap-1.5 py-1" aria-hidden>
+          <div className="flex flex-1 flex-col justify-end gap-3 py-3" aria-hidden>
             <div className="flex justify-end">
-              <Skeleton className="h-10 w-[min(70%,18rem)] rounded-[16px]" />
+              <Skeleton className="h-11 w-[60%] max-w-[14rem] rounded-2xl" />
             </div>
-            <div className="flex justify-start gap-2">
-              <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
-              <Skeleton className="h-14 w-[min(70%,20rem)] rounded-[16px]" />
+            <div className="flex items-end justify-start gap-2.5">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+              <div className="flex flex-col gap-1">
+                <Skeleton className="h-4 w-24 rounded-lg" />
+                <Skeleton className="h-14 w-[min(65%,16rem)] rounded-2xl" />
+              </div>
             </div>
             <div className="flex justify-end">
-              <Skeleton className="h-9 w-[55%] max-w-xs rounded-[16px]" />
+              <Skeleton className="h-9 w-[45%] max-w-[12rem] rounded-2xl" />
+            </div>
+            <div className="flex items-end justify-start gap-2.5">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+              <Skeleton className="h-10 w-[50%] max-w-[13rem] rounded-2xl" />
             </div>
           </div>
         ) : messages.length === 0 ? (
-          <p className="py-2 text-center text-sm text-[var(--muted)]">
-            Пока нет сообщений. Напишите первым.
-          </p>
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--muted-bg)]">
+              <IconChatBubble className="h-6 w-6 text-[var(--muted)]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-[var(--text)]">Нет сообщений</p>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">Начните переписку по заказу</p>
+            </div>
+          </div>
         ) : (
           chatTimelineWithUnread.map((item, ti) => {
             if (item.kind === "unread") {
@@ -1612,13 +1661,13 @@ export function OrderChat({
                 <div
                   key={`unread-${ti}`}
                   ref={unreadDividerRef}
-                  className="flex items-center gap-2 py-1 vd-fade-in"
+                  className="flex items-center gap-3 py-2 vd-fade-in"
                 >
-                  <div className="h-px flex-1 bg-blue-500/35 dark:bg-blue-400/30" />
-                  <span className="shrink-0 rounded-full bg-blue-500/12 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
-                    Новые сообщения
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-500/40 dark:to-blue-400/30" />
+                  <span className="shrink-0 rounded-full border border-blue-500/20 bg-blue-500/8 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:border-blue-400/20 dark:text-blue-400">
+                    Новые
                   </span>
-                  <div className="h-px flex-1 bg-blue-500/35 dark:bg-blue-400/30" />
+                  <div className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/40 dark:to-blue-400/30" />
                 </div>
               );
             }
@@ -1626,10 +1675,10 @@ export function OrderChat({
               return (
                 <div
                   key={`day-${item.dayKey}-${ti}`}
-                  className="flex items-center gap-2 py-1 vd-fade-in"
+                  className="flex items-center gap-3 py-2 vd-fade-in"
                 >
                   <div className="h-px flex-1 bg-[color:var(--border)]" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  <span className="shrink-0 rounded-full bg-[color:var(--muted-bg)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     {item.label}
                   </span>
                   <div className="h-px flex-1 bg-[color:var(--border)]" />
@@ -1648,21 +1697,28 @@ export function OrderChat({
             return (
               <div
                 key={`${g.senderId}-${ti}-${last.id}`}
-                className="vd-message-enter pb-0"
+                className="vd-message-enter pb-1"
               >
                 {!g.mine ? (
-                  <span className="mb-0.5 block pl-0.5 text-[11px] font-semibold leading-tight text-[var(--text)]">
-                    {displayName}
-                  </span>
+                  <div className="mb-1 flex items-center gap-1.5 pl-[calc(2.5rem+0.5rem)]">
+                    <span className="text-[12px] font-semibold text-[var(--text)]">
+                      {displayName}
+                    </span>
+                    {roleLabel ? (
+                      <span className="rounded bg-[color:var(--muted-bg)] px-1.5 py-px text-[10px] font-medium text-[var(--muted)]">
+                        {roleLabel}
+                      </span>
+                    ) : null}
+                  </div>
                 ) : null}
                 <div
                   className={cn(
-                    "flex gap-1.5",
+                    "flex gap-2",
                     g.mine ? "flex-row-reverse items-end" : "flex-row items-end",
                   )}
                 >
                   {!g.mine ? (
-                    <div className="flex w-9 shrink-0 flex-col justify-end">
+                    <div className="flex w-10 shrink-0 flex-col justify-end">
                       <Avatar
                         size="md"
                         name={displayName}
@@ -1697,22 +1753,18 @@ export function OrderChat({
                     ))}
                   </div>
                 </div>
-                <div
-                  className={cn(
-                    "mt-0.5 flex text-[11px] tabular-nums leading-none text-[var(--muted)]",
-                    g.mine
-                      ? "justify-end pr-0.5"
-                      : "justify-start pl-[calc(2.25rem+0.375rem)]",
-                  )}
-                >
-                  {!g.mine && roleLabel ? (
-                    <>
-                      {roleLabel}
-                      {groupTime ? " · " : null}
-                    </>
-                  ) : null}
-                  {groupTime}
-                </div>
+                {groupTime ? (
+                  <div
+                    className={cn(
+                      "mt-1 flex text-[10px] font-medium tabular-nums leading-none tracking-wide text-[var(--muted)]/70",
+                      g.mine
+                        ? "justify-end pr-1"
+                        : "justify-start pl-[calc(2.5rem+0.5rem)]",
+                    )}
+                  >
+                    {groupTime}
+                  </div>
+                ) : null}
               </div>
             );
           })
@@ -1721,38 +1773,39 @@ export function OrderChat({
 
       <form
         onSubmit={onSend}
-        className="z-10 shrink-0 border-t border-[color:var(--border)] bg-[var(--card)] px-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] pt-1"
+        className="z-10 shrink-0 border-t border-[color:var(--border)] bg-[var(--card)] px-3 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))] pt-2"
       >
         <label className="sr-only" htmlFor={`order-chat-input-${orderId}`}>
           Сообщение
         </label>
         {replyTo ? (
-          <div className="mb-1.5 flex w-full items-center justify-between gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-2.5 py-1 text-left text-[11px] text-[var(--muted)]">
-            <p className="min-w-0 truncate">
-              <span className="font-medium text-[var(--text)]">Ответ: </span>
+          <div className="mb-2 flex w-full items-center justify-between gap-2 rounded-xl border-l-[3px] border-l-blue-500 bg-[color:var(--muted-bg)] px-3 py-1.5 text-left text-[12px] dark:border-l-blue-400">
+            <p className="min-w-0 truncate text-[var(--muted)]">
+              <span className="font-semibold text-[var(--text)]">Ответ </span>
               {getReplyPreview(replyTo) ?? "…"}
             </p>
             <button
               type="button"
               onClick={() => setReplyTo(null)}
-              className="shrink-0 rounded-lg px-2 py-0.5 text-[var(--text)] transition hover:bg-[color:var(--border)]"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--border)] hover:text-[var(--text)]"
               aria-label="Отменить ответ"
             >
-              ✕
+              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
             </button>
           </div>
         ) : null}
         {pendingAttachments.length > 0 ? (
-          <div className="mb-1.5 flex flex-wrap gap-1 px-0.5">
+          <div className="mb-2 flex flex-wrap gap-1.5">
             {pendingAttachments.map((a) => (
               <span
                 key={a.fileId}
-                className="inline-flex max-w-full items-center gap-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--muted-bg)] px-2 py-0.5 text-[11px] text-[var(--text)]"
+                className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[var(--bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--text)] shadow-sm shadow-black/[0.02] dark:shadow-none"
               >
+                <svg className="h-3 w-3 shrink-0 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>
                 <span className="min-w-0 truncate">{a.name}</span>
                 <button
                   type="button"
-                  className="shrink-0 rounded p-0.5 text-[var(--muted)] transition hover:bg-[color:var(--border)] hover:text-[var(--text)]"
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--border)] hover:text-[var(--text)]"
                   onClick={() =>
                     setPendingAttachments((prev) =>
                       prev.filter((x) => x.fileId !== a.fileId),
@@ -1760,7 +1813,7 @@ export function OrderChat({
                   }
                   aria-label="Убрать вложение"
                 >
-                  ×
+                  <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
                 </button>
               </span>
             ))}
@@ -1777,10 +1830,10 @@ export function OrderChat({
             if (f) void uploadChatFile(f);
           }}
         />
-        <div className="relative rounded-2xl border border-[color:var(--border)] bg-[var(--bg)] pl-10 pr-[3.25rem] py-2 dark:bg-[var(--muted-bg)]">
+        <div className="relative rounded-2xl border border-[color:var(--border)] bg-[var(--bg)] shadow-sm shadow-black/[0.03] dark:bg-[color:var(--muted-bg)] dark:shadow-black/10">
           <button
             type="button"
-            className="absolute bottom-1.5 left-1.5 z-[1] flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-[var(--muted)] transition-all duration-150 hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
+            className="absolute bottom-1.5 left-1.5 z-[1] flex h-9 w-9 touch-manipulation items-center justify-center rounded-xl text-[var(--muted)] transition-all duration-150 hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
             aria-label="Прикрепить файл"
             disabled={fileUploading || Boolean(chatLoadError)}
             onClick={() => fileInputRef.current?.click()}
@@ -1788,12 +1841,12 @@ export function OrderChat({
             {fileUploading ? (
               <Skeleton className="h-4 w-4 shrink-0 rounded-full bg-[color:var(--skeleton)]" />
             ) : (
-              <IconPaperclip className="h-[18px] w-[18px]" />
+              <IconPaperclip className="h-[17px] w-[17px]" />
             )}
           </button>
           {mentionQuery !== null && mentionCandidates.length > 0 ? (
             <ul
-              className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-36 overflow-y-auto rounded-xl border border-[color:var(--border)] bg-[var(--card)] py-1 shadow-lg shadow-black/10"
+              className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-40 overflow-y-auto rounded-xl border border-[color:var(--border)] bg-[var(--card)] py-1 shadow-xl shadow-black/15 dark:shadow-black/40"
               role="listbox"
               aria-label="Упоминание участника"
             >
@@ -1801,15 +1854,15 @@ export function OrderChat({
                 <li key={p.userId}>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--text)] hover:bg-[color:var(--muted-bg)]"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-[var(--text)] transition-colors hover:bg-[color:var(--muted-bg)]"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       insertMention(p.name);
                     }}
                   >
                     <Avatar size="sm" name={p.name} seed={p.userId} />
-                    <span className="min-w-0 truncate">{p.name}</span>
-                    <span className="ml-auto shrink-0 text-[11px] text-[var(--muted)]">
+                    <span className="min-w-0 truncate font-medium">{p.name}</span>
+                    <span className="ml-auto shrink-0 rounded bg-[color:var(--muted-bg)] px-1.5 py-px text-[10px] font-medium text-[var(--muted)]">
                       {p.kind === "staff" ? "студия" : "исполн."}
                     </span>
                   </button>
@@ -1852,10 +1905,10 @@ export function OrderChat({
                 onSend(e as unknown as React.FormEvent);
               }
             }}
-            placeholder="Сообщение"
+            placeholder="Сообщение…"
             rows={1}
             maxLength={8000}
-            className="max-h-[120px] min-h-[40px] w-full resize-none border-0 bg-transparent py-0.5 pr-0 text-[15px] leading-snug text-[var(--text)] outline-none ring-0 placeholder:text-[var(--muted)] focus:ring-0"
+            className="max-h-[120px] min-h-[40px] w-full resize-none border-0 bg-transparent py-1.5 pl-10 pr-[3rem] text-[14.5px] leading-relaxed text-[var(--text)] outline-none ring-0 placeholder:text-[var(--muted)]/60 focus:ring-0"
           />
           <button
             type="submit"
@@ -1865,13 +1918,13 @@ export function OrderChat({
               (!input.trim() && pendingAttachments.length === 0) ||
               !currentUserId
             }
-            className="absolute bottom-1.5 right-1.5 flex h-10 w-10 touch-manipulation items-center justify-center rounded-full bg-blue-600 text-white shadow-md transition duration-150 hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 dark:bg-blue-500 dark:hover:bg-blue-400"
+            className="absolute bottom-1.5 right-1.5 flex h-9 w-9 touch-manipulation items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md shadow-blue-900/20 transition-all duration-150 hover:from-blue-500 hover:to-blue-600 hover:shadow-lg hover:scale-[1.03] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/30"
             aria-label="Отправить"
           >
             {sendMutation.isPending ? (
-              <Skeleton className="h-4 w-4 shrink-0 rounded-full bg-[color:var(--skeleton)]" />
+              <Skeleton className="h-4 w-4 shrink-0 rounded-full bg-white/30" />
             ) : (
-              <IconSendArrow className="h-[18px] w-[18px]" />
+              <IconSendArrow className="h-[17px] w-[17px]" />
             )}
           </button>
         </div>

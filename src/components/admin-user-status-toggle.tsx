@@ -42,8 +42,8 @@ export function AdminUserStatusToggle({
       disabled={busy}
       className={`rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
         isBanned
-          ? "bg-zinc-900 text-white hover:bg-zinc-800"
-          : "border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-100"
+          ? "bg-[var(--text)] text-[var(--bg)] hover:opacity-90"
+          : "border border-[color:var(--border)] bg-transparent text-[var(--text)] hover:bg-[color:var(--muted-bg)]"
       }`}
     >
       {busy ? "…" : isBanned ? "Разблокировать" : "Заблокировать"}

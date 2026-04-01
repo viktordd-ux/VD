@@ -67,37 +67,37 @@ export function CreateExecutorDialog({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[250] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-zinc-200 bg-white p-5 shadow-xl sm:rounded-xl sm:p-6">
-            <h2 className="text-lg font-semibold">Новый исполнитель</h2>
+        <div className="fixed inset-0 z-[250] flex items-end justify-center bg-black/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-[color:var(--border)] bg-[var(--card)] p-5 shadow-xl shadow-black/10 dark:shadow-black/50 sm:rounded-xl sm:p-6">
+            <h2 className="text-lg font-semibold text-[var(--text)]">Новый исполнитель</h2>
             <form onSubmit={onSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="text-sm font-medium text-zinc-700">Имя</label>
+                <label className="text-sm font-medium text-[var(--muted)]">Имя</label>
                 <input
                   name="name"
                   required
-                  className="mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base sm:min-h-0 sm:py-2 sm:text-sm"
+                  className="mt-1 w-full min-h-11 rounded-md border border-[color:var(--border)] bg-[var(--bg)] px-3 py-2.5 text-base text-[var(--text)] placeholder:text-[var(--muted)] sm:min-h-0 sm:py-2 sm:text-sm"
                   placeholder="Иван Иванов"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-zinc-700">Эл. почта (логин)</label>
+                <label className="text-sm font-medium text-[var(--muted)]">Эл. почта (логин)</label>
                 <input
                   name="email"
                   type="email"
                   required
                   autoComplete="email"
-                  className="mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base sm:min-h-0 sm:py-2 sm:text-sm"
+                  className="mt-1 w-full min-h-11 rounded-md border border-[color:var(--border)] bg-[var(--bg)] px-3 py-2.5 text-base text-[var(--text)] placeholder:text-[var(--muted)] sm:min-h-0 sm:py-2 sm:text-sm"
                   placeholder="name@студия.ru"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-zinc-700">
+                <label className="text-sm font-medium text-[var(--muted)]">
                   Навыки (теги через запятую)
                 </label>
                 <input
                   name="skills"
-                  className="mt-1 w-full min-h-11 rounded-md border border-zinc-300 px-3 py-2.5 text-base sm:min-h-0 sm:py-2 sm:text-sm"
+                  className="mt-1 w-full min-h-11 rounded-md border border-[color:var(--border)] bg-[var(--bg)] px-3 py-2.5 text-base text-[var(--text)] placeholder:text-[var(--muted)] sm:min-h-0 sm:py-2 sm:text-sm"
                   placeholder="react, figma"
                 />
               </div>
@@ -105,14 +105,14 @@ export function CreateExecutorDialog({
                 <button
                   type="submit"
                   disabled={busy}
-                  className="min-h-11 w-full rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 sm:w-auto sm:py-2"
+                  className="min-h-11 w-full rounded-md bg-[var(--text)] px-4 py-2.5 text-sm font-medium text-[var(--bg)] transition hover:opacity-90 disabled:opacity-60 sm:w-auto sm:py-2"
                 >
                   {busy ? "…" : "Создать"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="min-h-11 w-full rounded-md border border-zinc-300 bg-transparent px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-100 sm:w-auto sm:py-2"
+                  className="min-h-11 w-full rounded-md border border-[color:var(--border)] bg-transparent px-4 py-2.5 text-sm text-[var(--text)] transition hover:bg-[color:var(--muted-bg)] sm:w-auto sm:py-2"
                 >
                   Отмена
                 </button>
