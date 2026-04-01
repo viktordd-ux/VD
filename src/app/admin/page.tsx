@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
-import { leadIsActive, orderIsActive } from "@/lib/active-scope";
-import { buildDailyProfitSeries } from "@/lib/daily-profit";
-import { getAccessibleOrganizationIds } from "@/lib/org-scope";
+import { loadAdminDashboardData } from "./admin-dashboard-data";
 import { ProfitAreaChartLazy } from "@/components/charts-lazy";
 import { Card } from "@/components/ui/card";
 
@@ -16,13 +13,12 @@ const rub = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 0,
 });
 
-function rangeStart(period: "day" | "week" | "month"): Date {
-  const end = new Date();
-  const start = new Date(end);
-  if (period === "day") start.setHours(0, 0, 0, 0);
-  else if (period === "week") start.setDate(start.getDate() - 7);
-  else start.setMonth(start.getMonth() - 1);
-  return start;
+function formatRub(n: number): string {
+  try {
+    return rub.format(Number.isFinite(n) ? n : 0);
+  } catch {
+    return `${Math.round(Number.isFinite(n) ? n : 0)} ₽`;
+  }
 }
 
 export default async function AdminDashboard() {
@@ -31,69 +27,54 @@ export default async function AdminDashboard() {
   if (session.user.role !== "admin") {
     redirect(session.user.role === "executor" ? "/executor" : "/login");
   }
-  const orgIds = await getAccessibleOrganizationIds(session.user.id);
-  const orgScope =
-    orgIds.length === 0
-      ? { id: { in: [] as string[] } }
-      : { organizationId: { in: orgIds } };
 
-  const end = new Date();
-  /** Последовательно: при connection_limit=1 (Supabase pooler + Vercel) Promise.all даёт P2024. */
-  const newLeads = await prisma.lead.count({
-    where: { status: "NEW", ...leadIsActive },
-  });
-  const activeOrders = await prisma.order.count({
-    where: { ...orderIsActive, ...orgScope, status: { not: "DONE" } },
-  });
-  const overdue = await prisma.order.count({
-    where: {
-      ...orderIsActive,
-      ...orgScope,
-      deadline: { lt: new Date() },
-      status: { not: "DONE" },
-    },
-  });
-  const profitSum = await prisma.order.aggregate({
-    where: { ...orderIsActive, ...orgScope },
-    _sum: { profit: true },
-  });
-  const dayP = await prisma.order.aggregate({
-    where: {
-      ...orderIsActive,
-      ...orgScope,
-      status: "DONE",
-      updatedAt: { gte: rangeStart("day"), lte: end },
-    },
-    _sum: { profit: true },
-  });
-  const weekP = await prisma.order.aggregate({
-    where: {
-      ...orderIsActive,
-      ...orgScope,
-      status: "DONE",
-      updatedAt: { gte: rangeStart("week"), lte: end },
-    },
-    _sum: { profit: true },
-  });
-  const monthP = await prisma.order.aggregate({
-    where: {
-      ...orderIsActive,
-      ...orgScope,
-      status: "DONE",
-      updatedAt: { gte: rangeStart("month"), lte: end },
-    },
-    _sum: { profit: true },
-  });
-  const series30 = await buildDailyProfitSeries(30, orgIds);
-  const recent = await prisma.order.findMany({
-    where: { ...orderIsActive, ...orgScope },
-    include: { executor: { select: { name: true } } },
-    orderBy: { updatedAt: "desc" },
-    take: 20,
-  });
+  const result = await loadAdminDashboardData(session.user.id);
+
+  if (!result.ok) {
+    return (
+      <div className="space-y-6 animate-in fade-in-0 duration-300">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Дашборд</h1>
+        <Card className="border-amber-500/30 bg-amber-500/[0.06] p-6 dark:bg-amber-950/30">
+          <p className="font-medium text-[var(--text)]">Не удалось загрузить сводку</p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+            Чаще всего это временная проблема с базой данных или незавершённые миграции на сервере.
+            Раздел «Заказы» может открываться отдельно — попробуйте перейти ниже.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/admin/orders"
+              className="rounded-lg bg-[var(--text)] px-4 py-2 text-sm font-medium text-[var(--bg)] transition hover:opacity-90"
+            >
+              Перейти к заказам
+            </Link>
+            <Link
+              href="/admin"
+              className="rounded-lg border border-[color:var(--border)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:bg-[color:var(--muted-bg)]"
+            >
+              Обновить страницу
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  const {
+    newLeads,
+    activeOrders,
+    overdue,
+    profitSum,
+    dayProfit,
+    weekProfit,
+    monthProfit,
+    series30,
+    recent,
+  } = result.data;
 
   const lowMarginOrders = recent
-    .filter((o) => Number(o.budgetClient) > 0 && Number(o.profit) / Number(o.budgetClient) < 0.5)
+    .filter(
+      (o) => Number(o.budgetClient) > 0 && Number(o.profit) / Number(o.budgetClient) < 0.5,
+    )
     .slice(0, 3);
 
   return (
@@ -110,7 +91,9 @@ export default async function AdminDashboard() {
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Активные заказы
           </p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--text)]">{activeOrders}</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--text)]">
+            {activeOrders}
+          </p>
         </Card>
         <Card className="p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
@@ -125,7 +108,7 @@ export default async function AdminDashboard() {
             Прибыль (всего)
           </p>
           <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--text)]">
-            {rub.format(Number(profitSum._sum.profit ?? 0))}
+            {formatRub(profitSum)}
           </p>
         </Card>
       </div>
@@ -138,19 +121,19 @@ export default async function AdminDashboard() {
           <Card className="p-5">
             <p className="text-xs text-[var(--muted)]">Сегодня</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--text)]">
-              {rub.format(Number(dayP._sum.profit ?? 0))}
+              {formatRub(dayProfit)}
             </p>
           </Card>
           <Card className="p-5">
             <p className="text-xs text-[var(--muted)]">7 дней</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--text)]">
-              {rub.format(Number(weekP._sum.profit ?? 0))}
+              {formatRub(weekProfit)}
             </p>
           </Card>
           <Card className="p-5">
             <p className="text-xs text-[var(--muted)]">30 дней</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--text)]">
-              {rub.format(Number(monthP._sum.profit ?? 0))}
+              {formatRub(monthProfit)}
             </p>
           </Card>
         </div>
