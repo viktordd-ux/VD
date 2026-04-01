@@ -6,7 +6,6 @@ import type {
   CSSProperties,
   MouseEvent as ReactMouseEvent,
   ReactNode,
-  TouchEvent as ReactTouchEvent,
 } from "react";
 import {
   memo,
@@ -16,12 +15,12 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { postFormDataWithProgress } from "@/lib/upload-form-xhr";
 import { mergeAttachmentsByFileId, type ChatAttachment } from "@/lib/chat-attachments";
-import { CHAT_REACTION_EMOJIS } from "@/lib/chat-reaction-emojis";
 import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/toast-provider";
@@ -52,6 +51,7 @@ import {
 } from "@/lib/nav-badges-client";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 import { ChatAttachmentList } from "@/components/order-chat/chat-attachment-list";
+import { MessageContextMenu } from "@/components/order-chat/message-context-menu";
 
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
@@ -200,36 +200,6 @@ function bubbleRadiusClass(i: number, n: number, mine: boolean): string {
   return "rounded-2xl rounded-l-[5px]";
 }
 
-function IconReplyAction({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <polyline points="9 17 4 12 9 7" />
-      <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-    </svg>
-  );
-}
-
-function IconSmilePlus({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="9" cy="12" r="8" />
-      <path d="M15 5v4M13 7h4" />
-      <path d="M6.5 13.5s1 1.5 2.5 1.5 2.5-1.5 2.5-1.5" />
-      <circle cx="7" cy="10.5" r=".5" fill="currentColor" stroke="none" />
-      <circle cx="11" cy="10.5" r=".5" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function IconCopyAction({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-
 function typingLine(names: string[]): string {
   if (names.length === 0) return "";
   if (names.length === 1) return `${names[0]} печатает…`;
@@ -276,130 +246,165 @@ function applyRealtimeReaction(
   return { ...msg, reactions: list.length ? list : undefined };
 }
 
+function useCoarsePointer() {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const mq = window.matchMedia("(pointer: coarse)");
+      mq.addEventListener("change", onStoreChange);
+      return () => mq.removeEventListener("change", onStoreChange);
+    },
+    () => window.matchMedia("(pointer: coarse)").matches,
+    () => false,
+  );
+}
+
 const MessageBubble = memo(function MessageBubble({
   m,
   mine,
   replyPreview,
   radiusClass,
-  onReply,
-  onCopy,
-  currentUserId,
   onToggleReaction,
   onRetrySend,
-  active,
-  onBubblePress,
-  onCloseActions,
+  isMenuTarget,
+  coarsePointer,
+  onOpenMenu,
+  currentUserId,
 }: {
   m: MessageDto;
   mine: boolean;
   replyPreview: string | null;
   radiusClass: string;
-  onReply: () => void;
-  onCopy: () => void;
   currentUserId?: string;
   onToggleReaction: (emoji: string) => void;
   onRetrySend?: () => void;
-  active: boolean;
-  onBubblePress: () => void;
-  onCloseActions: () => void;
+  isMenuTarget: boolean;
+  coarsePointer: boolean;
+  onOpenMenu: (rect: DOMRect) => void;
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const onOpenMenuRef = useRef(onOpenMenu);
+  onOpenMenuRef.current = onOpenMenu;
   const suppressClickRef = useRef(false);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  useEffect(() => {
-    if (!pickerOpen) return;
-    function onDoc(e: Event) {
-      if (!pickerRef.current?.contains(e.target as Node)) setPickerOpen(false);
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current != null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [pickerOpen]);
+    longPressStartRef.current = null;
+  }, []);
 
   useEffect(() => {
-    if (!active) setPickerOpen(false);
-  }, [active]);
+    if (!coarsePointer) return;
+    const el = bubbleRef.current;
+    if (!el) return;
+    const LONG_MS = 400;
+    const MOVE = 12;
 
-  useEffect(() => {
-    if (!active) return;
-    function onDoc(e: Event) {
-      const el = rootRef.current;
-      if (!el) return;
-      if (el.contains(e.target as Node)) return;
-      onCloseActions();
+    function onTouchStart(e: TouchEvent) {
+      const t = e.target as HTMLElement;
+      if (t.closest("button, a")) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      longPressStartRef.current = { x: touch.clientX, y: touch.clientY };
+      longPressTimerRef.current = window.setTimeout(() => {
+        longPressTimerRef.current = null;
+        longPressStartRef.current = null;
+        suppressClickRef.current = true;
+        const node = bubbleRef.current;
+        if (!node) return;
+        onOpenMenuRef.current(node.getBoundingClientRect());
+      }, LONG_MS);
     }
-    document.addEventListener("mousedown", onDoc, true);
-    document.addEventListener("touchstart", onDoc, { passive: true, capture: true });
+
+    function onTouchMove(e: TouchEvent) {
+      if (!longPressStartRef.current) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dx = Math.abs(touch.clientX - longPressStartRef.current.x);
+      const dy = Math.abs(touch.clientY - longPressStartRef.current.y);
+      if (dx > MOVE || dy > MOVE) clearLongPress();
+    }
+
+    function onTouchEnd() {
+      clearLongPress();
+    }
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: true });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+
     return () => {
-      document.removeEventListener("mousedown", onDoc, true);
-      document.removeEventListener("touchstart", onDoc, true);
+      clearLongPress();
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [active, onCloseActions]);
+  }, [coarsePointer, clearLongPress]);
+
+  function handleBubbleClick(e: ReactMouseEvent<HTMLDivElement>) {
+    if (coarsePointer) {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      return;
+    }
+    e.stopPropagation();
+    const t = e.target as HTMLElement;
+    if (t.closest("button, a")) return;
+    const el = bubbleRef.current;
+    if (!el) return;
+    onOpenMenu(el.getBoundingClientRect());
+  }
 
   const reactions = m.reactions ?? [];
   const bodyText = m.text.trim();
   const hasAttachments = Boolean(m.attachments?.length);
   const sendStatus = m.clientSendStatus;
 
-  function handleBubbleTouchStart(e: ReactTouchEvent<HTMLDivElement>) {
-    const t = e.target as HTMLElement;
-    if (t.closest("button, a")) return;
-    suppressClickRef.current = true;
-    onBubblePress();
-  }
-
-  function handleBubbleClick(e: ReactMouseEvent<HTMLDivElement>) {
-    e.stopPropagation();
-    const t = e.target as HTMLElement;
-    if (t.closest("button, a")) return;
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
-    onBubblePress();
-  }
-
   return (
     <div
-      ref={rootRef}
-      data-message-actions-root
       className={cn(
-        "relative w-full max-w-[min(92%,min(28rem,100%))]",
+        "w-full max-w-[min(92%,min(28rem,100%))]",
         mine ? "ml-auto" : "mr-auto",
       )}
     >
-      <div className="relative">
-        <div
-          tabIndex={0}
-          aria-expanded={active}
-          aria-label="Сообщение — открыть действия"
-          onClick={handleBubbleClick}
-          onTouchStart={handleBubbleTouchStart}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onBubblePress();
-            }
-          }}
-          className={cn(
-            "relative min-h-[44px] cursor-pointer touch-manipulation rounded-[inherit] outline-none transition-[box-shadow] duration-150 ease-out",
-            active
-              ? mine
-                ? "ring-2 ring-white/40 ring-offset-2 ring-offset-blue-700/50"
-                : "ring-2 ring-blue-500/35 ring-offset-2 ring-offset-[var(--card)]"
-              : "focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2",
-          )}
-        >
-          <div
-            className={cn(
-              "px-2.5 py-1.5 text-[13.5px] leading-snug transition-[transform,box-shadow] duration-200 ease-out",
-              radiusClass,
-              mine
-                ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md shadow-blue-900/25 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/40"
-                : "border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm shadow-black/[0.04] dark:shadow-black/20",
-            )}
-          >
+      <div
+        ref={bubbleRef}
+        tabIndex={0}
+        aria-haspopup="menu"
+        aria-expanded={isMenuTarget}
+        aria-label="Сообщение — открыть действия"
+        onClick={handleBubbleClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            const el = bubbleRef.current;
+            if (!el) return;
+            onOpenMenu(el.getBoundingClientRect());
+          }
+        }}
+        className={cn(
+          "relative min-h-[44px] w-full cursor-pointer touch-manipulation outline-none",
+          coarsePointer && "select-none",
+          isMenuTarget
+            ? mine
+              ? "ring-2 ring-white/35 ring-offset-2 ring-offset-blue-700/50"
+              : "ring-2 ring-blue-500/35 ring-offset-2 ring-offset-[var(--card)]"
+            : "focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2",
+          radiusClass,
+          mine
+            ? "bg-gradient-to-br from-blue-600 to-blue-700 px-2.5 py-1.5 text-white shadow-md shadow-blue-900/25 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/40"
+            : "border border-[color:var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-[var(--text)] shadow-sm shadow-black/[0.04] dark:shadow-black/20",
+          "text-[13.5px] leading-snug",
+        )}
+      >
         {m.replyToId && replyPreview ? (
           <div
             className={cn(
@@ -412,7 +417,9 @@ const MessageBubble = memo(function MessageBubble({
             {replyPreview}
           </div>
         ) : m.replyToId ? (
-          <p className="mb-1.5 text-xs italic text-[var(--muted)]">Сообщение недоступно</p>
+          <p className="mb-1.5 text-xs italic text-[var(--muted)]">
+            Сообщение недоступно
+          </p>
         ) : null}
         {bodyText ? (
           <p className="whitespace-pre-wrap break-words">
@@ -460,117 +467,51 @@ const MessageBubble = memo(function MessageBubble({
             ) : null}
           </div>
         ) : null}
-          </div>
-        </div>
-        {active ? (
-          <div
-            className={cn(
-              "vd-message-actions-enter pointer-events-auto absolute left-0 right-0 top-full z-30 mt-1 flex flex-wrap items-center gap-0.5 rounded-2xl border bg-[var(--card)] px-1 py-1 shadow-lg shadow-black/10 dark:shadow-black/30",
-              mine
-                ? "justify-end border-white/20"
-                : "justify-start border-[color:var(--border)]",
-            )}
-            onMouseDown={(e) => e.stopPropagation()}
-            role="toolbar"
-            aria-label="Действия с сообщением"
-          >
-            <button
-              type="button"
-              title="Ответить"
-              onClick={onReply}
-              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96]"
-            >
-              <IconReplyAction className="h-4 w-4" />
-            </button>
-            <div className="relative" ref={pickerRef}>
-              <button
-                type="button"
-                title="Реакция"
-                onClick={() => setPickerOpen((v) => !v)}
-                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96]"
-              >
-                <IconSmilePlus className="h-4 w-4" />
-              </button>
-              {pickerOpen ? (
-                <div
-                  className={cn(
-                    "absolute z-40 mt-1.5 flex max-w-[min(100vw-2rem,14rem)] flex-wrap gap-0.5 rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-1.5 shadow-xl shadow-black/15 dark:shadow-black/40 vd-fade-in",
-                    mine ? "bottom-full right-0 mb-0" : "left-0 top-full",
-                  )}
-                >
-                  {CHAT_REACTION_EMOJIS.map((em) => (
-                    <button
-                      key={em}
-                      type="button"
-                      className="flex h-10 w-10 items-center justify-center rounded-lg text-base transition-all hover:bg-[color:var(--muted-bg)] hover:scale-110 active:scale-95"
-                      onClick={() => {
-                        onToggleReaction(em);
-                        setPickerOpen(false);
-                      }}
-                    >
-                      {em}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              title="Копировать"
-              onClick={onCopy}
-              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96]"
-            >
-              <IconCopyAction className="h-4 w-4" />
-            </button>
-          </div>
-        ) : null}
       </div>
-      {reactions.length > 0
-        ? (
-            <div
-              className={cn(
-                "mt-1 flex flex-wrap gap-1",
-                mine ? "justify-end" : "justify-start",
-              )}
-            >
-              {reactions.map((r) => {
-                const mineR =
-                  currentUserId !== undefined &&
-                  r.userIds.includes(currentUserId);
-                return (
-                  <button
-                    key={r.emoji}
-                    type="button"
-                    title={mineR ? "Снять реакцию" : "Добавить такую же"}
-                    onClick={() => onToggleReaction(r.emoji)}
+      {reactions.length > 0 ? (
+        <div
+          className={cn(
+            "mt-1 flex flex-wrap gap-1",
+            mine ? "justify-end" : "justify-start",
+          )}
+        >
+          {reactions.map((r) => {
+            const mineR =
+              currentUserId !== undefined &&
+              r.userIds.includes(currentUserId);
+            return (
+              <button
+                key={r.emoji}
+                type="button"
+                title={mineR ? "Снять реакцию" : "Добавить такую же"}
+                onClick={() => onToggleReaction(r.emoji)}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[13px] leading-none transition-transform duration-150 ease-out active:scale-95",
+                  mine
+                    ? mineR
+                      ? "border-white/30 bg-white/20 text-white shadow-sm"
+                      : "border-white/15 bg-white/5 text-white/90"
+                    : mineR
+                      ? "border-blue-500/40 bg-blue-500/10 text-[var(--text)] shadow-sm dark:bg-blue-500/15"
+                      : "border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm shadow-black/[0.02] dark:shadow-none",
+                )}
+              >
+                <span>{r.emoji}</span>
+                {r.userIds.length > 1 ? (
+                  <span
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[13px] leading-none transition-all duration-150 ease-out hover:scale-105 active:scale-95",
-                      mine
-                        ? mineR
-                          ? "border-white/30 bg-white/20 text-white shadow-sm"
-                          : "border-white/15 bg-white/5 text-white/90"
-                        : mineR
-                          ? "border-blue-500/40 bg-blue-500/10 text-[var(--text)] shadow-sm dark:bg-blue-500/15"
-                          : "border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm shadow-black/[0.02] dark:shadow-none",
+                      "text-[10px] font-medium tabular-nums",
+                      mine ? "text-blue-100/80" : "text-[var(--muted)]",
                     )}
                   >
-                    <span>{r.emoji}</span>
-                    {r.userIds.length > 1 ? (
-                      <span
-                        className={cn(
-                          "text-[10px] font-medium tabular-nums",
-                          mine ? "text-blue-100/80" : "text-[var(--muted)]",
-                        )}
-                      >
-                        {r.userIds.length}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          )
-        : null}
+                    {r.userIds.length}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 });
@@ -772,8 +713,22 @@ export function OrderChat({
   const [replyTo, setReplyTo] = useState<MessageDto | null>(null);
   /** ISO из GET read-state — для разделителя «Новые сообщения». */
   const [chatReadAtIso, setChatReadAtIso] = useState<string | null>(null);
-  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
-  const closeMessageActions = useCallback(() => setActiveMessageId(null), []);
+  const [messageMenu, setMessageMenu] = useState<{
+    messageId: string;
+    rect: DOMRect;
+  } | null>(null);
+  const closeMessageMenu = useCallback(() => setMessageMenu(null), []);
+  const coarsePointer = useCoarsePointer();
+
+  const openMessageMenu = useCallback(
+    (messageId: string, rect: DOMRect) => {
+      setMessageMenu((prev) => {
+        if (prev?.messageId === messageId) return null;
+        return { messageId, rect };
+      });
+    },
+    [],
+  );
 
   const currentUserId = session?.user?.id;
   sessionUserIdRef.current = currentUserId;
@@ -835,13 +790,27 @@ export function OrderChat({
   }, []);
 
   useEffect(() => {
-    if (!activeMessageId) return;
+    if (!messageMenu) return;
     function onEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") setActiveMessageId(null);
+      if (e.key === "Escape") setMessageMenu(null);
     }
     window.addEventListener("keydown", onEsc);
     return () => window.removeEventListener("keydown", onEsc);
-  }, [activeMessageId]);
+  }, [messageMenu]);
+
+  useEffect(() => {
+    if (!messageMenu) return;
+    function onScroll() {
+      setMessageMenu(null);
+    }
+    const el = scrollRef.current;
+    el?.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      el?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [messageMenu]);
 
   const onlineSubline = useMemo(() => {
     void presenceTick;
@@ -2176,27 +2145,9 @@ export function OrderChat({
                               replyPreview={getReplyPreview(
                                 m.replyToId ? messageById.get(m.replyToId) : undefined,
                               )}
-                              active={activeMessageId === m.id}
-                              onBubblePress={() =>
-                                setActiveMessageId((prev) =>
-                                  prev === m.id ? null : m.id,
-                                )
-                              }
-                              onCloseActions={closeMessageActions}
-                              onReply={() => {
-                                setActiveMessageId(null);
-                                setReplyTo(m);
-                              }}
-                              onCopy={() => {
-                                setActiveMessageId(null);
-                                const t = m.text.trim();
-                                const names = m.attachments?.map((a) => a.name).join(", ");
-                                const line =
-                                  t || (names ? `Вложения: ${names}` : "");
-                                void navigator.clipboard.writeText(line).then(() => {
-                                  toast.success("Скопировано");
-                                });
-                              }}
+                              isMenuTarget={messageMenu?.messageId === m.id}
+                              coarsePointer={coarsePointer}
+                              onOpenMenu={(rect) => openMessageMenu(m.id, rect)}
                               currentUserId={currentUserId}
                               onToggleReaction={(emoji) => toggleReaction(m.id, emoji)}
                               onRetrySend={
@@ -2241,6 +2192,34 @@ export function OrderChat({
             </div>
           )}
         </div>
+
+        {messageMenu ? (
+          <MessageContextMenu
+            open
+            anchorRect={messageMenu.rect}
+            mine={
+              messageById.get(messageMenu.messageId)?.senderId === currentUserId
+            }
+            onClose={closeMessageMenu}
+            onReply={() => {
+              const msg = messageById.get(messageMenu.messageId);
+              if (msg) setReplyTo(msg);
+            }}
+            onCopy={() => {
+              const msg = messageById.get(messageMenu.messageId);
+              if (!msg) return;
+              const t = msg.text.trim();
+              const names = msg.attachments?.map((a) => a.name).join(", ");
+              const line = t || (names ? `Вложения: ${names}` : "");
+              void navigator.clipboard.writeText(line).then(() => {
+                toast.success("Скопировано");
+              });
+            }}
+            onToggleReaction={(emoji) =>
+              toggleReaction(messageMenu.messageId, emoji)
+            }
+          />
+        ) : null}
 
       <form
         onSubmit={onSend}

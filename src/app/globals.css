@@ -204,13 +204,18 @@ html {
   animation: vd-message-actions-in 120ms ease-out forwards;
 }
 
+.vd-message-context-menu-enter {
+  animation: vd-message-actions-in 120ms ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vd-message-enter,
   .vd-fade-in,
   .vd-status-badge-enter,
   .vd-page-enter,
   .vd-nav-badge-in,
-  .vd-message-actions-enter {
+  .vd-message-actions-enter,
+  .vd-message-context-menu-enter {
     animation-duration: 0.01ms;
     animation-iteration-count: 1;
   }
