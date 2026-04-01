@@ -15,7 +15,9 @@ type Props = { params: Promise<{ id: string }> };
 export default async function ExecutorOrderPage({ params }: Props) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "executor") redirect("/admin");
+  if (session.user.role !== "executor") {
+    redirect(session.user.role === "admin" ? "/admin" : "/login");
+  }
   if (session.user.onboarded !== true) redirect("/executor/onboarding");
 
   const { id } = await params;

@@ -13,7 +13,9 @@ export const dynamic = "force-dynamic";
 export default async function UsersPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  if (session.user.role !== "admin") redirect("/executor");
+  if (session.user.role !== "admin") {
+    redirect(session.user.role === "executor" ? "/executor" : "/login");
+  }
   const orgIds = await getAccessibleOrganizationIds(session.user.id);
 
   const users = await prisma.user.findMany({

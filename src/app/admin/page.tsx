@@ -28,7 +28,9 @@ function rangeStart(period: "day" | "week" | "month"): Date {
 export default async function AdminDashboard() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  if (session.user.role !== "admin") redirect("/executor");
+  if (session.user.role !== "admin") {
+    redirect(session.user.role === "executor" ? "/executor" : "/login");
+  }
   const orgIds = await getAccessibleOrganizationIds(session.user.id);
   const orgScope =
     orgIds.length === 0

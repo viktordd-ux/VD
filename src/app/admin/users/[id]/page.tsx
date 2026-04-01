@@ -30,7 +30,9 @@ type Props = { params: Promise<{ id: string }> };
 export default async function AdminExecutorDetailPage({ params }: Props) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  if (session.user.role !== "admin") redirect("/executor");
+  if (session.user.role !== "admin") {
+    redirect(session.user.role === "executor" ? "/executor" : "/login");
+  }
   const orgIds = await getAccessibleOrganizationIds(session.user.id);
   const orgScope =
     orgIds.length === 0

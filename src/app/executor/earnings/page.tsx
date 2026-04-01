@@ -16,7 +16,9 @@ const rub = new Intl.NumberFormat("ru-RU", {
 export default async function ExecutorEarningsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "executor") redirect("/admin");
+  if (session.user.role !== "executor") {
+    redirect(session.user.role === "admin" ? "/admin" : "/login");
+  }
   if (session.user.onboarded !== true) redirect("/executor/onboarding");
 
   const executorId = session.user.id;

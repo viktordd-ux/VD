@@ -7,7 +7,9 @@ import { ExecutorHomeClient } from "./executor-home-client";
 export default async function ExecutorHome() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "executor") redirect("/admin");
+  if (session.user.role !== "executor") {
+    redirect(session.user.role === "admin" ? "/admin" : "/login");
+  }
   if (session.user.onboarded !== true) redirect("/executor/onboarding");
 
   return (

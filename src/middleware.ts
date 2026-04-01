@@ -70,6 +70,19 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
+  /**
+   * Сессия без роли (старый/битый JWT): иначе /admin ↔ /executor зацикливается и падает с server-side error.
+   */
+  if (role !== "admin" && role !== "executor") {
+    if (pathname.startsWith("/api") && !isApiAuth) {
+      return NextResponse.json({ error: "Требуется войти снова" }, { status: 401 });
+    }
+    if (pathname === "/login") {
+      return NextResponse.next();
+    }
+    return NextResponse.redirect(new URL("/login", req.nextUrl));
+  }
+
   if (executorNeedsOnboarding) {
     if (pathname.startsWith("/executor/onboarding")) {
       return NextResponse.next();

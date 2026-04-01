@@ -38,7 +38,9 @@ export default async function FinancePage({
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  if (session.user.role !== "admin") redirect("/executor");
+  if (session.user.role !== "admin") {
+    redirect(session.user.role === "executor" ? "/executor" : "/login");
+  }
   const orgIds = await getAccessibleOrganizationIds(session.user.id);
   const orgScope: Prisma.OrderWhereInput =
     orgIds.length === 0
