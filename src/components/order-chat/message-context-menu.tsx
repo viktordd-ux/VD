@@ -1,6 +1,5 @@
 "use client";
 
-import { CHAT_REACTION_EMOJIS } from "@/lib/chat-reaction-emojis";
 import { cn } from "@/lib/cn";
 import {
   useCallback,
@@ -43,7 +42,6 @@ export type MessageContextMenuProps = {
   onClose: () => void;
   onReply: () => void;
   onCopy: () => void;
-  onToggleReaction: (emoji: string) => void;
   onDelete?: () => void;
 };
 
@@ -54,16 +52,10 @@ export function MessageContextMenu({
   onClose,
   onReply,
   onCopy,
-  onToggleReaction,
   onDelete,
 }: MessageContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [reactionOpen, setReactionOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
-
-  useEffect(() => {
-    if (!open) setReactionOpen(false);
-  }, [open]);
 
   const reposition = useCallback(() => {
     const el = menuRef.current;
@@ -77,7 +69,7 @@ export function MessageContextMenu({
   useLayoutEffect(() => {
     if (!open || !anchorRect) return;
     reposition();
-  }, [open, anchorRect, reactionOpen, reposition]);
+  }, [open, anchorRect, reposition]);
 
   useEffect(() => {
     if (!open) return;
@@ -127,37 +119,6 @@ export function MessageContextMenu({
         >
           Ответить
         </button>
-        <div className="border-t border-[color:var(--border)]/80">
-          <button
-            type="button"
-            role="menuitem"
-            aria-expanded={reactionOpen}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-[15px] leading-tight text-[var(--text)] active:bg-[color:var(--muted-bg)]"
-            onClick={() => setReactionOpen((v) => !v)}
-          >
-            <span>Реакция</span>
-            <span className="text-[var(--muted)]" aria-hidden>
-              {reactionOpen ? "▾" : "▸"}
-            </span>
-          </button>
-          {reactionOpen ? (
-            <div className="flex flex-wrap gap-1 border-t border-[color:var(--border)]/60 px-2 pb-2 pt-1.5">
-              {CHAT_REACTION_EMOJIS.map((em) => (
-                <button
-                  key={em}
-                  type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-lg active:bg-[color:var(--muted-bg)]"
-                  onClick={() => {
-                    onToggleReaction(em);
-                    onClose();
-                  }}
-                >
-                  {em}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
         <button
           type="button"
           role="menuitem"

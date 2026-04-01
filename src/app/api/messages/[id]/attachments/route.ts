@@ -69,7 +69,6 @@ export async function POST(req: Request, { params }: Params) {
     data: { attachments: toPrismaAttachmentsJson(merged) },
     include: {
       sender: { select: { name: true } },
-      reactions: { select: { userId: true, emoji: true } },
     },
   });
 

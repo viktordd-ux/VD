@@ -3,12 +3,6 @@ import type { ChatAttachment } from "@/lib/chat-attachments";
 import { parseChatAttachmentsJson } from "@/lib/chat-attachments";
 
 /** createdAt — всегда ISO 8601 из сервера (БД). */
-export type MessageReactionAgg = {
-  emoji: string;
-  userIds: string[];
-};
-
-/** createdAt — всегда ISO 8601 из сервера (БД). */
 export type MessageDto = {
   id: string;
   orderId: string;
@@ -20,22 +14,9 @@ export type MessageDto = {
   /** Имя отправителя (для группового чата). */
   senderName?: string;
   attachments?: ChatAttachment[];
-  reactions?: MessageReactionAgg[];
   /** Только клиент: оптимистичная отправка / ошибка сети. */
   clientSendStatus?: "sending" | "failed";
 };
-
-function aggregateReactions(
-  rows: { userId: string; emoji: string }[],
-): MessageReactionAgg[] {
-  const map = new Map<string, string[]>();
-  for (const r of rows) {
-    const prev = map.get(r.emoji) ?? [];
-    prev.push(r.userId);
-    map.set(r.emoji, prev);
-  }
-  return [...map.entries()].map(([emoji, userIds]) => ({ emoji, userIds }));
-}
 
 export function serializeMessage(m: Message): MessageDto {
   const attachments = parseChatAttachmentsJson(m.attachments);
@@ -54,17 +35,11 @@ export function serializeMessage(m: Message): MessageDto {
 export function serializeMessageWithSender(
   m: Message & {
     sender: { name: string };
-    reactions?: { userId: string; emoji: string }[];
   },
 ): MessageDto {
   const base = serializeMessage(m);
-  const reactions =
-    m.reactions && m.reactions.length > 0
-      ? aggregateReactions(m.reactions)
-      : undefined;
   return {
     ...base,
     senderName: m.sender.name,
-    ...(reactions?.length ? { reactions } : {}),
   };
 }

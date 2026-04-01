@@ -1,2 +1,0 @@
--- Выполнить в Supabase SQL Editor при необходимости (Realtime для реакций с order_id).
--- ALTER PUBLICATION supabase_realtime ADD TABLE message_reactions;

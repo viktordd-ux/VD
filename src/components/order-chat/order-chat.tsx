@@ -220,32 +220,6 @@ function IconSendArrow({ className }: { className?: string }) {
   );
 }
 
-/** INSERT/DELETE message_reactions из Realtime → агрегат в MessageDto. */
-function applyRealtimeReaction(
-  msg: MessageDto,
-  emoji: string,
-  userId: string,
-  op: "add" | "remove",
-): MessageDto {
-  const list = [...(msg.reactions ?? [])];
-  const idx = list.findIndex((x) => x.emoji === emoji);
-  if (op === "add") {
-    if (idx === -1) {
-      list.push({ emoji, userIds: [userId] });
-    } else {
-      const uids = new Set(list[idx]!.userIds);
-      uids.add(userId);
-      list[idx] = { emoji, userIds: [...uids] };
-    }
-  } else {
-    if (idx === -1) return msg;
-    const uids = list[idx]!.userIds.filter((u) => u !== userId);
-    if (uids.length === 0) list.splice(idx, 1);
-    else list[idx] = { emoji, userIds: uids };
-  }
-  return { ...msg, reactions: list.length ? list : undefined };
-}
-
 function useCoarsePointer() {
   return useSyncExternalStore(
     (onStoreChange) => {
@@ -263,19 +237,15 @@ const MessageBubble = memo(function MessageBubble({
   mine,
   replyPreview,
   radiusClass,
-  onToggleReaction,
   onRetrySend,
   isMenuTarget,
   coarsePointer,
   onOpenMenu,
-  currentUserId,
 }: {
   m: MessageDto;
   mine: boolean;
   replyPreview: string | null;
   radiusClass: string;
-  currentUserId?: string;
-  onToggleReaction: (emoji: string) => void;
   onRetrySend?: () => void;
   isMenuTarget: boolean;
   coarsePointer: boolean;
@@ -363,7 +333,6 @@ const MessageBubble = memo(function MessageBubble({
     onOpenMenu(el.getBoundingClientRect());
   }
 
-  const reactions = m.reactions ?? [];
   const bodyText = m.text.trim();
   const hasAttachments = Boolean(m.attachments?.length);
   const sendStatus = m.clientSendStatus;
@@ -468,50 +437,6 @@ const MessageBubble = memo(function MessageBubble({
           </div>
         ) : null}
       </div>
-      {reactions.length > 0 ? (
-        <div
-          className={cn(
-            "mt-1 flex flex-wrap gap-1",
-            mine ? "justify-end" : "justify-start",
-          )}
-        >
-          {reactions.map((r) => {
-            const mineR =
-              currentUserId !== undefined &&
-              r.userIds.includes(currentUserId);
-            return (
-              <button
-                key={r.emoji}
-                type="button"
-                title={mineR ? "Снять реакцию" : "Добавить такую же"}
-                onClick={() => onToggleReaction(r.emoji)}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[13px] leading-none transition-transform duration-150 ease-out active:scale-95",
-                  mine
-                    ? mineR
-                      ? "border-white/30 bg-white/20 text-white shadow-sm"
-                      : "border-white/15 bg-white/5 text-white/90"
-                    : mineR
-                      ? "border-blue-500/40 bg-blue-500/10 text-[var(--text)] shadow-sm dark:bg-blue-500/15"
-                      : "border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm shadow-black/[0.02] dark:shadow-none",
-                )}
-              >
-                <span>{r.emoji}</span>
-                {r.userIds.length > 1 ? (
-                  <span
-                    className={cn(
-                      "text-[10px] font-medium tabular-nums",
-                      mine ? "text-blue-100/80" : "text-[var(--muted)]",
-                    )}
-                  >
-                    {r.userIds.length}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
     </div>
   );
 });
@@ -1072,91 +997,6 @@ export function OrderChat({
     [orderId, queryClient, sendMutation.mutate],
   );
 
-  type ReactionCtx = {
-    previous: OrderMessagesQueryData | undefined;
-    msgKey: ReturnType<typeof queryKeys.orderMessages>;
-  };
-
-  const reactionMutation = useMutation({
-    mutationFn: async (vars: {
-      messageId: string;
-      emoji: string;
-      nextActive: boolean;
-    }) => {
-      const path = `/api/messages/${encodeURIComponent(vars.messageId)}/reactions`;
-      const res = await fetch(
-        vars.nextActive
-          ? path
-          : `${path}?emoji=${encodeURIComponent(vars.emoji)}`,
-        {
-          method: vars.nextActive ? "POST" : "DELETE",
-          headers: vars.nextActive
-            ? { "Content-Type": "application/json" }
-            : undefined,
-          body: vars.nextActive ? JSON.stringify({ emoji: vars.emoji }) : undefined,
-        },
-      );
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw { status: res.status, body };
-      }
-    },
-    onMutate: async (vars) => {
-      if (!currentUserId) return;
-      const msgKey = queryKeys.orderMessages(orderId);
-      await queryClient.cancelQueries({ queryKey: msgKey });
-      const previous = queryClient.getQueryData<OrderMessagesQueryData>(msgKey);
-      queryClient.setQueryData<OrderMessagesQueryData>(msgKey, (old) => {
-        if (!old) return old;
-        const nextMessages = old.messages.map((msg) => {
-          if (msg.id !== vars.messageId) return msg;
-          const list = [...(msg.reactions ?? [])];
-          const idx = list.findIndex((x) => x.emoji === vars.emoji);
-          if (vars.nextActive) {
-            if (idx === -1) {
-              list.push({ emoji: vars.emoji, userIds: [currentUserId] });
-            } else {
-              const uids = new Set(list[idx]!.userIds);
-              uids.add(currentUserId);
-              list[idx] = { emoji: vars.emoji, userIds: [...uids] };
-            }
-          } else if (idx >= 0) {
-            const uids = list[idx]!.userIds.filter((u) => u !== currentUserId);
-            if (uids.length === 0) list.splice(idx, 1);
-            else list[idx] = { emoji: vars.emoji, userIds: uids };
-          }
-          return {
-            ...msg,
-            reactions: list.length ? list : undefined,
-          };
-        });
-        return { ...old, messages: nextMessages };
-      });
-      return { previous, msgKey } satisfies ReactionCtx;
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous !== undefined && ctx.msgKey) {
-        queryClient.setQueryData(ctx.msgKey, ctx.previous);
-      }
-      toast.error("Не удалось сохранить реакцию");
-    },
-  });
-
-  const toggleReaction = useCallback(
-    (messageId: string, emoji: string) => {
-      if (!currentUserId) return;
-      const msg = messages.find((x) => x.id === messageId);
-      const agg = msg?.reactions?.find((r) => r.emoji === emoji);
-      const has = agg?.userIds.includes(currentUserId);
-      reactionMutation.mutate({
-        messageId,
-        emoji,
-        nextActive: !has,
-      });
-    },
-    [currentUserId, messages, reactionMutation.mutate],
-  );
-
   /** Одна загрузка без блокировки отправки сообщения (несколько — параллельно). */
   const uploadChatFileCore = useCallback(
     async (file: File) => {
@@ -1480,43 +1320,6 @@ export function OrderChat({
     const filter = `order_id=eq.${orderId}`;
     devLog("подписка postgres_changes messages *", { orderId, filter });
 
-    function onReactionChange(
-      payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
-    ) {
-      const msgKey = queryKeys.orderMessages(orderId);
-      const row =
-        payload.eventType === "DELETE"
-          ? (payload.old as Record<string, unknown> | null)
-          : (payload.new as Record<string, unknown> | null);
-      if (!row) return;
-      const messageId =
-        row.message_id != null ? String(row.message_id) : "";
-      const userId = row.user_id != null ? String(row.user_id) : "";
-      const emoji = row.emoji != null ? String(row.emoji) : "";
-      if (!messageId || !userId || !emoji) return;
-      const op = payload.eventType === "DELETE" ? "remove" : "add";
-
-      const snap = queryClient.getQueryData<OrderMessagesQueryData>(msgKey);
-      const mi0 =
-        snap?.messages.findIndex((m) => m.id === messageId) ?? -1;
-      if (mi0 < 0) {
-        void queryClient.invalidateQueries({ queryKey: msgKey });
-        return;
-      }
-
-      queryClient.setQueryData<OrderMessagesQueryData>(msgKey, (prev) => {
-        const base = prev ?? { messages: [], participants: [] };
-        const mi = base.messages.findIndex((m) => m.id === messageId);
-        if (mi < 0) return base;
-        const msg = base.messages[mi]!;
-        if (msg.orderId !== orderIdRef.current) return base;
-        const nextMsg = applyRealtimeReaction(msg, emoji, userId, op);
-        const nextMessages = [...base.messages];
-        nextMessages[mi] = nextMsg;
-        return { ...base, messages: nextMessages };
-      });
-    }
-
     function onMessageChange(
       payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
     ) {
@@ -1607,8 +1410,6 @@ export function OrderChat({
       }
     }
 
-    const reactionFilter = `order_id=eq.${orderId}`;
-
     const channelMessages = supabase
       .channel(`order-messages:${orderId}`)
       .on(
@@ -1631,36 +1432,9 @@ export function OrderChat({
         }
       });
 
-    const channelReactions = supabase
-      .channel(`order-reactions:${orderId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "message_reactions",
-          filter: reactionFilter,
-        },
-        onReactionChange,
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "message_reactions",
-          filter: reactionFilter,
-        },
-        onReactionChange,
-      )
-      .subscribe((status, err) => {
-        devLog("subscribe status reactions", status, err ?? "");
-      });
-
     return () => {
       devLog("removeChannel", `order-messages:${orderId}`);
       void supabase.removeChannel(channelMessages);
-      void supabase.removeChannel(channelReactions);
     };
   }, [orderId, supabase, variant, queryClient, fetchUnread]);
 
@@ -2017,9 +1791,7 @@ export function OrderChat({
         <p className="border-b border-amber-200/60 bg-amber-50/90 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
           Не удалось подключить Realtime. В Supabase:{" "}
           <strong>Database → Publications</strong> или <strong>Replication</strong> — включите
-          таблицы <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">messages</code> и{" "}
-          <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">message_reactions</code>{" "}
-          (после миграции с <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">order_id</code>).
+          таблицу <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/60">messages</code>.
         </p>
       )}
 
@@ -2153,8 +1925,6 @@ export function OrderChat({
                               isMenuTarget={messageMenu?.messageId === m.id}
                               coarsePointer={coarsePointer}
                               onOpenMenu={(rect) => openMessageMenu(m.id, rect)}
-                              currentUserId={currentUserId}
-                              onToggleReaction={(emoji) => toggleReaction(m.id, emoji)}
                               onRetrySend={
                                 m.id.startsWith("pending:") &&
                                 m.clientSendStatus === "failed"
@@ -2220,9 +1990,6 @@ export function OrderChat({
                 toast.success("Скопировано");
               });
             }}
-            onToggleReaction={(emoji) =>
-              toggleReaction(messageMenu.messageId, emoji)
-            }
           />
         ) : null}
 

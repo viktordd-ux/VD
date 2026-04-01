@@ -1,5 +1,5 @@
 import type { MessageRole } from "@prisma/client";
-import type { MessageDto, MessageReactionAgg } from "@/lib/message-serialize";
+import type { MessageDto } from "@/lib/message-serialize";
 import { parseChatAttachmentsJson } from "@/lib/chat-attachments";
 
 /**
@@ -104,29 +104,6 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
       ? senderNameRaw.trim()
       : undefined;
 
-  let reactions: MessageReactionAgg[] | undefined;
-  const rawRe = o.reactions;
-  if (Array.isArray(rawRe)) {
-    const agg = new Map<string, string[]>();
-    for (const r of rawRe) {
-      if (!r || typeof r !== "object") continue;
-      const row = r as Record<string, unknown>;
-      const em = row.emoji != null ? String(row.emoji) : "";
-      const uid = row.userId ?? row.user_id;
-      if (!em || uid == null) continue;
-      const sid = String(uid);
-      const prev = agg.get(em) ?? [];
-      prev.push(sid);
-      agg.set(em, prev);
-    }
-    if (agg.size > 0) {
-      reactions = [...agg.entries()].map(([emoji, userIds]) => ({
-        emoji,
-        userIds,
-      }));
-    }
-  }
-
   return {
     id,
     orderId,
@@ -137,6 +114,5 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
     replyToId,
     ...(senderName ? { senderName } : {}),
     ...(attachments.length ? { attachments } : {}),
-    ...(reactions?.length ? { reactions } : {}),
   };
 }

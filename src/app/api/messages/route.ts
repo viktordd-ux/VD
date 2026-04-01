@@ -46,7 +46,6 @@ export async function GET(req: Request) {
       orderBy: { createdAt: "asc" },
       include: {
         sender: { select: { name: true } },
-        reactions: { select: { userId: true, emoji: true } },
       },
     }),
     buildChatParticipants(order),
@@ -151,7 +150,6 @@ export async function POST(req: Request) {
       },
       include: {
         sender: { select: { name: true } },
-        reactions: { select: { userId: true, emoji: true } },
       },
     });
   } catch (e) {

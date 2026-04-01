@@ -97,7 +97,6 @@ model User {
   pushSubscriptions PushSubscription[]
   auditLogs        AuditLog[]
   messagesSent     Message[]
-  messageReactions MessageReaction[]
   orderReadStates  OrderUserReadState[]
   notifications    Notification[]
 
@@ -241,7 +240,6 @@ model Order {
   files       File[]
   checkpoints Checkpoint[]
   messages         Message[]
-  messageReactions MessageReaction[]
   userReadStates   OrderUserReadState[]
 
   @@index([executorId])
@@ -304,30 +302,11 @@ model Message {
   sender    User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
   replyTo   Message?          @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   Message[]         @relation("MessageReply")
-  reactions MessageReaction[]
 
   @@index([orderId])
   @@index([orderId, createdAt])
   @@index([replyToId])
   @@map("messages")
-}
-
-model MessageReaction {
-  id        String   @id @default(uuid()) @db.Uuid
-  messageId String   @map("message_id") @db.Uuid
-  orderId   String   @map("order_id")
-  userId    String   @map("user_id")
-  emoji     String   @db.VarChar(16)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([messageId, userId, emoji])
-  @@index([messageId])
-  @@index([orderId])
-  @@map("message_reactions")
 }
 
 /// Водяные знаки «прочитано»: чат и страница заказа (файлы, этапы, поля) раздельно.
