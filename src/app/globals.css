@@ -12,6 +12,7 @@
   --card: #ffffff;
   --ring: rgba(15, 23, 42, 0.12);
   --elevate: rgba(15, 23, 42, 0.06);
+  --skeleton: rgba(15, 23, 42, 0.1);
   --background: var(--bg);
   --foreground: var(--text);
   --vd-border: var(--border);
@@ -26,6 +27,8 @@
   --card: #13161d;
   --ring: rgba(255, 255, 255, 0.14);
   --elevate: rgba(0, 0, 0, 0.35);
+  /* Плейсхолдеры загрузки: как на дашборде, не чистый zinc */
+  --skeleton: rgba(255, 255, 255, 0.08);
 }
 
 /* Чекбоксы и радио: заметный accent в тёмной теме */

@@ -131,7 +131,12 @@ export function ResponsiveAppShell({
         </header>
         <main
           id="app-main"
-          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-6 md:px-8 md:py-8 lg:px-10 lg:py-10"
+          className={cn(
+            "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-6 md:px-8 md:py-8 lg:px-10 lg:py-10",
+            /* Запас под fixed-панель: прижата к низу экрана, не к концу контента. */
+            bottomNav != null &&
+              "max-md:pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]",
+          )}
         >
           {children}
         </main>

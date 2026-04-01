@@ -7,7 +7,7 @@ function ChartSkeleton({ tall }: { tall?: boolean }) {
   return (
     <Card className="p-5">
       <div
-        className={`w-full animate-pulse rounded-md bg-zinc-100 ${tall ? "h-80" : "h-64"}`}
+        className={`w-full animate-pulse rounded-md bg-[color:var(--skeleton)] ${tall ? "h-80" : "h-64"}`}
       />
     </Card>
   );

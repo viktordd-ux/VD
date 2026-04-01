@@ -1241,7 +1241,7 @@ export function OrderChat({
             aria-label="Отправить"
           >
             {sendMutation.isPending ? (
-              <Skeleton className="h-4 w-4 shrink-0 rounded-full bg-white/40" />
+              <Skeleton className="h-4 w-4 shrink-0 rounded-full bg-white/25" />
             ) : (
               <IconSendArrow className="h-4 w-4" />
             )}

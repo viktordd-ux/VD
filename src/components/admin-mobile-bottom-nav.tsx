@@ -41,7 +41,7 @@ export function AdminMobileBottomNav() {
 
   return (
     <nav
-      className="flex w-full max-w-[100vw] shrink-0 border-t border-[color:var(--border)] bg-[var(--card)]/88 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl md:hidden dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]"
+      className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 flex w-full max-w-[100vw] translate-z-0 border-t border-[color:var(--border)] bg-[var(--card)]/88 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl md:hidden dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]"
       aria-label="Нижнее меню"
     >
       {links.map((item) => {
