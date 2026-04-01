@@ -1822,7 +1822,7 @@ export function OrderChat({
             if (f) void uploadChatFile(f);
           }}
         />
-        <div className="relative rounded-xl border border-[color:var(--border)] bg-[var(--bg)] dark:bg-[color:var(--muted-bg)]">
+        <div className="relative overflow-hidden rounded-2xl bg-[color:var(--muted-bg)] dark:bg-white/[0.06]">
           <button
             type="button"
             className="absolute bottom-1 left-1 z-[1] flex h-7 w-7 touch-manipulation items-center justify-center rounded-lg text-[var(--muted)] transition-all duration-150 hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
@@ -1900,7 +1900,7 @@ export function OrderChat({
             placeholder="Сообщение…"
             rows={1}
             maxLength={8000}
-            className="max-h-[100px] min-h-[32px] w-full resize-none border-0 bg-transparent py-1 pl-8 pr-9 text-[13px] leading-snug text-[var(--text)] outline-none ring-0 placeholder:text-[var(--muted)]/60 focus:ring-0"
+            className="max-h-[100px] min-h-[32px] w-full resize-none border-0 bg-transparent py-1 pl-8 pr-9 text-[13px] leading-snug text-[var(--text)] outline-none ring-0 placeholder:text-[var(--muted)]/60 focus:outline-none focus:ring-0 focus-visible:outline-none"
           />
           <button
             type="submit"
