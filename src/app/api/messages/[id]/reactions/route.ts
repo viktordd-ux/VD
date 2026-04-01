@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
@@ -38,23 +39,22 @@ export async function POST(req: Request, { params }: Params) {
   }
 
   try {
-    await prisma.messageReaction.upsert({
-      where: {
-        messageId_userId_emoji: {
-          messageId,
-          userId: user.id,
-          emoji,
-        },
-      },
-      create: {
+    await prisma.messageReaction.create({
+      data: {
         messageId,
         orderId: msg.orderId,
         userId: user.id,
         emoji,
       },
-      update: {},
     });
   } catch (e) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002"
+    ) {
+      // Уже есть (повторный запрос / гонка) — идемпотентный успех.
+      return NextResponse.json({ ok: true });
+    }
     if (process.env.NODE_ENV === "development") {
       console.error("[reactions POST]", e);
     }
