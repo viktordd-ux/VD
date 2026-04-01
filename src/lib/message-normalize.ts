@@ -78,7 +78,14 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
   const roleRaw = o.role;
   const roleStr =
     typeof roleRaw === "string" ? roleRaw : String(roleRaw ?? "");
-  const hasBody = text.trim().length > 0 || attachments.length > 0;
+  const rawTime =
+    o.created_at !== undefined && o.created_at !== null
+      ? o.created_at
+      : o.createdAt;
+  const hasBody =
+    text.trim().length > 0 ||
+    attachments.length > 0 ||
+    (rawTime !== undefined && rawTime !== null);
   if (!id || !orderId || !senderId || !hasBody) return null;
   if (roleStr !== "admin" && roleStr !== "executor") return null;
 
@@ -87,10 +94,6 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
     replyRaw != null && replyRaw !== ""
       ? String(replyRaw)
       : null;
-  const rawTime =
-    o.created_at !== undefined && o.created_at !== null
-      ? o.created_at
-      : o.createdAt;
   if (rawTime === undefined || rawTime === null) return null;
   const ms = parseMessageTimestampToMs(rawTime);
   if (Number.isNaN(ms)) return null;

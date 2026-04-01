@@ -2,7 +2,12 @@
 
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useSession } from "next-auth/react";
-import type { CSSProperties, ReactNode } from "react";
+import type {
+  CSSProperties,
+  MouseEvent as ReactMouseEvent,
+  ReactNode,
+  TouchEvent as ReactTouchEvent,
+} from "react";
 import {
   memo,
   useCallback,
@@ -281,6 +286,9 @@ const MessageBubble = memo(function MessageBubble({
   currentUserId,
   onToggleReaction,
   onRetrySend,
+  active,
+  onBubblePress,
+  onCloseActions,
 }: {
   m: MessageDto;
   mine: boolean;
@@ -291,95 +299,107 @@ const MessageBubble = memo(function MessageBubble({
   currentUserId?: string;
   onToggleReaction: (emoji: string) => void;
   onRetrySend?: () => void;
+  active: boolean;
+  onBubblePress: () => void;
+  onCloseActions: () => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     if (!pickerOpen) return;
-    function onDoc(e: MouseEvent) {
+    function onDoc(e: Event) {
       if (!pickerRef.current?.contains(e.target as Node)) setPickerOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [pickerOpen]);
 
+  useEffect(() => {
+    if (!active) setPickerOpen(false);
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) return;
+    function onDoc(e: Event) {
+      const el = rootRef.current;
+      if (!el) return;
+      if (el.contains(e.target as Node)) return;
+      onCloseActions();
+    }
+    document.addEventListener("mousedown", onDoc, true);
+    document.addEventListener("touchstart", onDoc, { passive: true, capture: true });
+    return () => {
+      document.removeEventListener("mousedown", onDoc, true);
+      document.removeEventListener("touchstart", onDoc, true);
+    };
+  }, [active, onCloseActions]);
+
   const reactions = m.reactions ?? [];
   const bodyText = m.text.trim();
   const hasAttachments = Boolean(m.attachments?.length);
   const sendStatus = m.clientSendStatus;
 
+  function handleBubbleTouchStart(e: ReactTouchEvent<HTMLDivElement>) {
+    const t = e.target as HTMLElement;
+    if (t.closest("button, a")) return;
+    suppressClickRef.current = true;
+    onBubblePress();
+  }
+
+  function handleBubbleClick(e: ReactMouseEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    const t = e.target as HTMLElement;
+    if (t.closest("button, a")) return;
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    onBubblePress();
+  }
+
   return (
     <div
+      ref={rootRef}
+      data-message-actions-root
       className={cn(
-        "group relative w-full max-w-[min(92%,min(28rem,100%))]",
+        "relative w-full max-w-[min(92%,min(28rem,100%))]",
         mine ? "ml-auto" : "mr-auto",
       )}
     >
-      <div
-        className={cn(
-          "pointer-events-none absolute -top-8 z-[5] flex items-center gap-0.5 rounded-full border bg-[var(--card)] px-1 py-0.5 shadow-lg shadow-black/10 opacity-0 transition-all duration-150 ease-out group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 dark:shadow-black/30 max-sm:pointer-events-auto max-sm:opacity-100",
-          mine ? "right-0 border-white/20" : "left-0 border-[color:var(--border)]",
-        )}
-      >
-        <button
-          type="button"
-          title="Ответить"
-          onClick={onReply}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.92]"
+      <div className="relative">
+        <div
+          tabIndex={0}
+          aria-expanded={active}
+          aria-label="Сообщение — открыть действия"
+          onClick={handleBubbleClick}
+          onTouchStart={handleBubbleTouchStart}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onBubblePress();
+            }
+          }}
+          className={cn(
+            "relative min-h-[44px] cursor-pointer touch-manipulation rounded-[inherit] outline-none transition-[box-shadow] duration-150 ease-out",
+            active
+              ? mine
+                ? "ring-2 ring-white/40 ring-offset-2 ring-offset-blue-700/50"
+                : "ring-2 ring-blue-500/35 ring-offset-2 ring-offset-[var(--card)]"
+              : "focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2",
+          )}
         >
-          <IconReplyAction className="h-3.5 w-3.5" />
-        </button>
-        <div className="relative" ref={pickerRef}>
-          <button
-            type="button"
-            title="Реакция"
-            onClick={() => setPickerOpen((v) => !v)}
-            className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.92]"
+          <div
+            className={cn(
+              "px-2.5 py-1.5 text-[13.5px] leading-snug transition-[transform,box-shadow] duration-200 ease-out",
+              radiusClass,
+              mine
+                ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md shadow-blue-900/25 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/40"
+                : "border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm shadow-black/[0.04] dark:shadow-black/20",
+            )}
           >
-            <IconSmilePlus className="h-3.5 w-3.5" />
-          </button>
-          {pickerOpen ? (
-            <div
-              className={cn(
-                "pointer-events-auto absolute right-0 top-full z-30 mt-1.5 flex flex-wrap gap-0.5 rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-1.5 shadow-xl shadow-black/15 dark:shadow-black/40 vd-fade-in",
-                "min-w-[8rem]",
-              )}
-            >
-              {CHAT_REACTION_EMOJIS.map((em) => (
-                <button
-                  key={em}
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-base transition-all hover:bg-[color:var(--muted-bg)] hover:scale-110 active:scale-95"
-                  onClick={() => {
-                    onToggleReaction(em);
-                    setPickerOpen(false);
-                  }}
-                >
-                  {em}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          title="Копировать"
-          onClick={onCopy}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.92]"
-        >
-          <IconCopyAction className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      <div
-        className={cn(
-          "px-2.5 py-1.5 text-[13.5px] leading-snug transition-[transform,box-shadow] duration-200 ease-out",
-          radiusClass,
-          mine
-            ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md shadow-blue-900/25 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/40"
-            : "border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] shadow-sm shadow-black/[0.04] dark:shadow-black/20",
-        )}
-      >
         {m.replyToId && replyPreview ? (
           <div
             className={cn(
@@ -438,6 +458,70 @@ const MessageBubble = memo(function MessageBubble({
                 Повторить
               </button>
             ) : null}
+          </div>
+        ) : null}
+          </div>
+        </div>
+        {active ? (
+          <div
+            className={cn(
+              "vd-message-actions-enter pointer-events-auto absolute left-0 right-0 top-full z-30 mt-1 flex flex-wrap items-center gap-0.5 rounded-2xl border bg-[var(--card)] px-1 py-1 shadow-lg shadow-black/10 dark:shadow-black/30",
+              mine
+                ? "justify-end border-white/20"
+                : "justify-start border-[color:var(--border)]",
+            )}
+            onMouseDown={(e) => e.stopPropagation()}
+            role="toolbar"
+            aria-label="Действия с сообщением"
+          >
+            <button
+              type="button"
+              title="Ответить"
+              onClick={onReply}
+              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96]"
+            >
+              <IconReplyAction className="h-4 w-4" />
+            </button>
+            <div className="relative" ref={pickerRef}>
+              <button
+                type="button"
+                title="Реакция"
+                onClick={() => setPickerOpen((v) => !v)}
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96]"
+              >
+                <IconSmilePlus className="h-4 w-4" />
+              </button>
+              {pickerOpen ? (
+                <div
+                  className={cn(
+                    "absolute z-40 mt-1.5 flex max-w-[min(100vw-2rem,14rem)] flex-wrap gap-0.5 rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-1.5 shadow-xl shadow-black/15 dark:shadow-black/40 vd-fade-in",
+                    mine ? "bottom-full right-0 mb-0" : "left-0 top-full",
+                  )}
+                >
+                  {CHAT_REACTION_EMOJIS.map((em) => (
+                    <button
+                      key={em}
+                      type="button"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-base transition-all hover:bg-[color:var(--muted-bg)] hover:scale-110 active:scale-95"
+                      onClick={() => {
+                        onToggleReaction(em);
+                        setPickerOpen(false);
+                      }}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              title="Копировать"
+              onClick={onCopy}
+              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-[var(--muted)] transition-colors hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96]"
+            >
+              <IconCopyAction className="h-4 w-4" />
+            </button>
           </div>
         ) : null}
       </div>
@@ -596,6 +680,7 @@ export function OrderChat({
     [],
   );
   const [fileUploading, setFileUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   /** Загрузки в процессе — не блокируют отправку текста; догрузка через /attachments после POST. */
   const uploadPromisesRef = useRef<Promise<unknown>[]>([]);
   const pendingAttachmentsRef = useRef<ChatAttachment[]>([]);
@@ -687,6 +772,8 @@ export function OrderChat({
   const [replyTo, setReplyTo] = useState<MessageDto | null>(null);
   /** ISO из GET read-state — для разделителя «Новые сообщения». */
   const [chatReadAtIso, setChatReadAtIso] = useState<string | null>(null);
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+  const closeMessageActions = useCallback(() => setActiveMessageId(null), []);
 
   const currentUserId = session?.user?.id;
   sessionUserIdRef.current = currentUserId;
@@ -747,6 +834,15 @@ export function OrderChat({
     return () => window.clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (!activeMessageId) return;
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setActiveMessageId(null);
+    }
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [activeMessageId]);
+
   const onlineSubline = useMemo(() => {
     void presenceTick;
     if (onlinePeerNames.length === 0) return "Оффлайн";
@@ -758,6 +854,51 @@ export function OrderChat({
       await Promise.all([...uploadPromisesRef.current]);
     }
   }, []);
+
+  /** После создания сообщения на сервере — дождаться загрузок и прикрепить файлы (не блокирует мутацию). */
+  const finalizeAttachmentsAfterSend = useCallback(
+    (messageId: string, msgKey: ReturnType<typeof queryKeys.orderMessages>) => {
+      void (async () => {
+        try {
+          await waitForAllUploads();
+          const buf = sendAttachBufferRef.current;
+          const merged = buf?.collected ?? [];
+          sendAttachBufferRef.current = null;
+          if (merged.length === 0) return;
+          const r2 = await fetch(
+            `/api/messages/${encodeURIComponent(messageId)}/attachments`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ attachments: merged }),
+            },
+          );
+          if (!r2.ok) {
+            const body = (await r2.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            toast.error(body?.error ?? "Не удалось прикрепить файлы");
+            return;
+          }
+          const j2 = (await r2.json()) as { message?: unknown };
+          const msg = normalizeMessageDto(j2.message);
+          if (!msg) return;
+          queryClient.setQueryData<OrderMessagesQueryData>(msgKey, (prev) => {
+            const base = prev ?? { messages: [], participants: [] };
+            return {
+              ...base,
+              messages: base.messages.map((m) =>
+                m.id === messageId ? msg : m,
+              ),
+            };
+          });
+        } catch {
+          toast.error("Не удалось прикрепить файлы");
+        }
+      })();
+    },
+    [queryClient, toast, waitForAllUploads],
+  );
 
   type SendVars = {
     text: string;
@@ -795,42 +936,10 @@ export function OrderChat({
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw { status: res.status, body };
       }
-      const data = (await res.json()) as {
+      return (await res.json()) as {
         message?: unknown;
         messageId?: string;
       };
-      const normalized = normalizeMessageDto(data.message);
-      const realId =
-        (typeof data.messageId === "string" ? data.messageId : null) ??
-        normalized?.id ??
-        null;
-      if (!realId) {
-        throw { status: 500, body: { error: "no message id" } };
-      }
-
-      await waitForAllUploads();
-      const buf = sendAttachBufferRef.current;
-      const merged = buf?.collected ?? [];
-      sendAttachBufferRef.current = null;
-
-      if (merged.length > 0) {
-        const r2 = await fetch(
-          `/api/messages/${encodeURIComponent(realId)}/attachments`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ attachments: merged }),
-          },
-        );
-        if (!r2.ok) {
-          const body = (await r2.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          throw { status: r2.status, body };
-        }
-        return (await r2.json()) as { message?: unknown };
-      }
-      return data;
     },
     onMutate: async (vars) => {
       const me = currentUserId ? participantById.get(currentUserId) : undefined;
@@ -887,6 +996,13 @@ export function OrderChat({
       } satisfies SendCtx;
     },
     onError: (err, vars, ctx) => {
+      if (typeof console !== "undefined" && console.timeEnd) {
+        try {
+          console.timeEnd("message-send");
+        } catch {
+          /* ignore */
+        }
+      }
       sendAttachBufferRef.current = null;
       const e = err as { status?: number; body?: { error?: string } };
       if (!ctx?.msgKey) return;
@@ -921,17 +1037,38 @@ export function OrderChat({
       lastSendOptimisticIdRef.current = null;
       toast.error(e?.body?.error ?? "Не удалось отправить");
     },
-    onSuccess: (data, _text, ctx) => {
+    onSuccess: (data, _vars, ctx) => {
+      if (typeof console !== "undefined" && console.timeEnd) {
+        try {
+          console.timeEnd("message-send");
+        } catch {
+          /* ignore */
+        }
+      }
       if (!ctx) return;
       lastSendOptimisticIdRef.current = null;
       failedSendRetryRef.current = null;
+      const prevSnap = queryClient.getQueryData<OrderMessagesQueryData>(
+        ctx.msgKey,
+      );
+      const optimistic = prevSnap?.messages.find(
+        (m) => m.id === ctx.optimisticId,
+      );
       const added = normalizeMessageDto(data.message);
-      if (added) {
+      let mergedDto = added;
+      if (added && optimistic?.attachments?.length) {
+        const serverHas = (added.attachments?.length ?? 0) > 0;
+        if (!serverHas) {
+          mergedDto = { ...added, attachments: optimistic.attachments };
+        }
+      }
+      if (mergedDto) {
         queryClient.setQueryData<OrderMessagesQueryData>(ctx.msgKey, (prev) => {
           const base = prev ?? { messages: [], participants: [] };
           const without = removeMessageById(base.messages, ctx.optimisticId);
-          return { ...base, messages: mergeMessages(without, added) };
+          return { ...base, messages: mergeMessages(without, mergedDto) };
         });
+        finalizeAttachmentsAfterSend(mergedDto.id, ctx.msgKey);
       } else {
         queryClient.setQueryData<OrderMessagesQueryData>(ctx.msgKey, (prev) => {
           const base = prev ?? { messages: [], participants: [] };
@@ -1059,9 +1196,7 @@ export function OrderChat({
         const { ok, body } = await postFormDataWithProgress(
           `/api/orders/${encodeURIComponent(orderId)}/files`,
           fd,
-          () => {
-            /* progress optional */
-          },
+          (pct) => setUploadPct(pct),
         );
         if (!ok) {
           const err = body as { error?: string };
@@ -1078,6 +1213,7 @@ export function OrderChat({
           type: "file",
           fileId: id,
           name: file.name,
+          ...(file.type ? { mime: file.type } : {}),
         };
         const buf = sendAttachBufferRef.current;
         if (buf) {
@@ -1094,6 +1230,7 @@ export function OrderChat({
       try {
         await work;
       } finally {
+        setUploadPct(null);
         uploadPromisesRef.current = uploadPromisesRef.current.filter(
           (p) => p !== work,
         );
@@ -2039,8 +2176,19 @@ export function OrderChat({
                               replyPreview={getReplyPreview(
                                 m.replyToId ? messageById.get(m.replyToId) : undefined,
                               )}
-                              onReply={() => setReplyTo(m)}
+                              active={activeMessageId === m.id}
+                              onBubblePress={() =>
+                                setActiveMessageId((prev) =>
+                                  prev === m.id ? null : m.id,
+                                )
+                              }
+                              onCloseActions={closeMessageActions}
+                              onReply={() => {
+                                setActiveMessageId(null);
+                                setReplyTo(m);
+                              }}
                               onCopy={() => {
+                                setActiveMessageId(null);
                                 const t = m.text.trim();
                                 const names = m.attachments?.map((a) => a.name).join(", ");
                                 const line =
@@ -2096,6 +2244,16 @@ export function OrderChat({
 
       <form
         onSubmit={onSend}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (chatLoadError || !currentUserId) return;
+          void onPickFiles(e.dataTransfer.files);
+        }}
         className="z-10 shrink-0 border-t border-[color:var(--border)] bg-[var(--card)]/95 px-[5px] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-sm"
       >
         <label className="sr-only" htmlFor={`order-chat-input-${orderId}`}>
@@ -2249,6 +2407,17 @@ export function OrderChat({
           >
             <IconSendArrow className="h-[15px] w-[15px]" />
           </button>
+          {uploadPct != null ? (
+            <div
+              className="pointer-events-none absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden rounded-b-2xl bg-black/10 dark:bg-white/10"
+              aria-hidden
+            >
+              <div
+                className="h-full bg-blue-500 transition-[width] duration-75 ease-out"
+                style={{ width: `${uploadPct}%` }}
+              />
+            </div>
+          ) : null}
         </div>
       </form>
       </div>

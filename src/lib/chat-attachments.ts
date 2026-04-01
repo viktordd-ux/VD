@@ -4,6 +4,8 @@ export type ChatAttachment = {
   type: "file";
   fileId: string;
   name: string;
+  /** С клиента при загрузке; в БД опционально — для превью image/* без эвристики по имени. */
+  mime?: string;
 };
 
 export function parseChatAttachmentsJson(value: unknown): ChatAttachment[] {
@@ -16,7 +18,9 @@ export function parseChatAttachmentsJson(value: unknown): ChatAttachment[] {
     const fileId = o.fileId != null ? String(o.fileId) : "";
     const name = o.name != null ? String(o.name) : "файл";
     if (!fileId) continue;
-    out.push({ type: "file", fileId, name });
+    const mime =
+      o.mime != null && typeof o.mime === "string" ? o.mime.trim() : undefined;
+    out.push({ type: "file", fileId, name, ...(mime ? { mime } : {}) });
   }
   return out;
 }

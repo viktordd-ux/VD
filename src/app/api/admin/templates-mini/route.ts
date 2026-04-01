@@ -9,7 +9,7 @@ export async function GET() {
 
   const templates = await prisma.orderTemplate.findMany({
     orderBy: { title: "asc" },
-    select: { id: true, title: true },
+    select: { id: true, title: true, teamId: true },
   });
 
   return NextResponse.json({ templates });

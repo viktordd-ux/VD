@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ComponentProps } from "react";
 import { fetchAdminOrderBundle } from "@/lib/admin-order-bundle-fetch";
+import { fetchOrderMessages } from "@/lib/fetch-order-messages";
 import { queryKeys } from "@/lib/query-keys";
 import { STALE_MS } from "@/lib/query-stale";
 import { cn } from "@/lib/cn";
@@ -26,6 +27,11 @@ export function PrefetchOrderLink({
       queryKey: queryKeys.adminOrder(orderId),
       queryFn: () => fetchAdminOrderBundle(orderId),
       staleTime: STALE_MS.detail,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.orderMessages(orderId),
+      queryFn: () => fetchOrderMessages(orderId),
+      staleTime: STALE_MS.messages,
     });
   };
 

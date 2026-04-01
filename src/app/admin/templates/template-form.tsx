@@ -1,7 +1,7 @@
 "use client";
 
 import type { OrderTemplate } from "@prisma/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { parseDefaultCheckpoints } from "@/lib/order-template";
@@ -30,7 +30,19 @@ export function TemplateForm({ template }: { template?: OrderTemplate | null }) 
   );
   const [tags, setTags] = useState(template?.tags.join(", ") ?? "");
   const [rows, setRows] = useState<Row[]>(initialRows);
+  const [teamId, setTeamId] = useState(template?.teamId ?? "");
   const [saving, setSaving] = useState(false);
+
+  const { data: teamsPayload } = useQuery({
+    queryKey: ["teams", "list"],
+    queryFn: async () => {
+      const res = await fetch("/api/teams");
+      if (!res.ok) throw new Error("teams");
+      return (await res.json()) as { teams: { id: string; name: string }[] };
+    },
+    staleTime: 60_000,
+  });
+  const teams = teamsPayload?.teams ?? [];
 
   function addRow() {
     setRows((r) => [...r, { title: "", due_offset_days: "" }]);
@@ -67,6 +79,7 @@ export function TemplateForm({ template }: { template?: OrderTemplate | null }) 
         descriptionTemplate,
         defaultCheckpoints,
         tags: tagList,
+        teamId: teamId.trim() || null,
       }),
     });
     setSaving(false);
@@ -88,6 +101,21 @@ export function TemplateForm({ template }: { template?: OrderTemplate | null }) 
           className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
           required
         />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-zinc-600">Команда по умолчанию</label>
+        <select
+          value={teamId}
+          onChange={(e) => setTeamId(e.target.value)}
+          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+        >
+          <option value="">— без команды —</option>
+          {teams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label className="text-xs font-medium text-zinc-600">ТЗ по умолчанию</label>
@@ -163,8 +191,8 @@ export function TemplateForm({ template }: { template?: OrderTemplate | null }) 
       <button
         type="button"
         onClick={save}
-        disabled={saving || !title.trim()}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+        disabled={!title.trim()}
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-all duration-[140ms] ease-out hover:scale-[1.01] hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
       >
         {saving ? "…" : isEdit ? "Сохранить" : "Создать шаблон"}
       </button>

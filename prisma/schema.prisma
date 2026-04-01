@@ -142,9 +142,10 @@ model Team {
   name           String
   organizationId String @map("organization_id")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  members      TeamMember[]
-  orders       Order[]
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        TeamMember[]
+  orders         Order[]
+  orderTemplates OrderTemplate[]
 
   @@map("teams")
 }
@@ -167,11 +168,14 @@ model OrderTemplate {
   descriptionTemplate String   @map("description_template") @db.Text
   defaultCheckpoints  Json     @default("[]") @map("default_checkpoints")
   tags                String[] @default([])
+  teamId              String?  @map("team_id")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
   orders Order[]
 
+  @@index([teamId])
   @@map("order_templates")
 }
 

@@ -29,6 +29,7 @@ export async function PATCH(req: Request, { params }: Params) {
     descriptionTemplate?: string;
     defaultCheckpoints?: unknown;
     tags?: string[];
+    teamId?: string | null;
   };
 
   if (body.defaultCheckpoints !== undefined && !Array.isArray(body.defaultCheckpoints)) {
@@ -59,6 +60,12 @@ export async function PATCH(req: Request, { params }: Params) {
           ? (checkpointsJson as Prisma.InputJsonValue)
           : undefined,
       tags: body.tags !== undefined ? body.tags.map((t) => t.trim()).filter(Boolean) : undefined,
+      teamId:
+        body.teamId !== undefined
+          ? body.teamId === null || body.teamId === ""
+            ? null
+            : body.teamId.trim()
+          : undefined,
     },
   });
 

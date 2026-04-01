@@ -137,8 +137,7 @@ export function CreateExecutorDialog({
               <div className="flex flex-col gap-2 sm:flex-row">
                 <button
                   type="submit"
-                  disabled={busy}
-                  className="min-h-11 w-full rounded-md bg-[var(--text)] px-4 py-2.5 text-sm font-medium text-[var(--bg)] transition hover:opacity-90 disabled:opacity-60 sm:w-auto sm:py-2"
+                  className="min-h-11 w-full rounded-md bg-[var(--text)] px-4 py-2.5 text-sm font-medium text-[var(--bg)] transition-all duration-[140ms] ease-out hover:scale-[1.01] hover:opacity-90 active:scale-[0.98] sm:w-auto sm:py-2"
                 >
                   {busy ? "…" : "Создать"}
                 </button>

@@ -117,6 +117,17 @@ html {
   }
 }
 
+@keyframes vd-message-actions-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Типографика: заголовки страниц (подключайте класс на h1) */
 .vd-page-title {
   font-size: 1.5rem;
@@ -189,12 +200,17 @@ html {
   animation: vd-page-enter 160ms ease-out forwards;
 }
 
+.vd-message-actions-enter {
+  animation: vd-message-actions-in 120ms ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vd-message-enter,
   .vd-fade-in,
   .vd-status-badge-enter,
   .vd-page-enter,
-  .vd-nav-badge-in {
+  .vd-nav-badge-in,
+  .vd-message-actions-enter {
     animation-duration: 0.01ms;
     animation-iteration-count: 1;
   }

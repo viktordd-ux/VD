@@ -25,7 +25,9 @@ export function QuickCreateOrderModal({
     queryFn: async () => {
       const res = await fetch("/api/admin/templates-mini");
       if (!res.ok) throw new Error("templates");
-      const j = (await res.json()) as { templates: { id: string; title: string }[] };
+      const j = (await res.json()) as {
+        templates: { id: string; title: string; teamId: string | null }[];
+      };
       return j.templates;
     },
     enabled: open,
@@ -114,7 +116,12 @@ export function QuickCreateOrderModal({
         <label className="mt-4 block text-sm font-medium text-zinc-700">Шаблон (необязательно)</label>
         <select
           value={templateId}
-          onChange={(e) => setTemplateId(e.target.value)}
+          onChange={(e) => {
+            const id = e.target.value;
+            setTemplateId(id);
+            const t = templates.find((x) => x.id === id);
+            if (t?.teamId) setTeamId(t.teamId);
+          }}
           className="mt-1 w-full min-h-11 cursor-pointer rounded-md border border-zinc-300 px-3 py-2 text-base sm:min-h-0 sm:py-2 sm:text-sm"
         >
           <option value="">— без шаблона —</option>
@@ -134,9 +141,9 @@ export function QuickCreateOrderModal({
           </button>
           <button
             type="button"
-            disabled={createMutation.isPending || !orderText.trim()}
+            disabled={!orderText.trim()}
             onClick={() => createMutation.mutate()}
-            className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
+            className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-all duration-[140ms] ease-out hover:scale-[1.01] hover:bg-zinc-800 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
           >
             {createMutation.isPending ? (
               <>

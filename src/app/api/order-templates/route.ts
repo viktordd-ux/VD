@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     descriptionTemplate?: string;
     defaultCheckpoints?: unknown;
     tags?: string[];
+    teamId?: string | null;
   };
 
   if (!body.title?.trim() || body.descriptionTemplate === undefined) {
@@ -43,12 +44,18 @@ export async function POST(req: Request) {
     );
   }
 
+  const teamId =
+    typeof body.teamId === "string" && body.teamId.trim()
+      ? body.teamId.trim()
+      : null;
+
   const created = await prisma.orderTemplate.create({
     data: {
       title: body.title.trim(),
       descriptionTemplate: body.descriptionTemplate,
       defaultCheckpoints: cp as unknown as import("@prisma/client").Prisma.InputJsonValue,
       tags: body.tags?.map((t) => t.trim()).filter(Boolean) ?? [],
+      ...(teamId ? { teamId } : {}),
     },
   });
 

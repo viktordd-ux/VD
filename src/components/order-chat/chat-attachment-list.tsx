@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ChatAttachment } from "@/lib/chat-attachments";
-import { isProbablyChatImageFileName } from "@/lib/chat-image-file";
+import { isChatImageAttachment } from "@/lib/chat-attachment-display";
 import { cn } from "@/lib/cn";
+import { ImageViewer } from "@/components/order-chat/image-viewer";
 
 function fileUrl(fileId: string): string {
   return `/api/files/${encodeURIComponent(fileId)}`;
@@ -16,14 +17,26 @@ export function ChatAttachmentList({
   attachments: ChatAttachment[];
   mine: boolean;
 }) {
-  const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(
-    null,
+  const [viewer, setViewer] = useState<{
+    index: number;
+    items: ChatAttachment[];
+  } | null>(null);
+
+  const images = useMemo(
+    () => attachments.filter((a) => isChatImageAttachment(a)),
+    [attachments],
+  );
+  const files = useMemo(
+    () => attachments.filter((a) => !isChatImageAttachment(a)),
+    [attachments],
   );
 
-  const images = attachments.filter((a) => isProbablyChatImageFileName(a.name));
-  const files = attachments.filter((a) => !isProbablyChatImageFileName(a.name));
+  const close = useCallback(() => setViewer(null), []);
 
-  const close = useCallback(() => setLightbox(null), []);
+  const openAt = useCallback((i: number) => {
+    if (images.length === 0) return;
+    setViewer({ index: i, items: images });
+  }, [images]);
 
   return (
     <>
@@ -32,24 +45,24 @@ export function ChatAttachmentList({
           className={cn(
             "grid gap-1.5",
             images.length === 1 ? "grid-cols-1" : "grid-cols-2",
-            "max-w-[min(100%,20rem)]",
+            "max-w-[min(100%,22rem)]",
           )}
         >
-          {images.map((a) => (
+          {images.map((a, i) => (
             <li key={a.fileId} className="min-w-0">
               <button
                 type="button"
-                className="relative block w-full overflow-hidden rounded-lg focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="relative block w-full max-h-[240px] overflow-hidden rounded-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-400 transition-transform duration-[140ms] ease-out hover:scale-[1.01] active:scale-[0.98]"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setLightbox({ src: fileUrl(a.fileId), name: a.name });
+                  openAt(i);
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={fileUrl(a.fileId)}
                   alt=""
-                  className="h-36 w-full object-cover sm:h-44"
+                  className="max-h-[240px] w-full object-cover"
                   loading="lazy"
                 />
               </button>
@@ -72,7 +85,7 @@ export function ChatAttachmentList({
                 target="_blank"
                 rel="noreferrer"
                 className={cn(
-                  "inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] font-medium underline-offset-2 transition-all hover:underline hover:shadow-sm",
+                  "inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] font-medium underline-offset-2 transition-all duration-[140ms] ease-out hover:underline hover:shadow-sm hover:scale-[1.01] active:scale-[0.98]",
                   mine
                     ? "border-white/20 bg-white/10 text-white hover:bg-white/15"
                     : "border-[color:var(--border)] bg-[color:var(--muted-bg)] text-[var(--text)] hover:bg-[color:var(--surface-hover)]",
@@ -87,23 +100,28 @@ export function ChatAttachmentList({
         </ul>
       ) : null}
 
-      {lightbox ? (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
-          role="presentation"
-          onClick={close}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") close();
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightbox.src}
-            alt={lightbox.name}
-            className="max-h-[min(90vh,900px)] max-w-full rounded-lg object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
+      {viewer ? (
+        <ImageViewer
+          src={fileUrl(viewer.items[viewer.index]!.fileId)}
+          name={viewer.items[viewer.index]!.name}
+          onClose={close}
+          onPrev={
+            viewer.index > 0
+              ? () =>
+                  setViewer((v) =>
+                    v ? { ...v, index: v.index - 1 } : v,
+                  )
+              : undefined
+          }
+          onNext={
+            viewer.index < viewer.items.length - 1
+              ? () =>
+                  setViewer((v) =>
+                    v ? { ...v, index: v.index + 1 } : v,
+                  )
+              : undefined
+          }
+        />
       ) : null}
     </>
   );
