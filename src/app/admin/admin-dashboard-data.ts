@@ -106,9 +106,7 @@ export async function loadAdminDashboardData(
       },
     };
   } catch (e) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[loadAdminDashboardData]", e);
-    }
+    console.error("[loadAdminDashboardData]", e);
     return {
       ok: false,
       message: dbUnavailableUserMessage(e),
