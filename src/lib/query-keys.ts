@@ -1,4 +1,7 @@
 export const queryKeys = {
+  /** Один запрос: полный каталог заказов; фильтры из URL применяются в useMemo. */
+  adminOrdersCatalog: () => ["admin", "orders", "catalog"] as const,
+  /** @deprecated используйте adminOrdersCatalog + derive */
   adminOrders: (searchParams: string) => ["admin", "orders", searchParams] as const,
   adminOrder: (id: string) => ["admin", "order", id] as const,
   executorHome: (userId: string) => ["executor", "home", userId] as const,

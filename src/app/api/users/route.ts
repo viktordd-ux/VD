@@ -7,6 +7,7 @@ import { writeAudit } from "@/lib/audit";
 import { generatePassword } from "@/lib/generate-password";
 import { getExecutorMetricsMap } from "@/lib/executor-matching";
 import { getAccessibleOrganizationIds, getPrimaryOrganizationIdForUser } from "@/lib/org-scope";
+import { parseMembershipRole } from "@/lib/membership-role-parse";
 import { revalidateAdminUsers } from "@/lib/revalidate-app";
 
 export async function POST(req: Request) {
@@ -17,6 +18,8 @@ export async function POST(req: Request) {
     name?: string;
     email?: string;
     skills?: string[];
+    /** Роль в организации (`MembershipRole`). */
+    role?: string;
   };
 
   const name = body.name?.trim();
@@ -36,9 +39,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const skills = Array.isArray(body.skills)
-    ? body.skills.map((s) => String(s).trim()).filter(Boolean)
-    : [];
+  const membershipRole =
+    parseMembershipRole(body.role) ?? MembershipRole.EXECUTOR;
+
+  const skills =
+    membershipRole === MembershipRole.EXECUTOR && Array.isArray(body.skills)
+      ? body.skills.map((s) => String(s).trim()).filter(Boolean)
+      : [];
 
   const nameParts = name.trim().split(/\s+/);
   const firstName = nameParts[0] ?? "";
@@ -55,6 +62,9 @@ export async function POST(req: Request) {
     );
   }
 
+  const legacyUserRole =
+    membershipRole === MembershipRole.EXECUTOR ? "executor" : "admin";
+
   const created = await prisma.$transaction(async (tx) => {
     const u = await tx.user.create({
       data: {
@@ -63,7 +73,7 @@ export async function POST(req: Request) {
         lastName,
         email: emailRaw,
         passwordHash,
-        role: "executor",
+        role: legacyUserRole,
         status: "active",
         skills,
         primarySkill: skills[0] ?? "",
@@ -75,7 +85,7 @@ export async function POST(req: Request) {
       data: {
         userId: u.id,
         organizationId,
-        role: MembershipRole.EXECUTOR,
+        role: membershipRole,
       },
     });
     return u;
@@ -113,7 +123,6 @@ export async function GET(req: Request) {
 
   const users = await prisma.user.findMany({
     where: {
-      role: "executor",
       memberships: { some: { organizationId: { in: orgIds } } },
       ...(status ? { status: status as "active" | "banned" } : {}),
       ...(skill ? { skills: { has: skill } } : {}),
@@ -135,6 +144,10 @@ export async function GET(req: Request) {
       onboarded: true,
       createdAt: true,
       updatedAt: true,
+      memberships: {
+        where: { organizationId: { in: orgIds } },
+        select: { organizationId: true, role: true },
+      },
     },
   });
 
@@ -143,8 +156,14 @@ export async function GET(req: Request) {
   });
   const enriched = users.map((u) => {
     const m = metrics.get(u.id);
+    const mem =
+      orgIds
+        .map((oid) => u.memberships.find((x) => x.organizationId === oid))
+        .find(Boolean) ?? u.memberships[0];
+    const { memberships: _m, ...rest } = u;
     return {
-      ...u,
+      ...rest,
+      membershipRole: mem?.role ?? MembershipRole.VIEWER,
       rating: m?.rating ?? 0,
       completedOrders: m?.completedOrders ?? 0,
       latePercent: m?.latePercent ?? 0,

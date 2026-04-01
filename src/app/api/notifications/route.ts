@@ -56,9 +56,24 @@ export async function PATCH(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     ids?: string[];
     readAll?: boolean;
+    /** Пометить прочитанными уведомления, у которых в ссылке встречается id заказа (чат/заказ). */
+    orderId?: string;
   };
 
   const now = new Date();
+
+  if (typeof body.orderId === "string" && body.orderId.trim()) {
+    const oid = body.orderId.trim();
+    await prisma.notification.updateMany({
+      where: {
+        userId: user.id,
+        readAt: null,
+        linkHref: { contains: oid },
+      },
+      data: { readAt: now },
+    });
+    return NextResponse.json({ ok: true }, { headers: noStore });
+  }
 
   if (body.readAll) {
     await prisma.notification.updateMany({

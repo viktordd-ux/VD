@@ -21,6 +21,8 @@ export type MessageDto = {
   senderName?: string;
   attachments?: ChatAttachment[];
   reactions?: MessageReactionAgg[];
+  /** Только клиент: оптимистичная отправка / ошибка сети. */
+  clientSendStatus?: "sending" | "failed";
 };
 
 function aggregateReactions(

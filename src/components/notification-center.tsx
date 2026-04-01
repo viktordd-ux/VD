@@ -178,6 +178,9 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  /** После закрытия панели скрываем прочитанные из списка (только отображение). */
+  const [hideReadAfterClose, setHideReadAfterClose] = useState(false);
+  const prevOpenRef = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const optimisticNotifReadIdsRef = useRef(new Set<string>());
   const bulkNotifReadRef = useRef(false);
@@ -216,10 +219,26 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
   });
 
   const list = data?.notifications ?? [];
-  const unread = list.filter((n) => !n.readAt).length;
+
+  useEffect(() => {
+    if (prevOpenRef.current && !open) {
+      setHideReadAfterClose(true);
+    }
+    prevOpenRef.current = open;
+  }, [open]);
+
+  const displayList = useMemo(() => {
+    if (!hideReadAfterClose) return list;
+    return list.filter((n) => !n.readAt);
+  }, [list, hideReadAfterClose]);
+
+  const unread = displayList.filter((n) => !n.readAt).length;
   const bellCount = Math.max(0, Number(navBadges?.notificationUnreadCount ?? 0));
 
-  const grouped = useMemo(() => groupNotificationsByDay(list), [list]);
+  const grouped = useMemo(
+    () => groupNotificationsByDay(displayList),
+    [displayList],
+  );
 
   const applyMarkAllReadAfterFetch = useCallback(
     async (payload: { notifications: Row[] } | undefined) => {
@@ -404,8 +423,8 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
 
   if (!userId) return null;
 
-  const showEmpty = !isLoading && !isError && list.length === 0;
-  const showSkeleton = isLoading && list.length === 0;
+  const showEmpty = !isLoading && !isError && displayList.length === 0;
+  const showSkeleton = isLoading && displayList.length === 0;
 
   return (
     <div className="relative" ref={rootRef}>
@@ -455,7 +474,7 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
             ) : null}
           </div>
           <div className="max-h-[min(60vh,24rem)] overflow-y-auto overscroll-contain">
-            {showSkeleton || (isFetching && list.length === 0) ? (
+            {showSkeleton || (isFetching && displayList.length === 0) ? (
               <div className="space-y-3 px-4 py-5">
                 <Skeleton className="h-4 w-40 rounded-md" />
                 <Skeleton className="h-14 w-full rounded-lg" />

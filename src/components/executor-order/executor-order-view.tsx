@@ -10,6 +10,7 @@ import { displayFileEntryLabel } from "@/lib/uploads";
 import { OrderProjectReadMarker } from "@/components/order-project-read-marker";
 import { OrderChat } from "@/components/order-chat/order-chat";
 import { useExecutorOrder } from "./executor-order-context";
+import { useMarkNotificationsReadForOrder } from "@/hooks/use-mark-notifications-read-for-order";
 
 export function ExecutorOrderView({
   orderId,
@@ -22,6 +23,7 @@ export function ExecutorOrderView({
   supabaseUrl?: string;
   supabaseAnonKey?: string;
 }) {
+  useMarkNotificationsReadForOrder(orderId);
   const { order, files } = useExecutorOrder();
   const executorFiles = files.filter((f) => f.uploadedBy === "executor");
   const studioFiles = files.filter((f) => f.uploadedBy === "admin");

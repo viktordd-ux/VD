@@ -1,3 +1,4 @@
+import { MembershipRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
@@ -26,10 +27,24 @@ export default async function UsersPage() {
 
     const users = await prisma.user.findMany({
       where: {
-        role: "executor",
         memberships: { some: { organizationId: { in: orgIds } } },
       },
       orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        status: true,
+        primarySkill: true,
+        skills: true,
+        onboarded: true,
+        memberships: {
+          where: { organizationId: { in: orgIds } },
+          select: { organizationId: true, role: true },
+        },
+      },
     });
     const metrics = await getExecutorMetricsMap(users.map((u) => u.id), {
       organizationIds: orgIds,
@@ -37,6 +52,10 @@ export default async function UsersPage() {
 
     initialRows = users.map((u) => {
       const m = metrics.get(u.id);
+      const mem =
+        orgIds
+          .map((oid) => u.memberships.find((x) => x.organizationId === oid))
+          .find(Boolean) ?? u.memberships[0];
       return {
         id: u.id,
         name: u.name,
@@ -47,6 +66,7 @@ export default async function UsersPage() {
         primarySkill: u.primarySkill,
         skills: u.skills,
         onboarded: u.onboarded,
+        membershipRole: mem?.role ?? MembershipRole.VIEWER,
         rating: m?.rating ?? 0,
         completedOrders: m?.completedOrders ?? 0,
         latePercent: m?.latePercent ?? 0,

@@ -79,7 +79,7 @@ export function AdminSidebarNav() {
             href={item.href}
             prefetch
             onMouseEnter={() => {
-              if (item.href === "/admin/orders") prefetchOrdersList("");
+              if (item.href === "/admin/orders") prefetchOrdersList();
             }}
             className={cn(
               "vd-interactive-press flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-base font-medium transition-[transform,color,background-color] duration-[140ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:min-h-0 md:text-[13px]",

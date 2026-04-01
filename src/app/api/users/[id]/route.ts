@@ -1,7 +1,10 @@
+import { MembershipRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
+import { parseMembershipRole } from "@/lib/membership-role-parse";
+import { getPrimaryOrganizationIdForUser } from "@/lib/org-scope";
 import { syncNameFromProfile } from "@/lib/user-profile";
 import { revalidateAdminUsers } from "@/lib/revalidate-app";
 
@@ -60,14 +63,50 @@ export async function PATCH(req: Request, { params }: Params) {
     skills: string[];
     primarySkill: string;
     onboarded: boolean;
+    /** Роль в организации (`MembershipRole`). */
+    membershipRole: string;
   }>;
+
+  let parsedMembershipRole: MembershipRole | undefined;
+  if (body.membershipRole !== undefined) {
+    const mr = parseMembershipRole(body.membershipRole);
+    if (!mr) {
+      return NextResponse.json({ error: "Некорректная роль" }, { status: 400 });
+    }
+    const organizationId = await getPrimaryOrganizationIdForUser(admin.id);
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "Нет организации" },
+        { status: 400 },
+      );
+    }
+    const membership = await prisma.membership.findUnique({
+      where: {
+        userId_organizationId: { userId: id, organizationId },
+      },
+    });
+    if (!membership) {
+      return NextResponse.json(
+        { error: "Нет членства в организации" },
+        { status: 400 },
+      );
+    }
+    parsedMembershipRole = mr;
+  }
+
+  const effectiveRole =
+    parsedMembershipRole !== undefined
+      ? parsedMembershipRole === MembershipRole.EXECUTOR
+        ? "executor"
+        : "admin"
+      : existing.role;
 
   if (
     (body.skills !== undefined ||
       body.primarySkill !== undefined ||
       body.firstName !== undefined ||
       body.lastName !== undefined) &&
-    existing.role !== "executor"
+    effectiveRole !== "executor"
   ) {
     return NextResponse.json(
       { error: "Поля профиля исполнителя только для исполнителей" },
@@ -102,7 +141,7 @@ export async function PATCH(req: Request, { params }: Params) {
         : String(body.telegramId).trim()
       : undefined;
   if (telegramId !== undefined) {
-    if (existing.role !== "executor") {
+    if (effectiveRole !== "executor") {
       return NextResponse.json(
         { error: "Telegram ID только для исполнителей" },
         { status: 400 },
@@ -128,7 +167,7 @@ export async function PATCH(req: Request, { params }: Params) {
   if (
     skills !== undefined &&
     primarySkill === undefined &&
-    existing.role === "executor" &&
+    effectiveRole === "executor" &&
     existing.primarySkill &&
     !skills.includes(existing.primarySkill)
   ) {
@@ -139,7 +178,7 @@ export async function PATCH(req: Request, { params }: Params) {
   }
 
   const resolvedName =
-    existing.role === "executor"
+    effectiveRole === "executor"
       ? body.name !== undefined
         ? body.name
         : firstName !== undefined || lastName !== undefined
@@ -151,6 +190,23 @@ export async function PATCH(req: Request, { params }: Params) {
       : body.name !== undefined
         ? body.name
         : undefined;
+
+  if (parsedMembershipRole !== undefined) {
+    const organizationId = await getPrimaryOrganizationIdForUser(admin.id);
+    if (organizationId) {
+      await prisma.membership.updateMany({
+        where: { userId: id, organizationId },
+        data: { role: parsedMembershipRole },
+      });
+    }
+  }
+
+  const legacyRoleFromMembership =
+    parsedMembershipRole !== undefined
+      ? parsedMembershipRole === MembershipRole.EXECUTOR
+        ? "executor"
+        : "admin"
+      : undefined;
 
   const updated = await prisma.user.update({
     where: { id },
@@ -165,6 +221,9 @@ export async function PATCH(req: Request, { params }: Params) {
       ...(skills !== undefined ? { skills } : {}),
       ...(primarySkill !== undefined ? { primarySkill } : {}),
       ...(body.onboarded !== undefined ? { onboarded: body.onboarded } : {}),
+      ...(legacyRoleFromMembership !== undefined
+        ? { role: legacyRoleFromMembership }
+        : {}),
     },
     select: {
       id: true,

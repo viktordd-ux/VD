@@ -18,6 +18,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { STALE_MS } from "@/lib/query-stale";
 import { AdminOrderForm } from "./ui";
 import { AdminOrderDelete } from "./admin-order-delete";
+import { useMarkNotificationsReadForOrder } from "@/hooks/use-mark-notifications-read-for-order";
 
 const OrderChat = dynamic(
   () =>
@@ -28,6 +29,7 @@ const OrderChat = dynamic(
 );
 
 export function AdminOrderDetailClient({ orderId }: { orderId: string }) {
+  useMarkNotificationsReadForOrder(orderId);
   const { data, isPending, isError, error, dataUpdatedAt } = useQuery({
     queryKey: queryKeys.adminOrder(orderId),
     queryFn: () => fetchAdminOrderBundle(orderId),

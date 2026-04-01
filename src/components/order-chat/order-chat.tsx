@@ -45,6 +45,7 @@ import {
   decrementNavChatOnOrderRead,
 } from "@/lib/nav-badges-client";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
+import { ChatAttachmentList } from "@/components/order-chat/chat-attachment-list";
 
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
@@ -243,6 +244,42 @@ function IconSendArrow({ className }: { className?: string }) {
   );
 }
 
+function mergeAttachmentsByFileId(
+  a: ChatAttachment[],
+  b: ChatAttachment[],
+): ChatAttachment[] {
+  const map = new Map<string, ChatAttachment>();
+  for (const x of a) map.set(x.fileId, x);
+  for (const x of b) map.set(x.fileId, x);
+  return [...map.values()];
+}
+
+/** INSERT/DELETE message_reactions из Realtime → агрегат в MessageDto. */
+function applyRealtimeReaction(
+  msg: MessageDto,
+  emoji: string,
+  userId: string,
+  op: "add" | "remove",
+): MessageDto {
+  const list = [...(msg.reactions ?? [])];
+  const idx = list.findIndex((x) => x.emoji === emoji);
+  if (op === "add") {
+    if (idx === -1) {
+      list.push({ emoji, userIds: [userId] });
+    } else {
+      const uids = new Set(list[idx]!.userIds);
+      uids.add(userId);
+      list[idx] = { emoji, userIds: [...uids] };
+    }
+  } else {
+    if (idx === -1) return msg;
+    const uids = list[idx]!.userIds.filter((u) => u !== userId);
+    if (uids.length === 0) list.splice(idx, 1);
+    else list[idx] = { emoji, userIds: uids };
+  }
+  return { ...msg, reactions: list.length ? list : undefined };
+}
+
 const MessageBubble = memo(function MessageBubble({
   m,
   mine,
@@ -252,6 +289,7 @@ const MessageBubble = memo(function MessageBubble({
   onCopy,
   currentUserId,
   onToggleReaction,
+  onRetrySend,
 }: {
   m: MessageDto;
   mine: boolean;
@@ -261,6 +299,7 @@ const MessageBubble = memo(function MessageBubble({
   onCopy: () => void;
   currentUserId?: string;
   onToggleReaction: (emoji: string) => void;
+  onRetrySend?: () => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -277,6 +316,7 @@ const MessageBubble = memo(function MessageBubble({
   const reactions = m.reactions ?? [];
   const bodyText = m.text.trim();
   const hasAttachments = Boolean(m.attachments?.length);
+  const sendStatus = m.clientSendStatus;
 
   return (
     <div
@@ -369,32 +409,45 @@ const MessageBubble = memo(function MessageBubble({
           </p>
         ) : null}
         {hasAttachments ? (
-          <ul
+          <div className={bodyText ? "mt-2" : undefined}>
+            <ChatAttachmentList attachments={m.attachments!} mine={mine} />
+          </div>
+        ) : null}
+        {sendStatus === "sending" ? (
+          <p
             className={cn(
-              "space-y-1",
-              bodyText ? "mt-2" : null,
+              "mt-1.5 text-[10px] font-medium uppercase tracking-wide",
+              mine ? "text-blue-100/80" : "text-[var(--muted)]",
             )}
           >
-            {m.attachments!.map((a) => (
-              <li key={a.fileId}>
-                <a
-                  href={`/api/files/${a.fileId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={cn(
-                    "inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] font-medium underline-offset-2 transition-all hover:underline hover:shadow-sm",
-                    mine
-                      ? "border-white/20 bg-white/10 text-white hover:bg-white/15"
-                      : "border-[color:var(--border)] bg-[color:var(--muted-bg)] text-[var(--text)] hover:bg-[color:var(--surface-hover)]",
-                  )}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <svg className="h-3.5 w-3.5 shrink-0 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>
-                  <span className="truncate">{a.name}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
+            Отправка…
+          </p>
+        ) : null}
+        {sendStatus === "failed" ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "text-[11px] font-medium",
+                mine ? "text-amber-100" : "text-amber-600 dark:text-amber-400",
+              )}
+            >
+              Не отправлено
+            </span>
+            {onRetrySend ? (
+              <button
+                type="button"
+                onClick={onRetrySend}
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors",
+                  mine
+                    ? "bg-white/20 text-white hover:bg-white/30"
+                    : "bg-[color:var(--muted-bg)] text-[var(--text)] hover:bg-[color:var(--border)]",
+                )}
+              >
+                Повторить
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
       {reactions.length > 0
@@ -552,6 +605,19 @@ export function OrderChat({
     [],
   );
   const [fileUploading, setFileUploading] = useState(false);
+  /** Загрузки в процессе — не блокируют отправку; mutationFn ждёт их перед POST. */
+  const uploadPromisesRef = useRef<Promise<unknown>[]>([]);
+  const pendingAttachmentsRef = useRef<ChatAttachment[]>([]);
+  const lastSendOptimisticIdRef = useRef<string | null>(null);
+  const failedSendRetryRef = useRef<{
+    text: string;
+    replyToId: string | null;
+    preSendAttachments: ChatAttachment[];
+  } | null>(null);
+
+  useEffect(() => {
+    pendingAttachmentsRef.current = pendingAttachments;
+  }, [pendingAttachments]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const mentionQuery = useMemo(() => {
@@ -680,6 +746,18 @@ export function OrderChat({
     return `В сети: ${onlinePeerNames.join(", ")}`;
   }, [onlinePeerNames, presenceTick]);
 
+  const waitForAllUploads = useCallback(async () => {
+    while (uploadPromisesRef.current.length > 0) {
+      await Promise.all([...uploadPromisesRef.current]);
+    }
+  }, []);
+
+  type SendVars = {
+    text: string;
+    replyToId: string | null;
+    preSendAttachments: ChatAttachment[];
+  };
+
   type SendCtx = {
     previous: OrderMessagesQueryData | undefined;
     optimisticId: string;
@@ -690,20 +768,46 @@ export function OrderChat({
   };
 
   const sendMutation = useMutation({
-    mutationFn: async (vars: {
-      text: string;
-      replyToId: string | null;
-      attachments: ChatAttachment[];
-    }) => {
+    mutationFn: async (vars: SendVars) => {
+      await waitForAllUploads();
+      const msgKey = queryKeys.orderMessages(orderId);
+      const oid = lastSendOptimisticIdRef.current;
+      const merged = mergeAttachmentsByFileId(
+        vars.preSendAttachments,
+        pendingAttachmentsRef.current,
+      );
+      const mergedIds = new Set(merged.map((a) => a.fileId));
+      setPendingAttachments((prev) => {
+        const next = prev.filter((a) => !mergedIds.has(a.fileId));
+        pendingAttachmentsRef.current = next;
+        return next;
+      });
+
+      if (oid) {
+        queryClient.setQueryData<OrderMessagesQueryData>(msgKey, (prev) => {
+          const base = prev ?? { messages: [], participants };
+          return {
+            ...base,
+            messages: base.messages.map((m) =>
+              m.id === oid
+                ? {
+                    ...m,
+                    ...(merged.length ? { attachments: merged } : {}),
+                    clientSendStatus: "sending",
+                  }
+                : m,
+            ),
+          };
+        });
+      }
+
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           order_id: orderId,
           text: vars.text,
-          ...(vars.attachments.length
-            ? { attachments: vars.attachments }
-            : {}),
+          ...(merged.length ? { attachments: merged } : {}),
           ...(vars.replyToId ? { reply_to_id: vars.replyToId } : {}),
         }),
       });
@@ -729,6 +833,7 @@ export function OrderChat({
       const previousReplyTo = replyTo;
       const previousAttachments = [...pendingAttachments];
       const optimisticId = `pending:${crypto.randomUUID()}`;
+      lastSendOptimisticIdRef.current = optimisticId;
       const optimistic: MessageDto = {
         id: optimisticId,
         orderId,
@@ -736,11 +841,11 @@ export function OrderChat({
         role,
         text: vars.text,
         senderName: session?.user?.name?.trim() || undefined,
-        /** Только для отображения до ответа сервера; порядок держит sortMessagesStable (pending после всех). */
         createdAt: new Date().toISOString(),
         replyToId: vars.replyToId,
-        ...(vars.attachments.length
-          ? { attachments: vars.attachments }
+        clientSendStatus: "sending",
+        ...(vars.preSendAttachments.length
+          ? { attachments: vars.preSendAttachments }
           : {}),
       };
       queryClient.setQueryData<OrderMessagesQueryData>(msgKey, (prev) => {
@@ -750,6 +855,7 @@ export function OrderChat({
           messages: mergeMessages(base.messages, optimistic),
         };
       });
+      pendingAttachmentsRef.current = [];
       setInput("");
       setReplyTo(null);
       setPendingAttachments([]);
@@ -762,24 +868,44 @@ export function OrderChat({
         previousAttachments,
       } satisfies SendCtx;
     },
-    onError: (err, _vars, ctx) => {
-      if (ctx?.msgKey) {
-        queryClient.setQueryData(ctx.msgKey, ctx.previous);
-      }
-      if (ctx?.previousInput !== undefined) setInput(ctx.previousInput);
-      if (ctx?.previousReplyTo !== undefined) setReplyTo(ctx.previousReplyTo);
-      if (ctx?.previousAttachments !== undefined) {
-        setPendingAttachments(ctx.previousAttachments);
-      }
+    onError: (err, vars, ctx) => {
       const e = err as { status?: number; body?: { error?: string } };
-      const msg =
-        e?.status === 403
-          ? "Нельзя писать в этот заказ"
-          : e?.body?.error ?? "Не удалось отправить";
-      toast.error(msg);
+      if (!ctx?.msgKey) return;
+      if (e?.status === 403) {
+        queryClient.setQueryData(ctx.msgKey, ctx.previous);
+        setInput(ctx.previousInput);
+        setReplyTo(ctx.previousReplyTo);
+        setPendingAttachments(ctx.previousAttachments);
+        failedSendRetryRef.current = null;
+        lastSendOptimisticIdRef.current = null;
+        toast.error(
+          e?.body?.error ?? "Нельзя писать в этот заказ",
+        );
+        return;
+      }
+      queryClient.setQueryData<OrderMessagesQueryData>(ctx.msgKey, (prev) => {
+        const base = prev ?? { messages: [], participants: [] };
+        return {
+          ...base,
+          messages: base.messages.map((m) =>
+            m.id === ctx.optimisticId
+              ? { ...m, clientSendStatus: "failed" }
+              : m,
+          ),
+        };
+      });
+      failedSendRetryRef.current = {
+        text: vars.text,
+        replyToId: vars.replyToId,
+        preSendAttachments: vars.preSendAttachments,
+      };
+      lastSendOptimisticIdRef.current = null;
+      toast.error(e?.body?.error ?? "Не удалось отправить");
     },
     onSuccess: (data, _text, ctx) => {
       if (!ctx) return;
+      lastSendOptimisticIdRef.current = null;
+      failedSendRetryRef.current = null;
       const added = normalizeMessageDto(data.message);
       if (added) {
         queryClient.setQueryData<OrderMessagesQueryData>(ctx.msgKey, (prev) => {
@@ -798,6 +924,28 @@ export function OrderChat({
       }
     },
   });
+
+  const retryFailedSend = useCallback(
+    (failedMessageId: string) => {
+      const r = failedSendRetryRef.current;
+      if (!r) return;
+      failedSendRetryRef.current = null;
+      const msgKey = queryKeys.orderMessages(orderId);
+      queryClient.setQueryData<OrderMessagesQueryData>(msgKey, (prev) => {
+        const base = prev ?? { messages: [], participants: [] };
+        return {
+          ...base,
+          messages: removeMessageById(base.messages, failedMessageId),
+        };
+      });
+      sendMutation.mutate({
+        text: r.text,
+        replyToId: r.replyToId,
+        preSendAttachments: r.preSendAttachments,
+      });
+    },
+    [orderId, queryClient, sendMutation.mutate],
+  );
 
   type ReactionCtx = {
     previous: OrderMessagesQueryData | undefined;
@@ -879,14 +1027,14 @@ export function OrderChat({
     [currentUserId, messages, reactionMutation.mutate, reactionMutation.isPending],
   );
 
-  const uploadChatFile = useCallback(
+  /** Одна загрузка без блокировки отправки сообщения (несколько — параллельно). */
+  const uploadChatFileCore = useCallback(
     async (file: File) => {
       if (file.size > 50 * 1024 * 1024) {
         toast.error("Файл слишком большой (макс. 50 МБ)");
         return;
       }
-      setFileUploading(true);
-      try {
+      const work = (async () => {
         const fd = new FormData();
         fd.set("file", file);
         const { ok, body } = await postFormDataWithProgress(
@@ -907,17 +1055,41 @@ export function OrderChat({
           toast.error("Некорректный ответ сервера");
           return;
         }
-        setPendingAttachments((prev) => [
-          ...prev,
-          { type: "file", fileId: id, name: file.name },
-        ]);
-      } catch {
-        toast.error("Ошибка загрузки файла");
+        const att: ChatAttachment = {
+          type: "file",
+          fileId: id,
+          name: file.name,
+        };
+        setPendingAttachments((prev) => {
+          const next = [...prev, att];
+          pendingAttachmentsRef.current = next;
+          return next;
+        });
+      })();
+      uploadPromisesRef.current.push(work);
+      try {
+        await work;
+      } finally {
+        uploadPromisesRef.current = uploadPromisesRef.current.filter(
+          (p) => p !== work,
+        );
+      }
+    },
+    [orderId, toast],
+  );
+
+  const onPickFiles = useCallback(
+    async (fileList: FileList | null) => {
+      const files = Array.from(fileList ?? []);
+      if (files.length === 0) return;
+      setFileUploading(true);
+      try {
+        await Promise.all(files.map((f) => uploadChatFileCore(f)));
       } finally {
         setFileUploading(false);
       }
     },
-    [orderId, toast],
+    [uploadChatFileCore],
   );
 
   const dockFabPos =
@@ -962,6 +1134,7 @@ export function OrderChat({
     setPeerTypingNames([]);
     setReplyTo(null);
     setPendingAttachments([]);
+    pendingAttachmentsRef.current = [];
   }, [orderId]);
 
   useEffect(() => {
@@ -1172,6 +1345,43 @@ export function OrderChat({
     const filter = `order_id=eq.${orderId}`;
     devLog("подписка postgres_changes messages *", { orderId, filter });
 
+    function onReactionChange(
+      payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
+    ) {
+      const msgKey = queryKeys.orderMessages(orderId);
+      const row =
+        payload.eventType === "DELETE"
+          ? (payload.old as Record<string, unknown> | null)
+          : (payload.new as Record<string, unknown> | null);
+      if (!row) return;
+      const messageId =
+        row.message_id != null ? String(row.message_id) : "";
+      const userId = row.user_id != null ? String(row.user_id) : "";
+      const emoji = row.emoji != null ? String(row.emoji) : "";
+      if (!messageId || !userId || !emoji) return;
+      const op = payload.eventType === "DELETE" ? "remove" : "add";
+
+      const snap = queryClient.getQueryData<OrderMessagesQueryData>(msgKey);
+      const mi0 =
+        snap?.messages.findIndex((m) => m.id === messageId) ?? -1;
+      if (mi0 < 0) {
+        void queryClient.invalidateQueries({ queryKey: msgKey });
+        return;
+      }
+
+      queryClient.setQueryData<OrderMessagesQueryData>(msgKey, (prev) => {
+        const base = prev ?? { messages: [], participants: [] };
+        const mi = base.messages.findIndex((m) => m.id === messageId);
+        if (mi < 0) return base;
+        const msg = base.messages[mi]!;
+        if (msg.orderId !== orderIdRef.current) return base;
+        const nextMsg = applyRealtimeReaction(msg, emoji, userId, op);
+        const nextMessages = [...base.messages];
+        nextMessages[mi] = nextMsg;
+        return { ...base, messages: nextMessages };
+      });
+    }
+
     function onMessageChange(
       payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
     ) {
@@ -1255,6 +1465,24 @@ export function OrderChat({
           filter,
         },
         onMessageChange,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "message_reactions",
+        },
+        onReactionChange,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "message_reactions",
+        },
+        onReactionChange,
       )
       .subscribe((status, err) => {
         devLog("subscribe status", status, err ?? "");
@@ -1357,18 +1585,19 @@ export function OrderChat({
   function onSend(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (
-      (!text && pendingAttachments.length === 0) ||
-      sendMutation.isPending ||
-      !currentUserId
-    ) {
+    const canSend =
+      text.length > 0 ||
+      pendingAttachments.length > 0 ||
+      fileUploading ||
+      uploadPromisesRef.current.length > 0;
+    if (!canSend || sendMutation.isPending || !currentUserId) {
       return;
     }
     if (chatLoadError) return;
     sendMutation.mutate({
       text,
       replyToId: replyTo?.id ?? null,
-      attachments: pendingAttachments,
+      preSendAttachments: [...pendingAttachments],
     });
   }
 
@@ -1742,6 +1971,12 @@ export function OrderChat({
                         }}
                         currentUserId={currentUserId}
                         onToggleReaction={(emoji) => toggleReaction(m.id, emoji)}
+                        onRetrySend={
+                          m.id.startsWith("pending:") &&
+                          m.clientSendStatus === "failed"
+                            ? () => retryFailedSend(m.id)
+                            : undefined
+                        }
                       />
                     ))}
                   </div>
@@ -1799,9 +2034,11 @@ export function OrderChat({
                   type="button"
                   className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--border)] hover:text-[var(--text)]"
                   onClick={() =>
-                    setPendingAttachments((prev) =>
-                      prev.filter((x) => x.fileId !== a.fileId),
-                    )
+                    setPendingAttachments((prev) => {
+                      const next = prev.filter((x) => x.fileId !== a.fileId);
+                      pendingAttachmentsRef.current = next;
+                      return next;
+                    })
                   }
                   aria-label="Убрать вложение"
                 >
@@ -1814,12 +2051,12 @@ export function OrderChat({
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           className="sr-only"
           tabIndex={-1}
           onChange={(e) => {
-            const f = e.target.files?.[0];
+            void onPickFiles(e.target.files);
             e.target.value = "";
-            if (f) void uploadChatFile(f);
           }}
         />
         <div className="relative overflow-hidden rounded-2xl bg-[color:var(--muted-bg)] dark:bg-white/[0.06]">
@@ -1827,7 +2064,7 @@ export function OrderChat({
             type="button"
             className="absolute bottom-1 left-1 z-[1] flex h-7 w-7 touch-manipulation items-center justify-center rounded-lg text-[var(--muted)] transition-all duration-150 hover:bg-[color:var(--muted-bg)] hover:text-[var(--text)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40"
             aria-label="Прикрепить файл"
-            disabled={fileUploading || Boolean(chatLoadError)}
+            disabled={Boolean(chatLoadError)}
             onClick={() => fileInputRef.current?.click()}
           >
             {fileUploading ? (
@@ -1906,8 +2143,10 @@ export function OrderChat({
             type="submit"
             disabled={
               sendMutation.isPending ||
-              fileUploading ||
-              (!input.trim() && pendingAttachments.length === 0) ||
+              (!input.trim() &&
+                pendingAttachments.length === 0 &&
+                !fileUploading &&
+                uploadPromisesRef.current.length === 0) ||
               !currentUserId
             }
             className="absolute bottom-1 right-1 flex h-7 w-7 touch-manipulation items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-sm shadow-blue-900/20 transition-all duration-150 hover:from-blue-500 hover:to-blue-600 hover:shadow-md hover:scale-[1.03] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 dark:from-blue-500 dark:to-blue-600 dark:shadow-blue-950/30"

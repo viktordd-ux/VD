@@ -134,6 +134,7 @@ export function ExecutorsProvider({ children }: { children: ReactNode }) {
       id: string;
       name: string;
       email: string;
+      role?: string;
       skills: string[];
       primarySkill: string;
       rating?: number;
@@ -143,6 +144,7 @@ export function ExecutorsProvider({ children }: { children: ReactNode }) {
     }>;
     const next: Record<string, ExecutorCacheEntry> = {};
     for (const u of list) {
+      if (u.role !== "executor") continue;
       next[u.id] = apiUserToEntry(u);
     }
     setExecutorsMap(next);

@@ -6,11 +6,11 @@ import {
   hydrateOrderWithRelations,
   serializeOrdersForListClient,
 } from "@/lib/order-list-client-serialize";
+import type { AdminOrdersCatalogPayload } from "@/lib/admin-orders-list-derive";
 import {
   type AdminOrderListViewSnapshot,
   type OrderListSort,
   type OrderWithRelations,
-  matchesAdminOrderListView,
   sortOrders,
 } from "@/lib/order-list-filters";
 import { queryKeys } from "@/lib/query-keys";
@@ -45,11 +45,14 @@ export type AdminOrdersListQueryPayload = {
 
 const ADMIN_ORDERS_PREFIX = ["admin", "orders"] as const;
 
+/** Кэш списка — полный каталог; сортировка в патчах совпадает с orderBy на сервере. */
+const CATALOG_LIST_SORT: OrderListSort = "updated_desc";
+
 function patchAllAdminOrderLists(
   queryClient: QueryClient,
-  updater: (payload: AdminOrdersListQueryPayload) => AdminOrdersListQueryPayload,
+  updater: (payload: AdminOrdersCatalogPayload) => AdminOrdersCatalogPayload,
 ) {
-  queryClient.setQueriesData<AdminOrdersListQueryPayload>(
+  queryClient.setQueriesData<AdminOrdersCatalogPayload>(
     { queryKey: ADMIN_ORDERS_PREFIX },
     (old) => (old ? updater(old) : old),
   );
@@ -74,25 +77,19 @@ export function upsertOrderInListCache(
     const prevItem = orders.find((o) => o.id === id);
     const merged = mergeOrderIntoListItem(row, prevItem);
     if (!merged) return old;
-    const snap = old.viewSnapshot;
-    const sort = old.sort;
     const others = orders.filter((o) => o.id !== id);
     if (merged.deletedAt) {
       return {
         ...old,
-        orders: serializeOrdersForListClient(sortOrders(others, sort)),
-      };
-    }
-    if (!matchesAdminOrderListView(merged, snap)) {
-      return {
-        ...old,
-        orders: serializeOrdersForListClient(sortOrders(others, sort)),
+        orders: serializeOrdersForListClient(
+          sortOrders(others, CATALOG_LIST_SORT),
+        ),
       };
     }
     return {
       ...old,
       orders: serializeOrdersForListClient(
-        sortOrders([...others, merged], sort),
+        sortOrders([...others, merged], CATALOG_LIST_SORT),
       ),
     };
   });
@@ -113,7 +110,7 @@ export function removeOrderFromListCache(
       orders: serializeOrdersForListClient(
         sortOrders(
           orders.filter((o) => o.id !== id),
-          data.sort,
+          CATALOG_LIST_SORT,
         ),
       ),
     };
@@ -150,7 +147,7 @@ export function updateOrderCheckpointsInListCaches(
       return {
         ...data,
         orders: serializeOrdersForListClient(
-          sortOrders(next, data.sort),
+          sortOrders(next, CATALOG_LIST_SORT),
         ),
       };
     });
@@ -189,7 +186,7 @@ export function updateOrderCheckpointsInListCaches(
     });
     return {
       ...data,
-      orders: serializeOrdersForListClient(sortOrders(next, data.sort)),
+      orders: serializeOrdersForListClient(sortOrders(next, CATALOG_LIST_SORT)),
     };
   });
 }
@@ -218,7 +215,7 @@ export function updateOrderFilesInListCaches(
       });
       return {
         ...data,
-        orders: serializeOrdersForListClient(sortOrders(next, data.sort)),
+        orders: serializeOrdersForListClient(sortOrders(next, CATALOG_LIST_SORT)),
       };
     });
     return;
@@ -245,7 +242,7 @@ export function updateOrderFilesInListCaches(
     });
     return {
       ...data,
-      orders: serializeOrdersForListClient(sortOrders(next, data.sort)),
+      orders: serializeOrdersForListClient(sortOrders(next, CATALOG_LIST_SORT)),
     };
   });
 }
@@ -264,17 +261,10 @@ export function patchOrderInListCachesFromAdminApiJson(
     if (!item) return old;
     const merged = mergeListOrderFromAdminApiJson(item, json);
     const others = orders.filter((o) => o.id !== orderId);
-    const snap = old.viewSnapshot;
-    if (!matchesAdminOrderListView(merged, snap)) {
-      return {
-        ...old,
-        orders: serializeOrdersForListClient(sortOrders(others, old.sort)),
-      };
-    }
     return {
       ...old,
       orders: serializeOrdersForListClient(
-        sortOrders([...others, merged], old.sort),
+        sortOrders([...others, merged], CATALOG_LIST_SORT),
       ),
     };
   });
@@ -292,7 +282,7 @@ export function removeOrdersFromListCaches(queryClient: QueryClient, ids: string
       orders: serializeOrdersForListClient(
         sortOrders(
           orders.filter((o) => !rm.has(o.id)),
-          old.sort,
+          CATALOG_LIST_SORT,
         ),
       ),
     };
@@ -317,17 +307,10 @@ export function patchOrderStatusInListCaches(
     if (!item) return old;
     const merged = { ...item, status };
     const others = orders.filter((o) => o.id !== orderId);
-    const snap = old.viewSnapshot;
-    if (!matchesAdminOrderListView(merged, snap)) {
-      return {
-        ...old,
-        orders: serializeOrdersForListClient(sortOrders(others, old.sort)),
-      };
-    }
     return {
       ...old,
       orders: serializeOrdersForListClient(
-        sortOrders([...others, merged], old.sort),
+        sortOrders([...others, merged], CATALOG_LIST_SORT),
       ),
     };
   });
@@ -347,7 +330,7 @@ export function setOrderCheckpointsInListCaches(
     );
     return {
       ...old,
-      orders: serializeOrdersForListClient(sortOrders(next, old.sort)),
+      orders: serializeOrdersForListClient(sortOrders(next, CATALOG_LIST_SORT)),
     };
   });
 }

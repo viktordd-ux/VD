@@ -17,6 +17,22 @@ import {
   trClass,
 } from "@/components/table-wrap";
 
+const MEMBERSHIP_ROLE_LABEL: Record<string, string> = {
+  OWNER: "Владелец",
+  ADMIN: "Админ",
+  MANAGER: "Менеджер",
+  EXECUTOR: "Исполнитель",
+  VIEWER: "Наблюдатель",
+};
+
+const MEMBERSHIP_ROLE_OPTIONS = [
+  "OWNER",
+  "ADMIN",
+  "MANAGER",
+  "EXECUTOR",
+  "VIEWER",
+] as const;
+
 /** Совпадает с ответом GET /api/users (enriched). */
 export type AdminExecutorListRow = {
   id: string;
@@ -28,6 +44,7 @@ export type AdminExecutorListRow = {
   primarySkill: string | null;
   skills: string[];
   onboarded: boolean;
+  membershipRole: string;
   rating: number;
   completedOrders: number;
   latePercent: number;
@@ -43,6 +60,7 @@ export function AdminUsersListClient({
   loadError?: string | null;
 }) {
   const [rows, setRows] = useState(initialRows);
+  const [busyRoleId, setBusyRoleId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/users");
@@ -55,7 +73,7 @@ export function AdminUsersListClient({
     <div className="space-y-6">
       {loadError ? <AdminDbUnavailableBanner message={loadError} /> : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Исполнители</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Команда</h1>
         <div className="w-full sm:w-auto [&_button]:w-full [&_button]:sm:w-auto">
           <CreateExecutorDialog onCreated={refresh} />
         </div>
@@ -71,6 +89,7 @@ export function AdminUsersListClient({
             <thead className="border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]">
               <tr>
                 <th className={thClass}>Имя</th>
+                <th className={thClass}>Роль</th>
                 <th className={thClass}>Основной навык</th>
                 <th className={thClass}>Навыки</th>
                 <th className={thClass}>Рейтинг</th>
@@ -107,6 +126,39 @@ export function AdminUsersListClient({
                           <p className="text-xs text-[var(--muted)]">{u.email}</p>
                         </div>
                       </div>
+                    </td>
+                    <td className={tdClass}>
+                      <select
+                        value={u.membershipRole}
+                        disabled={busyRoleId === u.id}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={async (e) => {
+                          const next = e.target.value;
+                          setBusyRoleId(u.id);
+                          const res = await fetch(`/api/users/${u.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ membershipRole: next }),
+                          });
+                          setBusyRoleId(null);
+                          if (!res.ok) {
+                            const err = (await res.json().catch(() => ({}))) as {
+                              error?: string;
+                            };
+                            alert(err.error ?? "Не удалось сменить роль");
+                            await refresh();
+                            return;
+                          }
+                          await refresh();
+                        }}
+                        className="max-w-[11rem] rounded-md border border-[color:var(--border)] bg-[var(--bg)] px-2 py-1 text-xs font-medium text-[var(--text)]"
+                      >
+                        {MEMBERSHIP_ROLE_OPTIONS.map((r) => (
+                          <option key={r} value={r}>
+                            {MEMBERSHIP_ROLE_LABEL[r] ?? r}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className={tdClass}>
                       {u.primarySkill ? (
@@ -188,6 +240,9 @@ export function AdminUsersListClient({
                 </Link>
                 <p className="break-all text-sm text-[var(--muted)]">{u.email}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge tone="neutral">
+                    {MEMBERSHIP_ROLE_LABEL[u.membershipRole] ?? u.membershipRole}
+                  </Badge>
                   <Badge tone={u.status === "active" ? "success" : "danger"}>
                     {userStatusLabel[u.status]}
                   </Badge>
