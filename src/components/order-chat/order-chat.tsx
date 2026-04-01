@@ -1083,12 +1083,17 @@ export function OrderChat({
       emoji: string;
       nextActive: boolean;
     }) => {
+      const path = `/api/messages/${encodeURIComponent(vars.messageId)}/reactions`;
       const res = await fetch(
-        `/api/messages/${encodeURIComponent(vars.messageId)}/reactions`,
+        vars.nextActive
+          ? path
+          : `${path}?emoji=${encodeURIComponent(vars.emoji)}`,
         {
           method: vars.nextActive ? "POST" : "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ emoji: vars.emoji }),
+          headers: vars.nextActive
+            ? { "Content-Type": "application/json" }
+            : undefined,
+          body: vars.nextActive ? JSON.stringify({ emoji: vars.emoji }) : undefined,
         },
       );
       if (!res.ok) {

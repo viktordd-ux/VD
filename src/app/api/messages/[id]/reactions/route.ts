@@ -69,12 +69,11 @@ export async function DELETE(req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id: messageId } = await params;
 
-  let emoji = "";
-  try {
-    const body = (await req.json()) as { emoji?: string };
+  const url = new URL(req.url);
+  let emoji = url.searchParams.get("emoji")?.trim() ?? "";
+  if (!emoji) {
+    const body = (await req.json().catch(() => ({}))) as { emoji?: string };
     emoji = typeof body.emoji === "string" ? body.emoji.trim() : "";
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
   if (!emoji) {
     return NextResponse.json({ error: "emoji required" }, { status: 400 });
