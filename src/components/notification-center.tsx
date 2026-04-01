@@ -30,8 +30,13 @@ function dispatchNotificationsChanged() {
 
 type Row = NotificationListRow;
 
+/** Центр уведомлений хранит и показывает только непрочитанные; read в кеш не кладём. */
+function unreadOnly(rows: Row[]): Row[] {
+  return rows.filter((n) => !n.readAt);
+}
+
 async function fetchNotifications(): Promise<{ notifications: Row[] }> {
-  const res = await fetch("/api/notifications", {
+  const res = await fetch("/api/notifications?onlyUnread=true", {
     cache: "no-store",
     credentials: "same-origin",
   });
@@ -53,7 +58,7 @@ async function fetchNotifications(): Promise<{ notifications: Row[] }> {
   if (!Array.isArray(raw)) {
     throw new Error("notifications:invalid_payload");
   }
-  const notifications = normalizeNotificationRowsFromApi(raw);
+  const notifications = unreadOnly(normalizeNotificationRowsFromApi(raw));
   return { notifications };
 }
 
@@ -178,9 +183,6 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  /** После закрытия панели скрываем прочитанные из списка (только отображение). */
-  const [hideReadAfterClose, setHideReadAfterClose] = useState(false);
-  const prevOpenRef = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const optimisticNotifReadIdsRef = useRef(new Set<string>());
   const bulkNotifReadRef = useRef(false);
@@ -205,6 +207,8 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
     retry: 1,
     /** При открытии панели сразу показываем кеш, фоновый refetch не очищает список. */
     placeholderData: (prev) => prev,
+    /** Не показываем read даже если в кеш попали извне. */
+    select: (d) => ({ notifications: unreadOnly(d.notifications) }),
   });
 
   const navBadgeOpts = useMemo(
@@ -220,21 +224,9 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
     enabled: !!userId,
   });
 
-  const list = data?.notifications ?? [];
+  const displayList = data?.notifications ?? [];
 
-  useEffect(() => {
-    if (prevOpenRef.current && !open) {
-      setHideReadAfterClose(true);
-    }
-    prevOpenRef.current = open;
-  }, [open]);
-
-  const displayList = useMemo(() => {
-    if (!hideReadAfterClose) return list;
-    return list.filter((n) => !n.readAt);
-  }, [list, hideReadAfterClose]);
-
-  const unread = displayList.filter((n) => !n.readAt).length;
+  const unread = displayList.length;
   const bellCount = Math.max(0, Number(navBadges?.notificationUnreadCount ?? 0));
 
   const grouped = useMemo(
@@ -244,14 +236,14 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
 
   const applyMarkAllReadAfterFetch = useCallback(
     async (payload: { notifications: Row[] } | undefined) => {
-      if (!payload?.notifications?.some((n) => !n.readAt)) return;
+      const unreadRows = unreadOnly(payload?.notifications ?? []);
+      if (unreadRows.length === 0) return;
       bulkNotifReadRef.current = true;
-      const now = new Date().toISOString();
       await queryClient.cancelQueries({ queryKey: queryKeys.notifications() });
-      queryClient.setQueryData<{ notifications: Row[] }>(queryKeys.notifications(), {
-        notifications: payload.notifications.map((n) => ({ ...n, readAt: n.readAt ?? now })),
-      });
       await markAllRead();
+      queryClient.setQueryData<{ notifications: Row[] }>(queryKeys.notifications(), {
+        notifications: [],
+      });
       setNavNotificationUnreadToZero(queryClient);
       dispatchNotificationsChanged();
       void queryClient.invalidateQueries({ queryKey: queryKeys.navBadges() });
@@ -297,6 +289,7 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
         void queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });
         return;
       }
+      if (row.readAt) return;
       queryClient.setQueryData<{ notifications: Row[] }>(
         queryKeys.notifications(),
         (old) => {
@@ -342,6 +335,11 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
         queryKeys.notifications(),
         (old) => {
           if (!old?.notifications) return old;
+          if (row.readAt) {
+            return {
+              notifications: old.notifications.filter((n) => n.id !== row.id),
+            };
+          }
           return {
             notifications: old.notifications.map((n) =>
               n.id === row.id ? row : n,
@@ -406,11 +404,7 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
           (old) =>
             old
               ? {
-                  notifications: old.notifications.map((x) =>
-                    x.id === n.id
-                      ? { ...x, readAt: new Date().toISOString() }
-                      : x,
-                  ),
+                  notifications: old.notifications.filter((x) => x.id !== n.id),
                 }
               : old,
         );
@@ -458,10 +452,7 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
                   bulkNotifReadRef.current = true;
                   await markAllRead();
                   queryClient.setQueryData<{ notifications: Row[] }>(queryKeys.notifications(), {
-                    notifications: list.map((x) => ({
-                      ...x,
-                      readAt: x.readAt ?? new Date().toISOString(),
-                    })),
+                    notifications: [],
                   });
                   setNavNotificationUnreadToZero(queryClient);
                   dispatchNotificationsChanged();
@@ -504,9 +495,9 @@ export function NotificationCenter({ triggerClassName }: NotificationCenterProps
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--muted-bg)] text-[var(--muted)]">
                   <IconBellLarge className="h-6 w-6" />
                 </div>
-                <p className="text-sm font-medium text-[var(--text)]">Пока нет уведомлений</p>
+                <p className="text-sm font-medium text-[var(--text)]">Нет новых уведомлений</p>
                 <p className="mt-1 max-w-[16rem] text-xs leading-relaxed text-[var(--muted)]">
-                  События по заказам и чату появятся здесь. Список обновляется с сервера при каждом открытии.
+                  Когда появятся новые события по заказам и чату, они отобразятся здесь.
                 </p>
               </div>
             ) : (

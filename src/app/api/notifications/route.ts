@@ -12,15 +12,19 @@ export async function GET(req: Request) {
     const user = await requireUser();
     if (user instanceof NextResponse) return user;
 
-    const unreadOnly = new URL(req.url).searchParams.get("unread") === "1";
+    const sp = new URL(req.url).searchParams;
+    const onlyUnread =
+      sp.get("onlyUnread") === "true" ||
+      sp.get("onlyUnread") === "1" ||
+      sp.get("unread") === "1";
 
     const rows = await prisma.notification.findMany({
       where: {
         userId: user.id,
-        ...(unreadOnly ? { readAt: null } : {}),
+        ...(onlyUnread ? { readAt: null } : {}),
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: 25,
     });
 
     return NextResponse.json(
