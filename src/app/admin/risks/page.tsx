@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Card } from "@/components/ui/card";
 import { getOrderRiskFlags } from "@/lib/order-risk";
@@ -9,9 +12,18 @@ import { RiskOrderActions } from "./risk-actions";
 export const dynamic = "force-dynamic";
 
 export default async function RisksPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  if (session.user.role !== "admin") redirect("/executor");
+  const orgIds = await getAccessibleOrganizationIds(session.user.id);
+  const orgScope =
+    orgIds.length === 0
+      ? { id: { in: [] as string[] } }
+      : { organizationId: { in: orgIds } };
+
   /** Последовательно: см. комментарий в admin/page (P2024 при connection_limit=1). */
   const candidates = await prisma.order.findMany({
-    where: { ...orderIsActive, status: { not: "DONE" } },
+    where: { ...orderIsActive, ...orgScope, status: { not: "DONE" } },
     include: {
       executor: true,
       checkpoints: true,
@@ -24,7 +36,11 @@ export default async function RisksPage() {
     where: { role: "executor", status: "banned" },
   });
   const executors = await prisma.user.findMany({
-    where: { role: "executor", status: "active" },
+    where: {
+      role: "executor",
+      status: "active",
+      memberships: { some: { organizationId: { in: orgIds } } },
+    },
     orderBy: { name: "asc" },
     select: { id: true, name: true, email: true, skills: true },
   });

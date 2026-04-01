@@ -20,6 +20,7 @@ export function mergeListOrderFromAdminApiJson(
     executor,
     checkpoints: prev.checkpoints,
     files: prev.files,
+    team: (next as unknown as OrderWithRelations).team ?? prev.team,
   };
 }
 

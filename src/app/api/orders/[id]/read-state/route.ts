@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { forbidden, requireUser } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { requireUser } from "@/lib/api-auth";
 import { getUnreadFlagsForOrders } from "@/lib/order-unread-state";
-
+import {
+  loadOrderForChatAccess,
+  userCanAccessOrderChat,
+} from "@/lib/order-chat-access";
 export const dynamic = "force-dynamic";
-
-function canAccessOrder(
-  role: "admin" | "executor",
-  userId: string,
-  order: { executorId: string | null },
-): boolean {
-  if (role === "admin") return true;
-  return order.executorId === userId;
-}
 
 /** GET — флаги непрочитанного чата и проекта (вычислены на сервере). */
 export async function GET(
@@ -24,12 +17,10 @@ export async function GET(
   if (user instanceof NextResponse) return user;
 
   const orderId = (await params).id;
-  const order = await prisma.order.findFirst({
-    where: { id: orderId, ...orderIsActive },
-    select: { id: true, executorId: true },
-  });
-  if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!canAccessOrder(user.role, user.id, order)) return forbidden();
+  const order = await loadOrderForChatAccess(orderId);
+  if (!order || !(await userCanAccessOrderChat(user.id, order))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const map = await getUnreadFlagsForOrders(user.id, [orderId]);
   const flags = map.get(orderId);
@@ -58,6 +49,8 @@ export async function GET(
     hasUnreadProject: flags.hasUnreadProject,
     hasUnreadAny: flags.hasUnreadAny,
     unreadChatCount,
+    /** Для разделителя «Новые сообщения» в чате */
+    chatReadAt: chatReadAt?.toISOString() ?? null,
   });
 }
 
@@ -70,12 +63,10 @@ export async function PATCH(
   if (user instanceof NextResponse) return user;
 
   const orderId = (await params).id;
-  const order = await prisma.order.findFirst({
-    where: { id: orderId, ...orderIsActive },
-    select: { id: true, executorId: true },
-  });
-  if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!canAccessOrder(user.role, user.id, order)) return forbidden();
+  const order = await loadOrderForChatAccess(orderId);
+  if (!order || !(await userCanAccessOrderChat(user.id, order))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   let body: { markChat?: boolean; markProject?: boolean };
   try {

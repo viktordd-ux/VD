@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin, requireUser } from "@/lib/api-auth";
+import { requireStaff, requireUser } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { computeProfit } from "@/lib/money";
+import { assertUsersAreOrgExecutors, replaceOrderExecutors } from "@/lib/order-executors";
+import {
+  getOrderAccessWhereInput,
+  getSerializeOrderRoleForUser,
+  userHasExtendedOrderListView,
+} from "@/lib/order-access";
 import { serializeOrder } from "@/lib/serialize";
 import {
   buildDescriptionFromTemplate,
   createCheckpointsFromTemplate,
 } from "@/lib/order-template";
-import { orderIsActive } from "@/lib/active-scope";
+import { getPrimaryOrganizationIdForUser } from "@/lib/org-scope";
+import { resolveTeamIdForOrder } from "@/lib/team-scope";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
 import { pushNotifyExecutorAssigned } from "@/lib/push-notify";
 import { notifyExecutorOrderAssigned } from "@/lib/telegram-notify";
@@ -17,14 +24,12 @@ export async function GET(req: Request) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
+  const extended = await userHasExtendedOrderListView(user.id);
+
   const { searchParams } = new URL(req.url);
   const filter = searchParams.get("filter") ?? "all";
   const lowMargin = searchParams.get("lowMargin");
-
-  const where =
-    user.role === "executor"
-      ? { executorId: user.id }
-      : {};
 
   const statusWhere =
     filter === "active"
@@ -34,15 +39,16 @@ export async function GET(req: Request) {
         : {};
 
   let orders = await prisma.order.findMany({
-    where: { ...where, ...statusWhere, ...orderIsActive },
+    where: { ...accessWhere, ...statusWhere },
     include: {
       executor: true,
-      ...(user.role === "admin" ? { lead: true } : {}),
+      orderExecutors: { select: { userId: true } },
+      ...(extended ? { lead: true } : {}),
     },
     orderBy: { updatedAt: "desc" },
   });
 
-  if (user.role === "admin" && lowMargin === "1") {
+  if (extended && lowMargin === "1") {
     orders = orders.filter((o) => {
       const bc = Number(o.budgetClient);
       if (bc <= 0) return false;
@@ -50,15 +56,26 @@ export async function GET(req: Request) {
     });
   }
 
-  const payload = orders.map((o) =>
-    serializeOrder(o, user.role === "admin" ? "admin" : "executor"),
+  const payload = await Promise.all(
+    orders.map(async (o) => {
+      const role = await getSerializeOrderRoleForUser(user.id, o.organizationId);
+      return serializeOrder(o, role);
+    }),
   );
   return NextResponse.json(payload);
 }
 
 export async function POST(req: Request) {
-  const user = await requireAdmin();
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
+
+  const organizationId = await getPrimaryOrganizationIdForUser(user.id);
+  if (!organizationId) {
+    return NextResponse.json(
+      { error: "Нет организации: создайте организацию или примите приглашение" },
+      { status: 400 },
+    );
+  }
 
   const body = (await req.json()) as {
     title?: string;
@@ -72,6 +89,7 @@ export async function POST(req: Request) {
     executorId?: string | null;
     templateId?: string | null;
     requiredSkills?: string[];
+    teamId?: string | null;
   };
 
   const template = body.templateId
@@ -101,6 +119,29 @@ export async function POST(req: Request) {
   const requiredSkills =
     body.requiredSkills !== undefined ? body.requiredSkills : (template?.tags ?? []);
 
+  let teamId: string | null = null;
+  if (body.teamId != null && String(body.teamId).trim()) {
+    const resolved = await resolveTeamIdForOrder(organizationId, body.teamId);
+    if (!resolved) {
+      return NextResponse.json(
+        { error: "Команда не найдена в этой организации" },
+        { status: 400 },
+      );
+    }
+    teamId = resolved;
+  }
+
+  if (body.executorId) {
+    try {
+      await assertUsersAreOrgExecutors(organizationId, [body.executorId]);
+    } catch {
+      return NextResponse.json(
+        { error: "Недопустимый исполнитель для организации" },
+        { status: 400 },
+      );
+    }
+  }
+
   const order = await prisma.$transaction(async (tx) => {
     const o = await tx.order.create({
       data: {
@@ -116,6 +157,8 @@ export async function POST(req: Request) {
         executorId: body.executorId ?? null,
         templateId: template?.id ?? null,
         requiredSkills,
+        organizationId,
+        teamId,
       },
       include: { executor: true },
     });
@@ -141,10 +184,15 @@ export async function POST(req: Request) {
   });
 
   if (order.executorId) {
+    await replaceOrderExecutors(order.id, [order.executorId]);
     notifyExecutorOrderAssigned(order.executorId, order.title);
     pushNotifyExecutorAssigned(order.executorId, order.title, order.id);
   }
 
   revalidateOrderViews(order.id);
-  return NextResponse.json(serializeOrder(order, "admin"));
+  const created = await prisma.order.findFirst({
+    where: { id: order.id },
+    include: { executor: true, lead: true, orderExecutors: { select: { userId: true } } },
+  });
+  return NextResponse.json(serializeOrder(created ?? order, "admin"));
 }

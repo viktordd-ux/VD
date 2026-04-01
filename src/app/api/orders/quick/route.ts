@@ -1,22 +1,33 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { getBestExecutor } from "@/lib/executor-matching";
 import { computeProfit } from "@/lib/money";
+import { assertUsersAreOrgExecutors, replaceOrderExecutors } from "@/lib/order-executors";
 import { serializeOrder } from "@/lib/serialize";
 import {
   buildDescriptionFromTemplate,
   createCheckpointsFromTemplate,
   parseOrderTextBlock,
 } from "@/lib/order-template";
+import { getPrimaryOrganizationIdForUser } from "@/lib/org-scope";
+import { resolveTeamIdForOrder } from "@/lib/team-scope";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
 import { pushNotifyExecutorAssigned } from "@/lib/push-notify";
 import { notifyExecutorOrderAssigned } from "@/lib/telegram-notify";
 
 export async function POST(req: Request) {
-  const user = await requireAdmin();
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
+
+  const organizationId = await getPrimaryOrganizationIdForUser(user.id);
+  if (!organizationId) {
+    return NextResponse.json(
+      { error: "Нет организации: создайте организацию или примите приглашение" },
+      { status: 400 },
+    );
+  }
 
   const body = (await req.json()) as {
     orderText?: string;
@@ -28,6 +39,7 @@ export async function POST(req: Request) {
     budgetExecutor?: number | string;
     status?: string;
     executorId?: string | null;
+    teamId?: string | null;
   };
 
   const orderText = body.orderText?.trim() ?? "";
@@ -55,8 +67,31 @@ export async function POST(req: Request) {
 
   let executorId: string | null = body.executorId ?? null;
   if (body.autoAssign) {
-    const best = await getBestExecutor({ requiredSkills });
+    const best = await getBestExecutor({ requiredSkills, organizationId });
     if (best) executorId = best.id;
+  }
+
+  let teamId: string | null = null;
+  if (body.teamId != null && String(body.teamId).trim()) {
+    const resolved = await resolveTeamIdForOrder(organizationId, body.teamId);
+    if (!resolved) {
+      return NextResponse.json(
+        { error: "Команда не найдена в этой организации" },
+        { status: 400 },
+      );
+    }
+    teamId = resolved;
+  }
+
+  if (executorId) {
+    try {
+      await assertUsersAreOrgExecutors(organizationId, [executorId]);
+    } catch {
+      return NextResponse.json(
+        { error: "Недопустимый исполнитель для организации" },
+        { status: 400 },
+      );
+    }
   }
 
   const order = await prisma.$transaction(async (tx) => {
@@ -74,6 +109,8 @@ export async function POST(req: Request) {
         executorId,
         templateId: template?.id ?? null,
         requiredSkills,
+        organizationId,
+        teamId,
       },
       include: { executor: true },
     });
@@ -99,10 +136,15 @@ export async function POST(req: Request) {
   });
 
   if (order.executorId) {
+    await replaceOrderExecutors(order.id, [order.executorId]);
     notifyExecutorOrderAssigned(order.executorId, order.title);
     pushNotifyExecutorAssigned(order.executorId, order.title, order.id);
   }
 
   revalidateOrderViews(order.id);
-  return NextResponse.json(serializeOrder(order, "admin"));
+  const created = await prisma.order.findFirst({
+    where: { id: order.id },
+    include: { executor: true, lead: true, orderExecutors: { select: { userId: true } } },
+  });
+  return NextResponse.json(serializeOrder(created ?? order, "admin"));
 }

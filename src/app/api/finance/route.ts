@@ -1,7 +1,9 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 
 function rangeStart(period: "day" | "week" | "month"): Date {
   const end = new Date();
@@ -16,10 +18,11 @@ function rangeStart(period: "day" | "week" | "month"): Date {
   return start;
 }
 
-async function profitInPeriod(start: Date, end: Date) {
+async function profitInPeriod(start: Date, end: Date, orgScope: Prisma.OrderWhereInput) {
   return prisma.order.aggregate({
     where: {
       ...orderIsActive,
+      ...orgScope,
       status: "DONE",
       updatedAt: { gte: start, lte: end },
     },
@@ -31,11 +34,17 @@ export async function GET() {
   const user = await requireAdmin();
   if (user instanceof NextResponse) return user;
 
+  const orgIds = await getAccessibleOrganizationIds(user.id);
+  const orgScope: Prisma.OrderWhereInput =
+    orgIds.length === 0
+      ? { id: { in: [] } }
+      : { organizationId: { in: orgIds } };
+
   const end = new Date();
 
   const [totals, byStatus, day, week, month] = await Promise.all([
     prisma.order.aggregate({
-      where: orderIsActive,
+      where: { ...orderIsActive, ...orgScope },
       _sum: {
         budgetClient: true,
         budgetExecutor: true,
@@ -45,14 +54,14 @@ export async function GET() {
     }),
     prisma.order.groupBy({
       by: ["status"],
-      where: orderIsActive,
+      where: { ...orderIsActive, ...orgScope },
       _sum: {
         profit: true,
       },
     }),
-    profitInPeriod(rangeStart("day"), end),
-    profitInPeriod(rangeStart("week"), end),
-    profitInPeriod(rangeStart("month"), end),
+    profitInPeriod(rangeStart("day"), end, orgScope),
+    profitInPeriod(rangeStart("week"), end, orgScope),
+    profitInPeriod(rangeStart("month"), end, orgScope),
   ]);
 
   return NextResponse.json({

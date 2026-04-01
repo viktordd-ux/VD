@@ -145,10 +145,22 @@ export function metricsFromOrders(
   };
 }
 
-/** Метрики по одному исполнителю (завершённые заказы). */
-export async function getExecutorMetrics(executorId: string): Promise<ExecutorMetrics> {
+/** Метрики по одному исполнителю (завершённые заказы в переданных организациях). */
+export async function getExecutorMetrics(
+  executorId: string,
+  organizationIds: string[],
+): Promise<ExecutorMetrics> {
+  const orgFilter =
+    organizationIds.length > 0
+      ? { organizationId: { in: organizationIds } }
+      : { id: { in: [] as string[] } };
   const orders = await prisma.order.findMany({
-    where: { ...orderIsActive, executorId, status: "DONE" },
+    where: {
+      ...orderIsActive,
+      executorId,
+      status: "DONE",
+      ...orgFilter,
+    },
     select: {
       deadline: true,
       updatedAt: true,
@@ -165,6 +177,7 @@ export async function getExecutorMetrics(executorId: string): Promise<ExecutorMe
 
 export async function getExecutorMetricsMap(
   executorIds: string[],
+  options?: { organizationIds?: string[] },
 ): Promise<Map<string, ExecutorMetrics>> {
   if (executorIds.length === 0) return new Map();
 
@@ -173,6 +186,9 @@ export async function getExecutorMetricsMap(
       ...orderIsActive,
       status: "DONE",
       executorId: { in: executorIds },
+      ...(options?.organizationIds && options.organizationIds.length > 0
+        ? { organizationId: { in: options.organizationIds } }
+        : {}),
     },
     select: {
       executorId: true,
@@ -208,13 +224,25 @@ export async function getExecutorMetricsMap(
  */
 export async function getBestExecutor(order: {
   requiredSkills: string[];
+  /** Если задан — только исполнители, состоящие в этой организации. */
+  organizationId?: string;
 }): Promise<User | null> {
   const executors = await prisma.user.findMany({
-    where: { role: "executor", status: "active" },
+    where: {
+      role: "executor",
+      status: "active",
+      ...(order.organizationId
+        ? { memberships: { some: { organizationId: order.organizationId } } }
+        : {}),
+    },
   });
   if (executors.length === 0) return null;
 
-  const metrics = await getExecutorMetricsMap(executors.map((e) => e.id));
+  const metrics = await getExecutorMetricsMap(executors.map((e) => e.id), {
+    ...(order.organizationId
+      ? { organizationIds: [order.organizationId] }
+      : {}),
+  });
 
   let best: User | null = null;
   let bestRank = -Infinity;

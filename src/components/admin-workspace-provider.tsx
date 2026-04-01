@@ -1,16 +1,36 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { GlobalSearchCommand } from "@/components/global-search-command";
-import { QuickCreateOrderModal } from "@/components/quick-create-order-modal";
-import { NotificationCenter } from "@/components/notification-center";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { QuickCreateContext } from "@/context/quick-create-context";
 import { useInvalidateAdminOrders } from "@/hooks/use-invalidate-admin-orders";
 import { isEditableKeyboardTarget } from "@/lib/keyboard-utils";
 import { queryKeys } from "@/lib/query-keys";
+
+const GlobalSearchCommand = dynamic(
+  () =>
+    import("@/components/global-search-command").then((m) => ({
+      default: m.GlobalSearchCommand,
+    })),
+  { ssr: false, loading: () => null },
+);
+const QuickCreateOrderModal = dynamic(
+  () =>
+    import("@/components/quick-create-order-modal").then((m) => ({
+      default: m.QuickCreateOrderModal,
+    })),
+  { ssr: false, loading: () => null },
+);
+const NotificationCenter = dynamic(
+  () =>
+    import("@/components/notification-center").then((m) => ({
+      default: m.NotificationCenter,
+    })),
+  { ssr: false, loading: () => null },
+);
 
 function readOrderNavIds(): string[] {
   try {

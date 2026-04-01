@@ -6,6 +6,7 @@ import { hardDeleteOrder, softDeleteOrder } from "@/lib/deletion-ops";
 import { computeProfit } from "@/lib/money";
 import { recalculateFinance } from "@/lib/recalculate-finance";
 import { orderIsActive } from "@/lib/active-scope";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import { revalidateAdminFinance, revalidateOrderViews } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
@@ -15,14 +16,21 @@ export async function DELETE(req: Request, { params }: Params) {
   const admin = await requireAdmin();
   if (admin instanceof NextResponse) return admin;
   const { id } = await params;
+  const orgIds = await getAccessibleOrganizationIds(admin.id);
   const { searchParams } = new URL(req.url);
   const hard = searchParams.get("hard") === "true";
 
   try {
     if (hard) {
-      await hardDeleteOrder(id, admin.id, { actionType: "delete_finance" });
+      await hardDeleteOrder(id, admin.id, {
+        actionType: "delete_finance",
+        allowedOrganizationIds: orgIds,
+      });
     } else {
-      await softDeleteOrder(id, admin.id, { actionType: "delete_finance" });
+      await softDeleteOrder(id, admin.id, {
+        actionType: "delete_finance",
+        allowedOrganizationIds: orgIds,
+      });
     }
   } catch (e) {
     const code = (e as { code?: string }).code;
@@ -42,8 +50,9 @@ export async function PATCH(req: Request, { params }: Params) {
   if (admin instanceof NextResponse) return admin;
   const { id } = await params;
 
+  const orgIds = await getAccessibleOrganizationIds(admin.id);
   const existing = await prisma.order.findFirst({
-    where: { id, ...orderIsActive },
+    where: { id, ...orderIsActive, organizationId: { in: orgIds } },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

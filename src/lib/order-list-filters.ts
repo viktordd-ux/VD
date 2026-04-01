@@ -15,6 +15,11 @@ export type OrderWithRelations = Order & {
   executor: User | null;
   checkpoints: Checkpoint[];
   files: File[];
+  /** Список назначенных исполнителей (с сервера / realtime). */
+  executorUserIds?: string[];
+  orderExecutors?: { userId: string }[];
+  /** Команда заказа (список — кратко; карточка — с members). */
+  team?: { id: string; name: string } | null;
 };
 
 export function marginRatio(order: Order): number {
@@ -142,6 +147,8 @@ export type AdminOrderListViewSnapshot = {
   deadlineAfter: string;
   deadlineBefore: string;
   skillsMode: "any" | "all";
+  /** Пустая строка = все команды */
+  teamId: string;
 };
 
 export function matchesAdminOrderListView(
@@ -161,6 +168,7 @@ export function matchesAdminOrderListView(
     if (!matchesRiskFilters(flags, s.riskFilter)) return false;
   }
   if (!matchesDeadlineRange(o, s.deadlineAfter, s.deadlineBefore)) return false;
+  if (s.teamId && o.teamId !== s.teamId) return false;
   return true;
 }
 

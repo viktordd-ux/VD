@@ -11,9 +11,19 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+/// Legacy: глобальная роль в приложении (admin / executor). Для доступа в организациях используйте `Membership.role` (`MembershipRole`).
 enum UserRole {
   admin
   executor
+}
+
+/// Роли участника организации (один пользователь может иметь разные роли в разных организациях).
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  EXECUTOR
+  VIEWER
 }
 
 enum UserStatus {
@@ -69,6 +79,7 @@ model User {
   lastName     String     @default("") @map("last_name")
   email        String     @unique
   passwordHash String     @map("password_hash")
+  /// @deprecated Историческое поле; новая модель ролей — `Membership` и `MembershipRole`.
   role         UserRole
   status       UserStatus
   phone        String?    @map("phone")
@@ -86,10 +97,68 @@ model User {
   pushSubscriptions PushSubscription[]
   auditLogs        AuditLog[]
   messagesSent     Message[]
+  messageReactions MessageReaction[]
   orderReadStates  OrderUserReadState[]
   notifications    Notification[]
 
+  ownedOrganizations Organization[] @relation("OrganizationOwner")
+  memberships        Membership[]
+  teamMembers        TeamMember[]
+  orderExecutorRows  OrderExecutor[]
+
   @@map("users")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  owner   User         @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members Membership[]
+  teams   Team[]
+  orders  Order[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String         @id @default(uuid())
+  userId         String         @map("user_id")
+  organizationId String         @map("organization_id")
+  role           MembershipRole
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("memberships")
+}
+
+model Team {
+  id             String @id @default(uuid())
+  name           String
+  organizationId String @map("organization_id")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+  orders       Order[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id     String @id @default(uuid())
+  teamId String @map("team_id")
+  userId String @map("user_id")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
 }
 
 model OrderTemplate {
@@ -124,6 +193,19 @@ model Lead {
   @@map("leads")
 }
 
+/// Назначенные исполнители заказа (дополнительно к legacy `Order.executorId`).
+model OrderExecutor {
+  id      String @id @default(uuid())
+  orderId String @map("order_id")
+  userId  String @map("user_id")
+
+  order Order @relation("OrderExecutorLinks", fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, userId])
+  @@map("order_executors")
+}
+
 model Order {
   id              String      @id @default(cuid())
   title           String
@@ -140,11 +222,16 @@ model Order {
   revisionCount   Int         @default(0) @map("revision_count")
   requiredSkills  String[]    @default([]) @map("required_skills")
   templateId      String?     @map("template_id")
+  organizationId  String      @map("organization_id")
+  teamId          String?     @map("team_id")
   deletedAt       DateTime?   @map("deleted_at")
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  team         Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
   executor    User?           @relation("OrderExecutor", fields: [executorId], references: [id], onDelete: SetNull)
+  orderExecutors OrderExecutor[] @relation("OrderExecutorLinks")
   template    OrderTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
   lead        Lead?        @relation(fields: [leadId], references: [id])
   files       File[]
@@ -155,6 +242,8 @@ model Order {
   @@index([executorId])
   @@index([status])
   @@index([templateId])
+  @@index([organizationId])
+  @@index([teamId])
   @@index([deletedAt])
   @@map("orders")
 }
@@ -196,23 +285,40 @@ model Checkpoint {
 }
 
 model Message {
-  id        String      @id @default(uuid()) @db.Uuid
-  orderId   String      @map("order_id")
-  senderId  String      @map("sender_id")
-  role      MessageRole
-  text      String      @db.Text
-  createdAt DateTime    @default(now()) @map("created_at")
-  replyToId String?     @map("reply_to_id") @db.Uuid
+  id          String      @id @default(uuid()) @db.Uuid
+  orderId     String      @map("order_id")
+  senderId    String      @map("sender_id")
+  role        MessageRole
+  text        String      @db.Text
+  attachments Json        @default("[]")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  replyToId   String?     @map("reply_to_id") @db.Uuid
 
-  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  sender  User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  replyTo Message? @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies Message[] @relation("MessageReply")
+  order     Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender    User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo   Message?          @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[]         @relation("MessageReply")
+  reactions MessageReaction[]
 
   @@index([orderId])
   @@index([orderId, createdAt])
   @@index([replyToId])
   @@map("messages")
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid()) @db.Uuid
+  messageId String   @map("message_id") @db.Uuid
+  userId    String   @map("user_id")
+  emoji     String   @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@map("message_reactions")
 }
 
 /// Водяные знаки «прочитано»: чат и страница заказа (файлы, этапы, поля) раздельно.

@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { leadIsActive, orderIsActive } from "@/lib/active-scope";
 import { buildDailyProfitSeries } from "@/lib/daily-profit";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import { ProfitAreaChartLazy } from "@/components/charts-lazy";
 import { Card } from "@/components/ui/card";
 
@@ -23,28 +26,39 @@ function rangeStart(period: "day" | "week" | "month"): Date {
 }
 
 export default async function AdminDashboard() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  if (session.user.role !== "admin") redirect("/executor");
+  const orgIds = await getAccessibleOrganizationIds(session.user.id);
+  const orgScope =
+    orgIds.length === 0
+      ? { id: { in: [] as string[] } }
+      : { organizationId: { in: orgIds } };
+
   const end = new Date();
   /** Последовательно: при connection_limit=1 (Supabase pooler + Vercel) Promise.all даёт P2024. */
   const newLeads = await prisma.lead.count({
     where: { status: "NEW", ...leadIsActive },
   });
   const activeOrders = await prisma.order.count({
-    where: { ...orderIsActive, status: { not: "DONE" } },
+    where: { ...orderIsActive, ...orgScope, status: { not: "DONE" } },
   });
   const overdue = await prisma.order.count({
     where: {
       ...orderIsActive,
+      ...orgScope,
       deadline: { lt: new Date() },
       status: { not: "DONE" },
     },
   });
   const profitSum = await prisma.order.aggregate({
-    where: orderIsActive,
+    where: { ...orderIsActive, ...orgScope },
     _sum: { profit: true },
   });
   const dayP = await prisma.order.aggregate({
     where: {
       ...orderIsActive,
+      ...orgScope,
       status: "DONE",
       updatedAt: { gte: rangeStart("day"), lte: end },
     },
@@ -53,6 +67,7 @@ export default async function AdminDashboard() {
   const weekP = await prisma.order.aggregate({
     where: {
       ...orderIsActive,
+      ...orgScope,
       status: "DONE",
       updatedAt: { gte: rangeStart("week"), lte: end },
     },
@@ -61,14 +76,15 @@ export default async function AdminDashboard() {
   const monthP = await prisma.order.aggregate({
     where: {
       ...orderIsActive,
+      ...orgScope,
       status: "DONE",
       updatedAt: { gte: rangeStart("month"), lte: end },
     },
     _sum: { profit: true },
   });
-  const series30 = await buildDailyProfitSeries(30);
+  const series30 = await buildDailyProfitSeries(30, orgIds);
   const recent = await prisma.order.findMany({
-    where: orderIsActive,
+    where: { ...orderIsActive, ...orgScope },
     include: { executor: { select: { name: true } } },
     orderBy: { updatedAt: "desc" },
     take: 20,

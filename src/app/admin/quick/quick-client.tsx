@@ -15,12 +15,27 @@ function QuickForm({ templates }: { templates: TemplateOpt[] }) {
   const sp = useSearchParams();
   const [orderText, setOrderText] = useState("");
   const [templateId, setTemplateId] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const t = sp.get("template");
     if (t) setTemplateId(t);
   }, [sp]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/teams")
+      .then((r) => (r.ok ? r.json() : Promise.resolve({ teams: [] })))
+      .then((j: { teams?: { id: string; name: string }[] }) => {
+        if (!cancelled && j.teams) setTeams(j.teams);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function submit() {
     setLoading(true);
@@ -31,6 +46,7 @@ function QuickForm({ templates }: { templates: TemplateOpt[] }) {
         orderText,
         templateId: templateId || null,
         autoAssign: true,
+        teamId: teamId.trim() || null,
       }),
     });
     setLoading(false);
@@ -69,6 +85,19 @@ function QuickForm({ templates }: { templates: TemplateOpt[] }) {
           className={fieldClass}
           placeholder="Первая строка — название, далее — ТЗ"
         />
+        <label className="mt-4 block text-xs font-medium text-[var(--muted)]">Команда</label>
+        <select
+          value={teamId}
+          onChange={(e) => setTeamId(e.target.value)}
+          className={fieldClass}
+        >
+          <option value="">— без команды —</option>
+          {teams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
         <label className="mt-4 block text-xs font-medium text-[var(--muted)]">Шаблон</label>
         <select
           value={templateId}

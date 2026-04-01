@@ -1,17 +1,25 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import { getOrderRiskFlags } from "@/lib/order-risk";
 
 /** Для toast/polling: заказы с флагами тишины по порогам env. */
 export async function GET() {
-  const user = await requireAdmin();
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
+
+  const orgIds = await getAccessibleOrganizationIds(user.id);
+  const orgScope =
+    orgIds.length === 0
+      ? { id: { in: [] as string[] } }
+      : { organizationId: { in: orgIds } };
 
   const orders = await prisma.order.findMany({
     where: {
       ...orderIsActive,
+      ...orgScope,
       status: { not: "DONE" },
       executorId: { not: null },
     },

@@ -113,6 +113,10 @@ export function setNavNotificationUnreadToZero(queryClient: QueryClient) {
   });
 }
 
+/** Фоновый resync счётчиков (события — основной источник). */
+const NAV_BADGES_STALE_MS = 120_000;
+const NAV_BADGES_REFETCH_INTERVAL_MS = 90_000;
+
 export function getNavBadgesQueryOptions(queryClient: QueryClient) {
   return {
     queryKey: queryKeys.navBadges(),
@@ -128,9 +132,11 @@ export function getNavBadgesQueryOptions(queryClient: QueryClient) {
       resetNavBadgesChatDedupe();
       return data;
     },
-    staleTime: Number.POSITIVE_INFINITY,
-    refetchOnWindowFocus: false,
+    staleTime: NAV_BADGES_STALE_MS,
+    refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+    refetchInterval: NAV_BADGES_REFETCH_INTERVAL_MS,
+    refetchIntervalInBackground: true,
     retry: 2,
     retryDelay: (i: number) => Math.min(1000 * 2 ** i, 10_000),
   } as const;

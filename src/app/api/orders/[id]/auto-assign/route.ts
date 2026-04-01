@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { requireStaff } from "@/lib/api-auth";
+import { canStaffManageOrder, getOrderAccessWhereInput } from "@/lib/order-access";
 import { writeAudit } from "@/lib/audit";
 import { getBestExecutor } from "@/lib/executor-matching";
+import { getOrderExecutorUserIds, replaceOrderExecutors } from "@/lib/order-executors";
 import { serializeOrder } from "@/lib/serialize";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
 import { pushNotifyExecutorAssigned } from "@/lib/push-notify";
@@ -12,17 +13,25 @@ import { notifyExecutorOrderAssigned } from "@/lib/telegram-notify";
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(_req: Request, { params }: Params) {
-  const admin = await requireAdmin();
+  const admin = await requireStaff();
   if (admin instanceof NextResponse) return admin;
   const { id } = await params;
 
+  if (!(await canStaffManageOrder(admin.id, id))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const accessWhere = await getOrderAccessWhereInput(admin.id);
   const existing = await prisma.order.findFirst({
-    where: { id, ...orderIsActive },
-    include: { executor: true },
+    where: { id, ...accessWhere },
+    include: { executor: true, orderExecutors: { select: { userId: true } } },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const best = await getBestExecutor({ requiredSkills: existing.requiredSkills });
+  const best = await getBestExecutor({
+    requiredSkills: existing.requiredSkills,
+    organizationId: existing.organizationId,
+  });
   if (!best) {
     return NextResponse.json(
       { error: "Нет подходящих активных исполнителей" },
@@ -30,11 +39,16 @@ export async function POST(_req: Request, { params }: Params) {
     );
   }
 
-  const updated = await prisma.order.update({
+  const beforeIds = new Set(getOrderExecutorUserIds(existing));
+  await replaceOrderExecutors(id, [best.id]);
+
+  const updated = await prisma.order.findFirst({
     where: { id },
-    data: { executorId: best.id },
-    include: { executor: true, lead: true },
+    include: { executor: true, lead: true, orderExecutors: { select: { userId: true } } },
   });
+  if (!updated) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   await writeAudit({
     entityType: "order",
@@ -47,7 +61,7 @@ export async function POST(_req: Request, { params }: Params) {
     },
   });
 
-  if (best.id !== existing.executorId) {
+  if (!beforeIds.has(best.id)) {
     notifyExecutorOrderAssigned(updated.executorId, updated.title);
     pushNotifyExecutorAssigned(updated.executorId, updated.title, id);
   }

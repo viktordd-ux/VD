@@ -5,6 +5,7 @@ import {
   pushNotifyExecutorDeadlineTomorrow,
   pushNotifyExecutorOrderOverdue,
 } from "@/lib/push-notify";
+import { getOrderExecutorUserIds } from "@/lib/order-executors";
 import {
   notifyExecutorDeadlineTomorrow,
   notifyExecutorOrderOverdue,
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
   const orders = await prisma.order.findMany({
     where: {
       ...orderIsActive,
-      executorId: { not: null },
+      OR: [{ executorId: { not: null } }, { orderExecutors: { some: {} } }],
       deadline: { not: null },
       status: { not: "DONE" },
     },
@@ -50,6 +51,7 @@ export async function GET(req: Request) {
       title: true,
       deadline: true,
       executorId: true,
+      orderExecutors: { select: { userId: true } },
     },
   });
 
@@ -57,19 +59,25 @@ export async function GET(req: Request) {
   let overdueCount = 0;
 
   for (const o of orders) {
-    if (!o.deadline || !o.executorId) continue;
+    if (!o.deadline) continue;
+    const execIds = getOrderExecutorUserIds(o);
+    if (execIds.length === 0) continue;
     const dl = o.deadline;
 
     if (deadlineIsTomorrow(dl, now)) {
-      notifyExecutorDeadlineTomorrow(o.executorId, o.title);
-      pushNotifyExecutorDeadlineTomorrow(o.executorId, o.title, o.id);
+      for (const uid of execIds) {
+        notifyExecutorDeadlineTomorrow(uid, o.title);
+        pushNotifyExecutorDeadlineTomorrow(uid, o.title, o.id);
+      }
       tomorrowCount++;
       continue;
     }
 
     if (dl.getTime() < now.getTime()) {
-      notifyExecutorOrderOverdue(o.executorId, o.title);
-      pushNotifyExecutorOrderOverdue(o.executorId, o.title, o.id);
+      for (const uid of execIds) {
+        notifyExecutorOrderOverdue(uid, o.title);
+        pushNotifyExecutorOrderOverdue(uid, o.title, o.id);
+      }
       overdueCount++;
     }
   }

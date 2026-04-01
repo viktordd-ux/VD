@@ -7,10 +7,26 @@ import {
   useExecutors,
 } from "@/context/executors-context";
 import { Avatar } from "@/components/ui/avatar";
+import { AvatarStack } from "@/components/ui/avatar-stack";
 import { OrderPriorityIndicator } from "@/components/order-priority-indicator";
 import { getOrderRiskFlags } from "@/lib/order-risk";
 import { computeOrderPriority } from "@/lib/order-priority";
+import type { OrderWithRelations } from "@/lib/order-client-deserialize";
+import { getOrderParticipantUserIds } from "@/lib/order-participants";
 import { useAdminOrder } from "./admin-order-context";
+
+function participantDisplayName(
+  order: OrderWithRelations,
+  userId: string,
+  getExecutorDisplayName: (id: string, name?: string) => string,
+  getEntry: (id: string) => { name: string } | undefined,
+) {
+  const m = order.team?.members?.find((x) => x.userId === userId);
+  return getExecutorDisplayName(
+    userId,
+    getEntry(userId)?.name ?? m?.user?.name,
+  );
+}
 
 export function AdminOrderSummaryCard({
   layout = "split",
@@ -20,7 +36,7 @@ export function AdminOrderSummaryCard({
 }) {
   const { getExecutorDisplayName, getEntry } = useExecutors();
   const { order, checkpoints, files } = useAdminOrder();
-  const executorEntry = order.executorId ? getEntry(order.executorId) : undefined;
+  const participantIds = getOrderParticipantUserIds(order);
   const riskFlags = getOrderRiskFlags(order, checkpoints, files);
 
   const marginPct =
@@ -42,11 +58,31 @@ export function AdminOrderSummaryCard({
 
   const header = (
     <div className="min-w-0 space-y-4">
-      <div className="space-y-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)] md:text-3xl md:leading-tight">
-          {order.title}
-        </h1>
-        <OrderRiskBadges flags={riskFlags} />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)] md:text-3xl md:leading-tight">
+            {order.title}
+          </h1>
+          <OrderRiskBadges flags={riskFlags} />
+        </div>
+        {participantIds.length > 0 ? (
+          <AvatarStack size="md" className="shrink-0 sm:pt-1">
+            {participantIds.map((id) => (
+              <Avatar
+                key={id}
+                name={participantDisplayName(
+                  order,
+                  id,
+                  getExecutorDisplayName,
+                  getEntry,
+                )}
+                seed={id}
+                size="md"
+                ringClassName="ring-2 ring-[var(--card)]"
+              />
+            ))}
+          </AvatarStack>
+        ) : null}
       </div>
     </div>
   );
@@ -66,30 +102,54 @@ export function AdminOrderSummaryCard({
         <dl className="mt-4 space-y-4">
           <div>
             <dt className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
-              Исполнитель
+              Участники
             </dt>
+            {order.team?.name ? (
+              <p className="mt-1 text-xs text-[var(--muted)]">{order.team.name}</p>
+            ) : null}
             <dd className="mt-1.5 text-sm font-medium leading-snug text-[var(--text)]">
-              {order.executorId ? (
-                <div className="flex items-start gap-3">
-                  <Avatar
-                    name={getExecutorDisplayName(order.executorId, order.executor?.name)}
-                    seed={order.executorId}
-                    size="lg"
-                    className="shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <p className="font-medium leading-snug">
-                      {getExecutorDisplayName(order.executorId, order.executor?.name)}
-                    </p>
-                    {executorEntry && (
-                      <p className="mt-1 text-xs font-normal tabular-nums text-[var(--muted)]">
-                        {formatExecutorMetricsLine(executorEntry)}
-                      </p>
-                    )}
+              {participantIds.length > 0 ? (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                  <AvatarStack size="md" className="shrink-0 pt-0.5">
+                    {participantIds.map((id) => (
+                      <Avatar
+                        key={id}
+                        name={participantDisplayName(
+                          order,
+                          id,
+                          getExecutorDisplayName,
+                          getEntry,
+                        )}
+                        seed={id}
+                        size="md"
+                        ringClassName="ring-2 ring-[var(--card)]"
+                      />
+                    ))}
+                  </AvatarStack>
+                  <div className="min-w-0 space-y-2">
+                    {participantIds.map((id) => {
+                      const entry = getEntry(id);
+                      const label = participantDisplayName(
+                        order,
+                        id,
+                        getExecutorDisplayName,
+                        getEntry,
+                      );
+                      return (
+                        <div key={id}>
+                          <p className="font-medium leading-snug">{label}</p>
+                          {entry && (
+                            <p className="mt-0.5 text-xs font-normal tabular-nums text-[var(--muted)]">
+                              {formatExecutorMetricsLine(entry)}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
-                <span className="font-normal text-[var(--muted)]">Не назначен</span>
+                <span className="font-normal text-[var(--muted)]">Не назначены</span>
               )}
             </dd>
           </div>

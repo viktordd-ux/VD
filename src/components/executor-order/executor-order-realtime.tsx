@@ -3,7 +3,10 @@
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { parseCheckpointFromApiJson } from "@/lib/order-client-deserialize";
+import {
+  parseCheckpointFromApiJson,
+  parseExecutorOrderFromApiJson,
+} from "@/lib/order-client-deserialize";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 import {
   ORDER_SYNC_EVENTS,
@@ -44,12 +47,36 @@ export function ExecutorOrderRealtime({
         router.push("/executor");
         return;
       }
-      if (parsed.executorId !== userIdRef.current) {
-        router.push("/executor");
+      const uid = userIdRef.current;
+      if (parsed.executorId === uid) {
+        setOrder((o) => ({
+          ...o,
+          ...parsed,
+          executorUserIds:
+            o.executorUserIds?.includes(uid) ? o.executorUserIds : [uid],
+        }));
+        bumpHistory();
         return;
       }
-      setOrder((o) => ({ ...o, ...parsed }));
-      bumpHistory();
+      void (async () => {
+        const res = await fetch(`/api/orders/${orderId}`);
+        if (!res.ok) {
+          router.push("/executor");
+          return;
+        }
+        const data = (await res.json()) as Record<string, unknown>;
+        const ids = Array.isArray(data.executorUserIds)
+          ? (data.executorUserIds as string[])
+          : data.executorId
+            ? [String(data.executorId)]
+            : [];
+        if (!ids.includes(uid)) {
+          router.push("/executor");
+          return;
+        }
+        setOrder((prev) => parseExecutorOrderFromApiJson(data, { ...prev, executorUserIds: ids }));
+        bumpHistory();
+      })();
     }
 
     function handleOrderPayload(

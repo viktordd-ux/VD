@@ -59,7 +59,7 @@ export function AdminSidebarNav() {
       }
     }
     void fetchBadges();
-    const id = setInterval(() => void fetchBadges(), 30_000);
+    const id = setInterval(() => void fetchBadges(), 120_000);
     return () => clearInterval(id);
   }, []);
 
@@ -69,7 +69,7 @@ export function AdminSidebarNav() {
   }
 
   return (
-    <nav className="flex flex-1 flex-col gap-0.5 px-1.5 py-2">
+    <nav className="flex flex-1 flex-col gap-1 px-2 py-3">
       {items.map((item) => {
         const isOn = active(item.href);
         const count = item.badgeKey ? badges[item.badgeKey] : 0;
@@ -82,16 +82,16 @@ export function AdminSidebarNav() {
               if (item.href === "/admin/orders") prefetchOrdersList("");
             }}
             className={cn(
-              "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-base font-medium transition-all duration-150 ease-out hover:scale-[1.01] active:scale-[0.98] md:min-h-0 md:text-[13px]",
+              "vd-interactive-press flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-base font-medium transition-[transform,color,background-color] duration-[140ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:min-h-0 md:text-[13px]",
               isOn
-                ? "bg-zinc-100/90 font-medium text-zinc-900"
-                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900",
+                ? "bg-[color:var(--nav-active)] font-semibold text-[var(--text)]"
+                : "text-[var(--muted)] hover:bg-[color:var(--surface-hover)] hover:text-[var(--text)]",
             )}
           >
             <item.icon
               className={cn(
-                "h-[17px] w-[17px] shrink-0 transition-colors",
-                isOn ? "text-zinc-900" : "text-zinc-400",
+                "h-[17px] w-[17px] shrink-0 transition-colors duration-150",
+                isOn ? "text-[var(--text)]" : "text-[var(--muted)]",
               )}
             />
             <span className="flex-1">{item.label}</span>
@@ -106,7 +106,9 @@ export function AdminSidebarNav() {
               <span
                 className={cn(
                   "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold leading-none",
-                  isOn ? "bg-zinc-200/90 text-zinc-900" : "bg-red-500 text-white",
+                  isOn
+                    ? "bg-[color:var(--surface-hover-strong)] text-[var(--text)]"
+                    : "bg-red-500 text-white",
                 )}
               >
                 {count > 99 ? "99+" : count}

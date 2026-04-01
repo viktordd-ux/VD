@@ -80,6 +80,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     sync();
   }, [mode]);
 
+  /** Синхронизация `theme-color` с выбранной темой (PWA / Chrome bar), т.к. статический viewport не знает про `vd-theme`. */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const color = resolveDark(mode) ? "#0c0e12" : "#fafafa";
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", color);
+  }, [mode]);
+
   const setMode = useCallback((next: ThemeMode) => {
     try {
       localStorage.setItem(STORAGE_KEY, next);

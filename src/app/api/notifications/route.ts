@@ -2,33 +2,50 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 
+export const dynamic = "force-dynamic";
+
+const noStore = { "Cache-Control": "no-store, must-revalidate" };
+
 /** GET /api/notifications — список уведомлений текущего пользователя. */
 export async function GET(req: Request) {
-  const user = await requireUser();
-  if (user instanceof NextResponse) return user;
+  try {
+    const user = await requireUser();
+    if (user instanceof NextResponse) return user;
 
-  const unreadOnly = new URL(req.url).searchParams.get("unread") === "1";
+    const unreadOnly = new URL(req.url).searchParams.get("unread") === "1";
 
-  const rows = await prisma.notification.findMany({
-    where: {
-      userId: user.id,
-      ...(unreadOnly ? { readAt: null } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+    const rows = await prisma.notification.findMany({
+      where: {
+        userId: user.id,
+        ...(unreadOnly ? { readAt: null } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
 
-  return NextResponse.json({
-    notifications: rows.map((n) => ({
-      id: n.id,
-      kind: n.kind,
-      title: n.title,
-      body: n.body,
-      linkHref: n.linkHref,
-      readAt: n.readAt?.toISOString() ?? null,
-      createdAt: n.createdAt.toISOString(),
-    })),
-  });
+    return NextResponse.json(
+      {
+        notifications: rows.map((n) => ({
+          id: n.id,
+          kind: n.kind,
+          title: n.title,
+          body: n.body,
+          linkHref: n.linkHref,
+          readAt: n.readAt?.toISOString() ?? null,
+          createdAt: n.createdAt.toISOString(),
+        })),
+      },
+      { headers: noStore },
+    );
+  } catch (e) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[api/notifications GET]", e);
+    }
+    return NextResponse.json(
+      { error: "notifications_load_failed", notifications: [] },
+      { status: 500, headers: noStore },
+    );
+  }
 }
 
 /** PATCH /api/notifications — { ids?: string[], readAll?: boolean } */
@@ -48,7 +65,7 @@ export async function PATCH(req: Request) {
       where: { userId: user.id, readAt: null },
       data: { readAt: now },
     });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: noStore });
   }
 
   const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
@@ -61,5 +78,5 @@ export async function PATCH(req: Request) {
     data: { readAt: now },
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true }, { headers: noStore });
 }

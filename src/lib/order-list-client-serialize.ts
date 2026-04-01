@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type { Checkpoint, File, Order, User } from "@prisma/client";
+import { getOrderExecutorUserIds } from "@/lib/order-executors";
 import type { OrderWithRelations } from "@/lib/order-list-filters";
 
 export type SerializedUser = Omit<User, "createdAt" | "updatedAt"> & {
@@ -74,10 +75,14 @@ export type SerializedOrderWithRelations = Omit<
       createdAt: string;
     }
   >;
+  executorUserIds?: string[];
+  team?: { id: string; name: string } | null;
 };
 
 /** Список «Мои задачи» — без чекпоинтов/файлов до первого merge по realtime. */
-export function serializeExecutorHomeOrders(orders: Order[]): SerializedOrderWithRelations[] {
+export function serializeExecutorHomeOrders(
+  orders: (Order & { orderExecutors?: { userId: string }[] })[],
+): SerializedOrderWithRelations[] {
   return orders.map((o) => ({
     id: o.id,
     title: o.title,
@@ -89,6 +94,8 @@ export function serializeExecutorHomeOrders(orders: Order[]): SerializedOrderWit
     budgetExecutor: o.budgetExecutor.toString(),
     profit: o.profit.toString(),
     status: o.status,
+    organizationId: o.organizationId,
+    teamId: o.teamId,
     executorId: o.executorId,
     leadId: o.leadId,
     revisionCount: o.revisionCount,
@@ -100,6 +107,8 @@ export function serializeExecutorHomeOrders(orders: Order[]): SerializedOrderWit
     checkpoints: [],
     files: [],
     executor: null,
+    executorUserIds: getOrderExecutorUserIds(o),
+    team: null,
   }));
 }
 
@@ -117,6 +126,8 @@ export function serializeOrdersForListClient(
     budgetExecutor: o.budgetExecutor.toString(),
     profit: o.profit.toString(),
     status: o.status,
+    organizationId: o.organizationId,
+    teamId: o.teamId,
     executorId: o.executorId,
     leadId: o.leadId,
     revisionCount: o.revisionCount,
@@ -149,6 +160,8 @@ export function serializeOrdersForListClient(
       comment: f.comment,
       createdAt: f.createdAt.toISOString(),
     })),
+    executorUserIds: getOrderExecutorUserIds(o),
+    team: o.team ?? null,
   }));
 }
 

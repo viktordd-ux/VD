@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { ComponentProps } from "react";
 import { fetchAdminOrderBundle } from "@/lib/admin-order-bundle-fetch";
 import { queryKeys } from "@/lib/query-keys";
+import { STALE_MS } from "@/lib/query-stale";
 import { cn } from "@/lib/cn";
 
 type Props = ComponentProps<typeof Link> & { orderId: string };
@@ -24,7 +25,7 @@ export function PrefetchOrderLink({
     void queryClient.prefetchQuery({
       queryKey: queryKeys.adminOrder(orderId),
       queryFn: () => fetchAdminOrderBundle(orderId),
-      staleTime: 60_000,
+      staleTime: STALE_MS.detail,
     });
   };
 

@@ -1,8 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { requireUser } from "@/lib/api-auth";
+import { getOrderAccessWhereInput } from "@/lib/order-access";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import {
   computeFlags,
   isLowMargin,
@@ -19,9 +20,10 @@ import { serializeOrdersForListClient } from "@/lib/order-list-client-serialize"
 import type { AdminOrderListViewSnapshot } from "@/lib/order-list-filters";
 
 export async function GET(req: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireUser();
   if (admin instanceof NextResponse) return admin;
 
+  const accessWhere = await getOrderAccessWhereInput(admin.id);
   const { searchParams } = new URL(req.url);
   const filter = searchParams.get("filter") ?? "active";
   const lowMargin = searchParams.get("lowMargin") === "1";
@@ -32,15 +34,26 @@ export async function GET(req: Request) {
   const deadlineAfter = searchParams.get("deadlineAfter") ?? "";
   const deadlineBefore = searchParams.get("deadlineBefore") ?? "";
   const skillsMode = searchParams.get("skillsMode") === "all" ? "all" : "any";
+  const teamId = searchParams.get("team")?.trim() ?? "";
 
-  const where: Prisma.OrderWhereInput =
+  const statusFilterWhere: Prisma.OrderWhereInput =
     filter === "active"
-      ? { ...orderIsActive, status: { not: "DONE" } }
+      ? { status: { not: "DONE" } }
       : filter === "done"
-        ? { ...orderIsActive, status: "DONE" }
-        : { ...orderIsActive };
+        ? { status: "DONE" }
+        : {};
 
-  const [executorsForSkills, templates, ordersRaw] = await Promise.all([
+  const teamWhere: Prisma.OrderWhereInput = teamId
+    ? { teamId }
+    : {};
+
+  const where: Prisma.OrderWhereInput = {
+    AND: [accessWhere, statusFilterWhere, teamWhere],
+  };
+
+  const orgIds = await getAccessibleOrganizationIds(admin.id);
+
+  const [executorsForSkills, templates, teams, ordersRaw] = await Promise.all([
     prisma.user.findMany({
       where: { role: "executor", status: "active" },
       select: { skills: true },
@@ -49,9 +62,22 @@ export async function GET(req: Request) {
       orderBy: { title: "asc" },
       select: { id: true, title: true },
     }),
+    orgIds.length
+      ? prisma.team.findMany({
+          where: { organizationId: { in: orgIds } },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([] as { id: string; name: string }[]),
     prisma.order.findMany({
       where,
-      include: { executor: true, checkpoints: true, files: true },
+      include: {
+        executor: true,
+        checkpoints: true,
+        files: true,
+        orderExecutors: { select: { userId: true } },
+        team: { select: { id: true, name: true } },
+      },
       orderBy: { updatedAt: "desc" },
     }),
   ]);
@@ -96,6 +122,7 @@ export async function GET(req: Request) {
   if (deadlineAfter) baseParams.set("deadlineAfter", deadlineAfter);
   if (deadlineBefore) baseParams.set("deadlineBefore", deadlineBefore);
   if (skillsMode === "all") baseParams.set("skillsMode", "all");
+  if (teamId) baseParams.set("team", teamId);
 
   const viewSnapshot: AdminOrderListViewSnapshot = {
     filter: filter === "active" ? "active" : filter === "done" ? "done" : "all",
@@ -106,12 +133,14 @@ export async function GET(req: Request) {
     deadlineAfter,
     deadlineBefore,
     skillsMode,
+    teamId,
   };
 
   return NextResponse.json({
     orders: serializeOrdersForListClient(orders),
     allSkills,
     templates,
+    teams,
     viewSnapshot,
     sort,
     baseUrlParams: baseParams.toString(),

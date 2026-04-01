@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExecutorOrdersSkeleton } from "@/components/skeletons/executor-orders-skeleton";
 import { queryKeys } from "@/lib/query-keys";
+import { STALE_MS } from "@/lib/query-stale";
 import type { SerializedOrderWithRelations } from "@/lib/order-list-client-serialize";
 import { ExecutorOrdersListClient } from "./executor-orders-list-client";
 
@@ -19,7 +20,7 @@ export function ExecutorHomeClient({ userId }: { userId: string }) {
       if (!res.ok) throw new Error(await res.text());
       return res.json() as Promise<Api>;
     },
-    staleTime: 60_000,
+    staleTime: STALE_MS.list,
     refetchOnWindowFocus: false,
   });
 
@@ -37,7 +38,7 @@ export function ExecutorHomeClient({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Мои задачи</h1>
+      <h1 className="vd-page-title text-2xl md:text-3xl">Мои задачи</h1>
       <ExecutorOrdersListClient initialSerialized={data.orders} userId={data.userId} />
     </div>
   );

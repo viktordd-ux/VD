@@ -46,6 +46,8 @@ import { orderStatusLabel } from "@/lib/ui-labels";
 import { computeOrderPriority } from "@/lib/order-priority";
 import { cn } from "@/lib/cn";
 import { Avatar } from "@/components/ui/avatar";
+import { AvatarStack } from "@/components/ui/avatar-stack";
+import { getOrderExecutorUserIds } from "@/lib/order-executors";
 
 type OrderUnreadRow = Omit<OrderUnreadBatchRow, "orderId">;
 
@@ -309,7 +311,15 @@ export function AdminOrdersListClient({
   return (
     <AdminOrdersListActionsProvider value={listActions}>
       {children}
-      {visible.length === 0 ? (
+      {orders.length === 0 ? (
+        <EmptyState
+          title="Создайте первый заказ"
+          description="Заказ — это центр работы: чат с исполнителем, файлы и этапы в одном месте. Начните с кнопки ниже."
+          action={
+            <QuickCreateOrderButton templates={templates} label="Создать заказ" />
+          }
+        />
+      ) : visible.length === 0 ? (
         <EmptyState
           title="Нет заказов по выбранным условиям"
           description="Измените фильтры или создайте новый заказ."
@@ -371,9 +381,14 @@ export function AdminOrdersListClient({
           <div className="rounded-xl border border-[color:var(--border)] bg-[var(--card)] shadow-sm shadow-black/[0.04] dark:shadow-black/40">
             <div className="divide-y divide-[color:var(--border)]">
               {visible.map((o) => {
-                const ex = o.executorId ? getEntry(o.executorId) : undefined;
+                const assigneeIds =
+                  o.executorUserIds?.length
+                    ? o.executorUserIds
+                    : getOrderExecutorUserIds(o);
+                const primaryId = assigneeIds[0] ?? o.executorId;
+                const ex = primaryId ? getEntry(primaryId) : undefined;
                 const executorName = getExecutorDisplayName(
-                  o.executorId,
+                  primaryId,
                   o.executor?.name,
                 );
                 const marginPct = (marginRatio(o) * 100).toFixed(1);
@@ -411,13 +426,22 @@ export function AdminOrdersListClient({
 
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-start gap-3">
-                          {o.executorId ? (
-                            <Avatar
-                              size="sm"
-                              name={executorName}
-                              seed={o.executorId}
-                              className="mt-0.5 shrink-0"
-                            />
+                          {assigneeIds.length > 0 ? (
+                            <AvatarStack size="sm" className="mt-0.5 shrink-0">
+                              {assigneeIds.map((uid) => (
+                                <Avatar
+                                  key={uid}
+                                  size="sm"
+                                  name={getExecutorDisplayName(
+                                    uid,
+                                    uid === o.executorId
+                                      ? o.executor?.name
+                                      : getEntry(uid)?.name,
+                                  )}
+                                  seed={uid}
+                                />
+                              ))}
+                            </AvatarStack>
                           ) : null}
                           <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-center gap-2">
@@ -434,6 +458,12 @@ export function AdminOrdersListClient({
                         </div>
                         <p className="mt-0.5 truncate text-xs leading-relaxed text-[var(--muted)]">
                           {o.clientName}
+                          {o.team?.name ? (
+                            <>
+                              <span className="text-[color:var(--border)]"> · </span>
+                              {o.team.name}
+                            </>
+                          ) : null}
                           <span className="text-[color:var(--border)]"> · </span>
                           {executorName}
                           {ex ? (

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { getOrderAccessWhereInput } from "@/lib/order-access";
 import { serializeExecutorHomeOrders } from "@/lib/order-list-client-serialize";
 
 export async function GET() {
@@ -11,13 +11,14 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const orders = await prisma.order.findMany({
     where: {
-      ...orderIsActive,
-      executorId: user.id,
+      ...accessWhere,
       status: { not: "DONE" },
     },
     orderBy: { deadline: "asc" },
+    include: { orderExecutors: { select: { userId: true } } },
   });
 
   return NextResponse.json({

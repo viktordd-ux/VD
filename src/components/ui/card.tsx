@@ -8,7 +8,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-6 shadow-sm shadow-black/[0.03] transition-colors duration-200 ease-out dark:shadow-black/40",
+        "rounded-xl border border-[color:var(--border)] bg-[var(--card)] p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-[box-shadow,border-color] duration-150 ease-out md:p-8 dark:shadow-[0_1px_2px_rgba(0,0,0,0.25)]",
         className,
       )}
       {...props}
@@ -20,7 +20,7 @@ export function CardHeader({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mb-4", className)} {...props} />;
+  return <div className={cn("mb-5", className)} {...props} />;
 }
 
 export function CardTitle({
@@ -30,7 +30,7 @@ export function CardTitle({
   return (
     <h3
       className={cn(
-        "text-sm font-semibold uppercase tracking-wide text-[var(--muted)]",
+        "text-xs font-bold uppercase tracking-wider text-[var(--muted)]",
         className,
       )}
       {...props}

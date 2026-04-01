@@ -3,11 +3,13 @@
 import { Prisma } from "@prisma/client";
 import type { User } from "@prisma/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminAutoAssignButton } from "@/components/admin-auto-assign";
 import { useAdminOrder } from "@/components/admin-order/admin-order-context";
 import { useToast } from "@/components/toast-provider";
 import { useExecutors } from "@/context/executors-context";
+import { Avatar } from "@/components/ui/avatar";
+import { AvatarStack } from "@/components/ui/avatar-stack";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,7 +31,7 @@ type SaveBody = {
   budgetClient: number;
   budgetExecutor: number;
   status: OrderWithRelations["status"];
-  executorId: string | null;
+  executorUserIds: string[];
   requiredSkills: string[];
 };
 
@@ -40,6 +42,7 @@ function buildOptimisticOrder(
   const budgetClient = new Prisma.Decimal(body.budgetClient);
   const budgetExecutor = new Prisma.Decimal(body.budgetExecutor);
   const profit = budgetClient.minus(budgetExecutor);
+  const primaryId = body.executorUserIds[0] ?? null;
   return normalizeOrderForClient({
     ...prev,
     title: body.title,
@@ -51,7 +54,10 @@ function buildOptimisticOrder(
     budgetExecutor,
     profit,
     status: body.status,
-    executorId: body.executorId,
+    executorId: primaryId,
+    executorUserIds: body.executorUserIds,
+    executor:
+      primaryId && prev.executor?.id === primaryId ? prev.executor : null,
     requiredSkills: body.requiredSkills,
     updatedAt: new Date(),
   });
@@ -81,8 +87,27 @@ export function AdminOrderForm({
   const queryClient = useQueryClient();
   const toast = useToast();
   const { order, setOrder, bumpHistory } = useAdminOrder();
-  const { refresh: refreshExecutors } = useExecutors();
+  const { refresh: refreshExecutors, getExecutorDisplayName, getEntry } = useExecutors();
   const [skillTag, setSkillTag] = useState("");
+  const [selectedExecutorIds, setSelectedExecutorIds] = useState<string[]>(() =>
+    order.executorUserIds?.length
+      ? order.executorUserIds
+      : order.executorId
+        ? [order.executorId]
+        : [],
+  );
+
+  const executorIdsKey =
+    order.executorUserIds?.join(",") ?? order.executorId ?? "";
+  useEffect(() => {
+    setSelectedExecutorIds(
+      order.executorUserIds?.length
+        ? order.executorUserIds
+        : order.executorId
+          ? [order.executorId]
+          : [],
+    );
+  }, [order.id, executorIdsKey]);
 
   const saveMutation = useMutation({
     mutationFn: async (body: SaveBody) => {
@@ -153,7 +178,7 @@ export function AdminOrderForm({
       budgetClient: Number(fd.get("budgetClient")),
       budgetExecutor: Number(fd.get("budgetExecutor")),
       status: fd.get("status") as SaveBody["status"],
-      executorId: fd.get("executorId") ? String(fd.get("executorId")) : null,
+      executorUserIds: selectedExecutorIds,
       requiredSkills,
     };
     saveMutation.mutate(body);
@@ -292,7 +317,25 @@ export function AdminOrderForm({
           </select>
         </div>
         <div className="min-w-0">
-          <label className={labelClass}>Исполнитель</label>
+          <label className={labelClass}>Исполнители</label>
+          {selectedExecutorIds.length > 0 && (
+            <div className="mb-2 mt-1">
+              <AvatarStack size="sm" className="flex-wrap">
+                {selectedExecutorIds.map((id) => {
+                  const ex = getEntry(id);
+                  return (
+                    <Avatar
+                      key={id}
+                      name={getExecutorDisplayName(id, ex?.name)}
+                      seed={id}
+                      size="sm"
+                      ringClassName="ring-2 ring-[var(--card)]"
+                    />
+                  );
+                })}
+              </AvatarStack>
+            </div>
+          )}
           <input
             type="search"
             placeholder="Фильтр по навыку (тег)"
@@ -300,12 +343,11 @@ export function AdminOrderForm({
             onChange={(e) => setSkillTag(e.target.value)}
             className="mb-2 mt-1 w-full min-h-11 rounded-lg border border-dashed border-[color:var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--text)] md:min-h-0 md:py-1.5"
           />
-          <select
-            name="executorId"
-            defaultValue={order.executorId ?? ""}
-            className={`${fieldClass} max-w-full min-w-0 truncate`}
+          <div
+            className={`${fieldClass} max-h-48 max-w-full min-w-0 space-y-2 overflow-y-auto py-2`}
+            role="group"
+            aria-label="Исполнители заказа"
           >
-            <option value="">—</option>
             {filteredExecutors.map((u) => {
               const st = executorStats[u.id];
               const metricsLabel = st
@@ -314,17 +356,31 @@ export function AdminOrderForm({
               const fullLabel = `${u.name} · ${metricsLabel}${
                 u.skills.length ? ` · ${u.skills.join(", ")}` : ""
               }`;
-              const shortLabel = truncateOptionLabel(
-                fullLabel,
-                EXECUTOR_OPTION_MAX_CHARS,
-              );
+              const checked = selectedExecutorIds.includes(u.id);
               return (
-                <option key={u.id} value={u.id} title={fullLabel}>
-                  {shortLabel}
-                </option>
+                <label
+                  key={u.id}
+                  className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-0.5 hover:bg-[color:var(--muted-bg)]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      setSelectedExecutorIds((prev) =>
+                        checked
+                          ? prev.filter((id) => id !== u.id)
+                          : [...prev, u.id],
+                      );
+                    }}
+                    className="mt-1"
+                  />
+                  <span className="min-w-0 text-sm leading-snug" title={fullLabel}>
+                    {truncateOptionLabel(fullLabel, EXECUTOR_OPTION_MAX_CHARS)}
+                  </span>
+                </label>
               );
             })}
-          </select>
+          </div>
           <div className="mt-2 [&_button]:w-full [&_button]:sm:w-auto">
             <AdminAutoAssignButton orderId={order.id} />
           </div>
@@ -350,15 +406,15 @@ export function AdminOrderForm({
       </Button>
       </Card>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/95 p-4 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur supports-[backdrop-filter]:bg-white/90 lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[color:var(--border)] bg-[var(--card)]/95 p-4 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] backdrop-blur supports-[backdrop-filter]:bg-[var(--card)]/90 dark:shadow-black/40 lg:hidden">
         <button
           type="submit"
           form="admin-order-edit-form"
           disabled={saveMutation.isPending}
-          className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:opacity-50"
+          className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[var(--text)] px-4 text-sm font-medium text-[var(--bg)] shadow-sm transition-colors hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           {saveMutation.isPending ? (
-            <Skeleton className="mx-auto h-4 w-32 rounded-md bg-white/25" />
+            <Skeleton className="mx-auto h-4 w-32 rounded-md bg-[color:var(--skeleton)]" />
           ) : (
             "Сохранить заказ"
           )}

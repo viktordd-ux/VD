@@ -1,5 +1,6 @@
 import type { MessageRole } from "@prisma/client";
-import type { MessageDto } from "@/lib/message-serialize";
+import type { MessageDto, MessageReactionAgg } from "@/lib/message-serialize";
+import { parseChatAttachmentsJson } from "@/lib/chat-attachments";
 
 /**
  * Один момент времени в мс (UTC). Realtime/Postgres часто отдают строку без смещения
@@ -72,11 +73,13 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
       : o.sender_id != null
         ? String(o.sender_id)
         : "";
-  const text = o.text != null ? String(o.text).trim() : "";
+  const text = o.text != null ? String(o.text) : "";
+  const attachments = parseChatAttachmentsJson(o.attachments);
   const roleRaw = o.role;
   const roleStr =
     typeof roleRaw === "string" ? roleRaw : String(roleRaw ?? "");
-  if (!id || !orderId || !senderId || text === "") return null;
+  const hasBody = text.trim().length > 0 || attachments.length > 0;
+  if (!id || !orderId || !senderId || !hasBody) return null;
   if (roleStr !== "admin" && roleStr !== "executor") return null;
 
   const replyRaw = o.reply_to_id ?? o.replyToId;
@@ -92,6 +95,35 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
   const ms = parseMessageTimestampToMs(rawTime);
   if (Number.isNaN(ms)) return null;
   const createdAt = new Date(ms).toISOString();
+  const senderNameRaw = o.senderName ?? o.sender_name;
+  const senderName =
+    typeof senderNameRaw === "string" && senderNameRaw.trim()
+      ? senderNameRaw.trim()
+      : undefined;
+
+  let reactions: MessageReactionAgg[] | undefined;
+  const rawRe = o.reactions;
+  if (Array.isArray(rawRe)) {
+    const agg = new Map<string, string[]>();
+    for (const r of rawRe) {
+      if (!r || typeof r !== "object") continue;
+      const row = r as Record<string, unknown>;
+      const em = row.emoji != null ? String(row.emoji) : "";
+      const uid = row.userId ?? row.user_id;
+      if (!em || uid == null) continue;
+      const sid = String(uid);
+      const prev = agg.get(em) ?? [];
+      prev.push(sid);
+      agg.set(em, prev);
+    }
+    if (agg.size > 0) {
+      reactions = [...agg.entries()].map(([emoji, userIds]) => ({
+        emoji,
+        userIds,
+      }));
+    }
+  }
+
   return {
     id,
     orderId,
@@ -100,5 +132,8 @@ export function normalizeMessageDto(input: unknown): MessageDto | null {
     text,
     createdAt,
     replyToId,
+    ...(senderName ? { senderName } : {}),
+    ...(attachments.length ? { attachments } : {}),
+    ...(reactions?.length ? { reactions } : {}),
   };
 }

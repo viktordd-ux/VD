@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import type { AdminOrdersListQueryPayload } from "@/lib/react-query-realtime";
 import { queryKeys } from "@/lib/query-keys";
+import { STALE_MS } from "@/lib/query-stale";
 
 /** Подгрузка списка заказов (тот же queryFn, что и в useAdminOrdersListQuery). */
 export function usePrefetchAdminOrdersList() {
@@ -22,7 +23,7 @@ export function usePrefetchAdminOrdersList() {
           }
           return res.json();
         },
-        staleTime: 60_000,
+        staleTime: STALE_MS.list,
       });
     },
     [queryClient],

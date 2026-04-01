@@ -9,11 +9,11 @@ type Variant = "admin" | "executor";
 
 function SidebarBrand({ variant }: { variant: Variant }) {
   return (
-    <div className="border-b border-[color:var(--border)] px-3 py-3.5">
-      <span className="text-lg font-semibold tracking-tight text-[var(--text)]">
-        V<span className="text-[var(--muted)]">|</span>D
+    <div className="border-b border-[color:var(--border)] px-4 py-4">
+      <span className="text-lg font-bold tracking-tight text-[var(--text)]">
+        V<span className="font-semibold text-[var(--muted)]">|</span>D
       </span>
-      <p className="mt-0.5 text-xs text-[var(--muted)]">
+      <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
         {variant === "admin" ? "Админ" : "Исполнитель"}
       </p>
     </div>
@@ -58,7 +58,7 @@ export function ResponsiveAppShell({
 
   return (
     <div className="flex min-h-full min-w-0 flex-1 bg-[var(--bg)]">
-      <aside className="hidden w-52 shrink-0 flex-col border-r border-[color:var(--border)] bg-[var(--card)] md:flex">
+      <aside className="hidden w-52 shrink-0 flex-col border-r border-[color:var(--border)] bg-[var(--card)]/95 backdrop-blur-sm md:flex">
         <SidebarBrand variant={variant} />
         {sidebarNav}
         <div className="mt-auto border-t border-[color:var(--border)] p-2.5">
@@ -118,10 +118,10 @@ export function ResponsiveAppShell({
             <IconMenu className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[var(--text)]">
-              V<span className="text-[var(--muted)]">|</span>D
+            <p className="truncate text-sm font-bold tracking-tight text-[var(--text)]">
+              V<span className="font-semibold text-[var(--muted)]">|</span>D
             </p>
-            <p className="text-xs text-[var(--muted)]">
+            <p className="text-xs leading-relaxed text-[var(--muted)]">
               {variant === "admin" ? "Админ" : "Исполнитель"}
             </p>
           </div>
@@ -132,10 +132,10 @@ export function ResponsiveAppShell({
         <main
           id="app-main"
           className={cn(
-            "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-6 md:px-8 md:py-8 lg:px-10 lg:py-10",
+            "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-6 py-8 md:px-10 md:py-10 lg:px-12 lg:py-12",
             /* Запас под fixed-панель: прижата к низу экрана, не к концу контента. */
             bottomNav != null &&
-              "max-md:pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]",
+              "max-md:pb-[calc(5rem+env(safe-area-inset-bottom,0px))]",
           )}
         >
           {children}

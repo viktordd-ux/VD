@@ -170,13 +170,13 @@ export function OnboardingClient({ skillOptions }: Props) {
   return (
     <div className="mx-auto max-w-lg space-y-6 px-1 sm:px-0">
       <div>
-        <div className="h-2 overflow-hidden rounded-full bg-zinc-200">
+        <div className="h-2 overflow-hidden rounded-full bg-[color:var(--border)]">
           <div
-            className="h-full rounded-full bg-zinc-900 transition-all"
+            className="h-full rounded-full bg-[var(--text)] transition-all dark:bg-white"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="mt-2 text-center text-xs text-zinc-500">
+        <p className="mt-2 text-center text-xs text-[var(--muted)]">
           Шаг {step + 1} из {STEPS}
         </p>
       </div>
@@ -184,30 +184,30 @@ export function OnboardingClient({ skillOptions }: Props) {
       <Card className="p-4 sm:p-6">
         {step < 5 && (
           <div className="space-y-3">
-            <h1 className="text-xl font-semibold leading-snug text-zinc-900">{intro[step].title}</h1>
-            <p className="text-base leading-relaxed text-zinc-600">{intro[step].body}</p>
+            <h1 className="text-xl font-semibold leading-snug text-[var(--text)]">{intro[step].title}</h1>
+            <p className="text-base leading-relaxed text-[var(--muted)]">{intro[step].body}</p>
           </div>
         )}
 
         {step === 5 && (
           <div className="space-y-4">
-            <h1 className="text-xl font-semibold text-zinc-900">Личные данные</h1>
-            <p className="text-sm text-zinc-600">Как к вам обращаться в системе и документах.</p>
+            <h1 className="text-xl font-semibold text-[var(--text)]">Личные данные</h1>
+            <p className="text-sm text-[var(--muted)]">Как к вам обращаться в системе и документах.</p>
             <div>
-              <label className="text-sm font-medium text-zinc-700">Имя</label>
+              <label className="text-sm font-medium text-[var(--text)]">Имя</label>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
+                className="mt-1 w-full min-h-11 rounded-lg border border-[color:var(--border)] px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
                 required
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-zinc-700">Фамилия</label>
+              <label className="text-sm font-medium text-[var(--text)]">Фамилия</label>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
+                className="mt-1 w-full min-h-11 rounded-lg border border-[color:var(--border)] px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
                 required
               />
             </div>
@@ -216,32 +216,32 @@ export function OnboardingClient({ skillOptions }: Props) {
 
         {step === 6 && (
           <div className="space-y-4">
-            <h1 className="text-xl font-semibold text-zinc-900">Контакты</h1>
-            <p className="text-sm text-zinc-600">
+            <h1 className="text-xl font-semibold text-[var(--text)]">Контакты</h1>
+            <p className="text-sm text-[var(--muted)]">
               Укажите телефон и/или Telegram — с вами смогут связаться вне системы.
             </p>
             <div>
-              <label className="text-sm font-medium text-zinc-700">Телефон</label>
+              <label className="text-sm font-medium text-[var(--text)]">Телефон</label>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+7 …"
                 inputMode="tel"
                 autoComplete="tel"
-                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
+                className="mt-1 w-full min-h-11 rounded-lg border border-[color:var(--border)] px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-zinc-700">Telegram</label>
+              <label className="text-sm font-medium text-[var(--text)]">Telegram</label>
               <input
                 value={telegram}
                 onChange={(e) => setTelegram(e.target.value)}
                 placeholder="@username"
-                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
+                className="mt-1 w-full min-h-11 rounded-lg border border-[color:var(--border)] px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-zinc-700">
+              <label className="text-sm font-medium text-[var(--text)]">
                 Telegram ID для уведомлений (необязательно)
               </label>
               <input
@@ -249,9 +249,9 @@ export function OnboardingClient({ skillOptions }: Props) {
                 onChange={(e) => setTelegramId(e.target.value)}
                 placeholder="Число из @userinfobot"
                 inputMode="numeric"
-                className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 font-mono text-base md:min-h-0 md:py-2 md:text-sm"
+                className="mt-1 w-full min-h-11 rounded-lg border border-[color:var(--border)] px-3 py-2.5 font-mono text-base md:min-h-0 md:py-2 md:text-sm"
               />
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-[var(--muted)]">
                 Чтобы бот мог писать вам в личку. Откройте @userinfobot в Telegram и вставьте сюда ваш
                 id.
               </p>
@@ -262,8 +262,8 @@ export function OnboardingClient({ skillOptions }: Props) {
         {step === 7 && (
           <div className="space-y-5">
             <div>
-              <h1 className="text-xl font-semibold text-zinc-900">Навыки</h1>
-              <p className="mt-1 text-sm text-zinc-600">
+              <h1 className="text-xl font-semibold text-[var(--text)]">Навыки</h1>
+              <p className="mt-1 text-sm text-[var(--muted)]">
                 Выберите теги, с которыми вы работаете. Основной навык используется при приоритете
                 подбора.
               </p>
@@ -272,7 +272,7 @@ export function OnboardingClient({ skillOptions }: Props) {
             <div className="space-y-4">
               {displayCategories.map((cat) => (
                 <div key={cat.label}>
-                  <p className="mb-2 text-xs font-semibold text-zinc-500">{cat.label}</p>
+                  <p className="mb-2 text-xs font-semibold text-[var(--muted)]">{cat.label}</p>
                   <div className="flex flex-wrap gap-2">
                     {cat.skills.map((s) => (
                       <button
@@ -281,8 +281,8 @@ export function OnboardingClient({ skillOptions }: Props) {
                         onClick={() => toggleSkill(s)}
                         className={`min-h-10 rounded-full px-3 py-2 text-xs font-medium transition-colors md:min-h-0 md:py-1 ${
                           skills.includes(s)
-                            ? "bg-zinc-900 text-white"
-                            : "border border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400"
+                            ? "bg-[var(--text)] text-[var(--bg)] dark:bg-white dark:text-zinc-900"
+                            : "border border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] hover:border-[color:var(--muted)]"
                         }`}
                       >
                         {s}
@@ -294,14 +294,14 @@ export function OnboardingClient({ skillOptions }: Props) {
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-semibold text-zinc-500">Свой навык</p>
+              <p className="mb-2 text-xs font-semibold text-[var(--muted)]">Свой навык</p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   value={customTag}
                   onChange={(e) => setCustomTag(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())}
                   placeholder="Введите и нажмите Enter"
-                  className="min-h-11 min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
+                  className="min-h-11 min-w-0 flex-1 rounded-lg border border-[color:var(--border)] px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
                 />
                 <Button
                   type="button"
@@ -317,11 +317,11 @@ export function OnboardingClient({ skillOptions }: Props) {
 
             {skills.length > 0 && (
               <div>
-                <label className="text-sm font-medium text-zinc-700">Основной навык</label>
+                <label className="text-sm font-medium text-[var(--text)]">Основной навык</label>
                 <select
                   value={primarySkill}
                   onChange={(e) => setPrimarySkill(e.target.value)}
-                  className="mt-1 w-full min-h-11 rounded-lg border border-zinc-300 px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
+                  className="mt-1 w-full min-h-11 rounded-lg border border-[color:var(--border)] px-3 py-2.5 text-base md:min-h-0 md:py-2 md:text-sm"
                 >
                   <option value="">— выберите из выбранных —</option>
                   {skills.map((s) => (
@@ -337,33 +337,33 @@ export function OnboardingClient({ skillOptions }: Props) {
 
         {step === 8 && (
           <div className="space-y-4">
-            <h1 className="text-xl font-semibold text-zinc-900">Готово</h1>
-            <p className="text-sm text-zinc-600">Проверьте данные перед завершением.</p>
-            <dl className="space-y-2 rounded-xl bg-zinc-50 p-4 text-sm">
+            <h1 className="text-xl font-semibold text-[var(--text)]">Готово</h1>
+            <p className="text-sm text-[var(--muted)]">Проверьте данные перед завершением.</p>
+            <dl className="space-y-2 rounded-xl bg-[color:var(--muted-bg)] p-4 text-sm">
               <div>
-                <dt className="text-xs text-zinc-500">ФИО</dt>
+                <dt className="text-xs text-[var(--muted)]">ФИО</dt>
                 <dd className="font-medium">
                   {firstName} {lastName}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Телефон</dt>
+                <dt className="text-xs text-[var(--muted)]">Телефон</dt>
                 <dd>{phone || "—"}</dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Telegram</dt>
+                <dt className="text-xs text-[var(--muted)]">Telegram</dt>
                 <dd>{telegram || "—"}</dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Telegram ID (бот)</dt>
+                <dt className="text-xs text-[var(--muted)]">Telegram ID (бот)</dt>
                 <dd className="font-mono">{telegramId || "—"}</dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Навыки</dt>
+                <dt className="text-xs text-[var(--muted)]">Навыки</dt>
                 <dd>{skills.join(", ") || "—"}</dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Основной навык</dt>
+                <dt className="text-xs text-[var(--muted)]">Основной навык</dt>
                 <dd className="font-semibold text-blue-800">{primarySkill || "—"}</dd>
               </div>
             </dl>

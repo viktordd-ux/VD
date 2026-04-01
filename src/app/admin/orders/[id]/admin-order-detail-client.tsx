@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { AdminOrderDetailSkeleton } from "@/components/skeletons/admin-order-detail-skeleton";
@@ -13,16 +14,24 @@ import { AdminOrderHistoryTabs } from "@/components/admin-order/admin-order-hist
 import { AdminOrderSummaryCard } from "@/components/admin-order/admin-order-summary-card";
 import { Card } from "@/components/ui/card";
 import { OrderProjectReadMarker } from "@/components/order-project-read-marker";
-import { OrderChat } from "@/components/order-chat/order-chat";
 import { queryKeys } from "@/lib/query-keys";
+import { STALE_MS } from "@/lib/query-stale";
 import { AdminOrderForm } from "./ui";
 import { AdminOrderDelete } from "./admin-order-delete";
+
+const OrderChat = dynamic(
+  () =>
+    import("@/components/order-chat/order-chat").then((m) => ({
+      default: m.OrderChat,
+    })),
+  { ssr: false, loading: () => null },
+);
 
 export function AdminOrderDetailClient({ orderId }: { orderId: string }) {
   const { data, isPending, isError, error, dataUpdatedAt } = useQuery({
     queryKey: queryKeys.adminOrder(orderId),
     queryFn: () => fetchAdminOrderBundle(orderId),
-    staleTime: 60_000,
+    staleTime: STALE_MS.detail,
     refetchOnWindowFocus: false,
   });
 

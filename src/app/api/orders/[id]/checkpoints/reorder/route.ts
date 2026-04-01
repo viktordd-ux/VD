@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
+import { forbidden, requireUser } from "@/lib/api-auth";
+import { canStaffManageOrder } from "@/lib/order-access";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(req: Request, { params }: Params) {
-  const admin = await requireAdmin();
-  if (admin instanceof NextResponse) return admin;
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
+
+  if (!(await canStaffManageOrder(user.id, orderId))) return forbidden();
 
   const body = (await req.json()) as { orderedIds?: string[] };
   if (!body.orderedIds?.length) {
@@ -23,15 +26,15 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: "ids mismatch" }, { status: 400 });
   }
   const set = new Set(existing.map((c) => c.id));
-  for (const id of body.orderedIds) {
-    if (!set.has(id)) {
+  for (const cid of body.orderedIds) {
+    if (!set.has(cid)) {
       return NextResponse.json({ error: "invalid id" }, { status: 400 });
     }
   }
 
   await prisma.$transaction(
-    body.orderedIds.map((id, idx) =>
-      prisma.checkpoint.update({ where: { id }, data: { position: idx } }),
+    body.orderedIds.map((cid, idx) =>
+      prisma.checkpoint.update({ where: { id: cid }, data: { position: idx } }),
     ),
   );
 

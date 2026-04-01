@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { forbidden, requireAdmin, requireUser } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { forbidden, requireUser } from "@/lib/api-auth";
+import { getOrderExecutorUserIds } from "@/lib/order-executors";
+import { canStaffManageOrder, getOrderAccessWhereInput } from "@/lib/order-access";
 import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
@@ -15,13 +16,11 @@ export async function GET(_req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const order = await prisma.order.findFirst({
-    where: { id: orderId, ...orderIsActive },
+    where: { id: orderId, ...accessWhere },
   });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (user.role === "executor" && order.executorId !== user.id) {
-    return forbidden();
-  }
 
   const checkpoints = await prisma.checkpoint.findMany({
     where: { orderId },
@@ -31,12 +30,16 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function POST(req: Request, { params }: Params) {
-  const user = await requireAdmin();
+  const user = await requireUser();
   if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
 
+  if (!(await canStaffManageOrder(user.id, orderId))) return forbidden();
+
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const orderOk = await prisma.order.findFirst({
-    where: { id: orderId, ...orderIsActive },
+    where: { id: orderId, ...accessWhere },
+    include: { orderExecutors: { select: { userId: true } } },
   });
   if (!orderOk) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -75,8 +78,10 @@ export async function POST(req: Request, { params }: Params) {
 
   await syncOrderStatusFromCheckpoints(orderId, user.id);
 
-  notifyExecutorNewCheckpoint(orderOk.executorId, orderOk.title);
-  pushNotifyExecutorNewCheckpoint(orderOk.executorId, orderOk.title, orderId);
+  for (const uid of getOrderExecutorUserIds(orderOk)) {
+    notifyExecutorNewCheckpoint(uid, orderOk.title);
+    pushNotifyExecutorNewCheckpoint(uid, orderOk.title, orderId);
+  }
 
   revalidateOrderViews(orderId);
   return NextResponse.json(cp);

@@ -40,13 +40,24 @@ export async function buildMarginSeriesByExecutor(opts: {
   lowMargin?: boolean;
   dateFrom?: Date;
   dateTo?: Date;
+  organizationIds?: string[];
 }): Promise<{
   series1: MarginBarPoint[];
   series7: MarginBarPoint[];
   series30: MarginBarPoint[];
 }> {
+  const orgScope =
+    opts.organizationIds && opts.organizationIds.length > 0
+      ? { organizationId: { in: opts.organizationIds } }
+      : { id: { in: [] as string[] } };
+
   const users = await prisma.user.findMany({
-    where: { role: "executor" },
+    where: {
+      role: "executor",
+      ...(opts.organizationIds && opts.organizationIds.length > 0
+        ? { memberships: { some: { organizationId: { in: opts.organizationIds } } } }
+        : { id: { in: [] as string[] } }),
+    },
     select: { id: true, name: true },
   });
   const nameById = new Map(users.map((u) => [u.id, u.name]));
@@ -59,6 +70,7 @@ export async function buildMarginSeriesByExecutor(opts: {
     const orders = await prisma.order.findMany({
       where: {
         ...orderIsActive,
+        ...orgScope,
         status: "DONE",
         ...execFilter,
         updatedAt: { gte: start, lte: end },

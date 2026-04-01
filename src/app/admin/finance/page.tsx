@@ -1,7 +1,10 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import { buildDailyProfitSeries } from "@/lib/daily-profit";
 import { buildMarginSeriesByExecutor } from "@/lib/finance-margin-series";
 import {
@@ -33,6 +36,15 @@ export default async function FinancePage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  if (session.user.role !== "admin") redirect("/executor");
+  const orgIds = await getAccessibleOrganizationIds(session.user.id);
+  const orgScope: Prisma.OrderWhereInput =
+    orgIds.length === 0
+      ? { id: { in: [] } }
+      : { organizationId: { in: orgIds } };
+
   const sp = await searchParams;
   const dateFromStr = sp.dateFrom?.trim();
   const dateToStr = sp.dateTo?.trim();
@@ -55,10 +67,12 @@ export default async function FinancePage({
     lowMargin,
     dateFrom,
     dateTo,
+    organizationIds: orgIds,
   });
 
   const orderWhereDone: Prisma.OrderWhereInput = {
     ...orderIsActive,
+    ...orgScope,
     status: "DONE",
     ...execWhere,
     ...(dateFrom || dateTo
@@ -72,7 +86,7 @@ export default async function FinancePage({
   };
 
   const allOrders = await prisma.order.findMany({
-    where: { ...orderIsActive, ...execWhere },
+    where: { ...orderIsActive, ...orgScope, ...execWhere },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -88,7 +102,7 @@ export default async function FinancePage({
 
   /** Последовательно: избегаем P2024 при connection_limit=1 на Vercel + Supabase pooler. */
   const totals = await prisma.order.aggregate({
-    where: orderIsActive,
+    where: { ...orderIsActive, ...orgScope },
     _sum: {
       budgetClient: true,
       budgetExecutor: true,
@@ -99,6 +113,7 @@ export default async function FinancePage({
   const dayP = await prisma.order.aggregate({
     where: {
       ...orderIsActive,
+      ...orgScope,
       status: "DONE",
       updatedAt: { gte: rangeStart("day"), lte: end },
       ...execWhere,
@@ -108,6 +123,7 @@ export default async function FinancePage({
   const weekP = await prisma.order.aggregate({
     where: {
       ...orderIsActive,
+      ...orgScope,
       status: "DONE",
       updatedAt: { gte: rangeStart("week"), lte: end },
       ...execWhere,
@@ -117,13 +133,14 @@ export default async function FinancePage({
   const monthP = await prisma.order.aggregate({
     where: {
       ...orderIsActive,
+      ...orgScope,
       status: "DONE",
       updatedAt: { gte: rangeStart("month"), lte: end },
       ...execWhere,
     },
     _sum: { profit: true },
   });
-  const series30profit = await buildDailyProfitSeries(30);
+  const series30profit = await buildDailyProfitSeries(30, orgIds);
   const doneOrders = await prisma.order.findMany({
     where: orderWhereDone,
     select: {
@@ -133,7 +150,10 @@ export default async function FinancePage({
     },
   });
   const users = await prisma.user.findMany({
-    where: { role: "executor" },
+    where: {
+      role: "executor",
+      memberships: { some: { organizationId: { in: orgIds } } },
+    },
     select: { id: true, name: true },
   });
 

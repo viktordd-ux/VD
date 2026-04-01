@@ -40,6 +40,7 @@ const fieldClass =
 
 type Props = {
   allSkills: string[];
+  teams: { id: string; name: string }[];
   initial: {
     filter: string;
     lowMargin: boolean;
@@ -51,10 +52,11 @@ type Props = {
     deadlineBefore: string;
     skillsMode: "any" | "all";
     priority: string;
+    team: string;
   };
 };
 
-export function OrdersFilterForm({ allSkills, initial }: Props) {
+export function OrdersFilterForm({ allSkills, teams, initial }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [skills, setSkills] = useState<Set<string>>(
@@ -81,6 +83,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
     deadlineBefore: string;
     skillsMode: "any" | "all";
     priority: string;
+    team: string;
   }) {
     const p = new URLSearchParams();
     p.set("filter", next.filter);
@@ -94,6 +97,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
       p.set("deadlineBefore", next.deadlineBefore.trim());
     }
     if (next.skillsMode === "all") p.set("skillsMode", "all");
+    if (next.team.trim()) p.set("team", next.team.trim());
     if (next.priority === "high" || next.priority === "medium" || next.priority === "low") {
       p.set("priority", next.priority);
     }
@@ -108,6 +112,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
     const deadlineAfter = String(fd.get("deadlineAfter") ?? "");
     const deadlineBefore = String(fd.get("deadlineBefore") ?? "");
     const priority = String(fd.get("priority") ?? "");
+    const team = String(fd.get("team") ?? "");
     const href = buildQuery({
       filter,
       lowMargin,
@@ -119,6 +124,7 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
       deadlineBefore,
       skillsMode,
       priority,
+      team,
     });
     const qs = href.includes("?") ? href.split("?")[1] ?? "" : "";
     saveOrdersFiltersQuery(qs);
@@ -188,6 +194,17 @@ export function OrdersFilterForm({ allSkills, initial }: Props) {
             <option value="high">Срочно</option>
             <option value="medium">Внимание</option>
             <option value="low">Обычный</option>
+          </select>
+        </div>
+        <div className="w-full sm:w-auto">
+          <label className="text-xs font-medium text-[var(--muted)]">Команда</label>
+          <select name="team" defaultValue={initial.team} className={fieldClass}>
+            <option value="">Все команды</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
           </select>
         </div>
         <div className="w-full sm:w-auto">

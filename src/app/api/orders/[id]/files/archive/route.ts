@@ -1,8 +1,8 @@
 import JSZip from "jszip";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { forbidden, requireUser } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { requireUser } from "@/lib/api-auth";
+import { getOrderAccessWhereInput } from "@/lib/order-access";
 import {
   displayFileEntryLabel,
   downloadFileBuffer,
@@ -19,13 +19,11 @@ export async function GET(_req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const order = await prisma.order.findFirst({
-    where: { id: orderId, ...orderIsActive },
+    where: { id: orderId, ...accessWhere },
   });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (user.role === "executor" && order.executorId !== user.id) {
-    return forbidden();
-  }
 
   const files = await prisma.file.findMany({
     where: { orderId },

@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { orderIsActive } from "@/lib/active-scope";
+import { getOrderExecutorUserIds } from "@/lib/order-executors";
+import { getOrderAccessWhereInput } from "@/lib/order-access";
 import { getUnreadFlagsForOrders } from "@/lib/order-unread-state";
 import { ExecutorOrderProvider } from "@/components/executor-order/executor-order-context";
 import { ExecutorOrderRealtime } from "@/components/executor-order/executor-order-realtime";
@@ -18,10 +19,17 @@ export default async function ExecutorOrderPage({ params }: Props) {
   if (session.user.onboarded !== true) redirect("/executor/onboarding");
 
   const { id } = await params;
+  const accessWhere = await getOrderAccessWhereInput(session.user.id);
   const order = await prisma.order.findFirst({
-    where: { id, ...orderIsActive, executorId: session.user.id },
+    where: {
+      id,
+      ...accessWhere,
+    },
+    include: { orderExecutors: { select: { userId: true } } },
   });
   if (!order) notFound();
+
+  const executorUserIds = getOrderExecutorUserIds(order);
 
   const files = await prisma.file.findMany({
     where: { orderId: id },
@@ -38,7 +46,7 @@ export default async function ExecutorOrderPage({ params }: Props) {
 
   return (
     <ExecutorOrderProvider
-      initialOrder={order}
+      initialOrder={{ ...order, executorUserIds }}
       initialCheckpoints={checkpoints}
       initialFiles={files}
     >

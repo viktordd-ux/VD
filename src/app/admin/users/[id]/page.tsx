@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { orderIsActive } from "@/lib/active-scope";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import { getExecutorMetrics } from "@/lib/executor-matching";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -26,15 +28,24 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function AdminExecutorDetailPage({ params }: Props) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  if (session.user.role !== "admin") redirect("/executor");
+  const orgIds = await getAccessibleOrganizationIds(session.user.id);
+  const orgScope =
+    orgIds.length === 0
+      ? { id: { in: [] as string[] } }
+      : { organizationId: { in: orgIds } };
+
   const { id } = await params;
   const user = await prisma.user.findUnique({
     where: { id },
   });
   if (!user || user.role !== "executor") notFound();
 
-  const metrics = await getExecutorMetrics(user.id);
+  const metrics = await getExecutorMetrics(user.id, orgIds);
   const orders = await prisma.order.findMany({
-    where: { ...orderIsActive, executorId: user.id },
+    where: { ...orderIsActive, ...orgScope, executorId: user.id },
     orderBy: { updatedAt: "desc" },
     take: 25,
     select: {

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 
 /** GET /api/admin/templates-mini — id + title для быстрого создания заказа. */
 export async function GET() {
-  const admin = await requireAdmin();
+  const admin = await requireStaff();
   if (admin instanceof NextResponse) return admin;
 
   const templates = await prisma.orderTemplate.findMany({

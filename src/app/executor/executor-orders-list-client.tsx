@@ -68,7 +68,10 @@ export function ExecutorOrdersListClient({ initialSerialized, userId }: Props) {
         const merged = mergeOrderIntoListItem(row, prevItem);
         if (!merged) return prev;
         const others = prev.filter((o) => o.id !== id);
-        if (merged.deletedAt || merged.executorId !== uid) {
+        const assignedIds =
+          merged.executorUserIds ??
+          (merged.executorId ? [merged.executorId] : []);
+        if (merged.deletedAt || !assignedIds.includes(uid)) {
           return sortOrders(others, "deadline_asc");
         }
         if (!matchesExecutorHomeOrder(merged)) {
@@ -191,7 +194,7 @@ export function ExecutorOrdersListClient({ initialSerialized, userId }: Props) {
           <div className="hidden md:block">
             <TableWrap>
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-zinc-100 bg-zinc-50/90">
+                <thead className="border-b border-[color:var(--border)] bg-[color:var(--muted-bg)]">
                   <tr>
                     <th className={thClass}>Название</th>
                     <th className={thClass}>Статус</th>
@@ -234,7 +237,7 @@ export function ExecutorOrdersListClient({ initialSerialized, userId }: Props) {
           <div className="space-y-3 md:hidden">
             {visible.map((o) => (
               <Card key={o.id} className="p-4 shadow-sm">
-                <div className="flex flex-col gap-3 border-b border-zinc-100 pb-3">
+                <div className="flex flex-col gap-3 border-b border-[color:var(--border)] pb-3">
                   <div className="flex min-w-0 items-center gap-2">
                     {unreadByOrderId[o.id]?.hasUnreadAny ? (
                       <span
@@ -254,15 +257,15 @@ export function ExecutorOrdersListClient({ initialSerialized, userId }: Props) {
                 </div>
                 <dl className="mt-3">
                   <div className="flex justify-between gap-3 text-sm">
-                    <dt className="text-zinc-500">Дедлайн</dt>
-                    <dd className="tabular-nums font-medium text-zinc-900">
+                    <dt className="text-[var(--muted)]">Дедлайн</dt>
+                    <dd className="tabular-nums font-medium text-[var(--text)]">
                       {o.deadline ? o.deadline.toISOString().slice(0, 10) : "—"}
                     </dd>
                   </div>
                 </dl>
                 <Link
                   href={`/executor/orders/${o.id}`}
-                  className="mt-4 flex min-h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800"
+                  className="mt-4 flex min-h-11 w-full items-center justify-center rounded-lg bg-[var(--text)] px-4 text-sm font-medium text-[var(--bg)] hover:opacity-90 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
                 >
                   Открыть заказ
                 </Link>

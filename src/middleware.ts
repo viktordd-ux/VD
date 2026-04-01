@@ -37,11 +37,13 @@ export default auth((req) => {
     if (!isLoggedIn) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (
-      executorNeedsOnboarding &&
-      !pathname.startsWith("/api/users/me") &&
-      !pathname.startsWith("/api/push/")
-    ) {
+    /** Исполнитель до онбординга: чтение уведомлений и счётчиков как у остального UI. */
+    const apiAllowedBeforeExecutorOnboarding =
+      pathname.startsWith("/api/users/me") ||
+      pathname.startsWith("/api/push/") ||
+      pathname === "/api/notifications" ||
+      pathname === "/api/orders/unread";
+    if (executorNeedsOnboarding && !apiAllowedBeforeExecutorOnboarding) {
       return NextResponse.json(
         { error: "Требуется завершить регистрацию профиля" },
         { status: 403 },

@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { queryKeys } from "@/lib/query-keys";
+import { STALE_MS } from "@/lib/query-stale";
 import { cn } from "@/lib/cn";
 
 type SearchPayload = {
@@ -47,7 +48,7 @@ export function GlobalSearchCommand({
     queryKey: queryKeys.globalSearch(debounced),
     queryFn: () => fetchSearch(debounced),
     enabled: open && debounced.length >= 2,
-    staleTime: 30_000,
+    staleTime: STALE_MS.search,
   });
 
   const rows = useMemo<Row[]>(() => {

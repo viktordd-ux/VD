@@ -16,12 +16,6 @@ const ZEROS = {
   isFallback: false,
 } as const;
 
-function isRole(
-  r: unknown,
-): r is "admin" | "executor" {
-  return r === "admin" || r === "executor";
-}
-
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
     console.log("[orders/unread]", ...args);
@@ -42,23 +36,16 @@ export async function GET() {
       return NextResponse.json({ ...ZEROS });
     }
 
-    const role = session.user.role;
-    if (!isRole(role)) {
-      return NextResponse.json({ ...ZEROS });
-    }
-
     const uid = session.user.id;
     let isFallback = false;
 
-    const unreadChatOrderCount = await getUnreadChatOrderCount(uid, role).catch(
-      (err) => {
-        isFallback = true;
-        if (process.env.NODE_ENV === "development") {
-          console.error("[orders/unread] unreadChatOrderCount failed", err);
-        }
-        return 0;
-      },
-    );
+    const unreadChatOrderCount = await getUnreadChatOrderCount(uid).catch((err) => {
+      isFallback = true;
+      if (process.env.NODE_ENV === "development") {
+        console.error("[orders/unread] unreadChatOrderCount failed", err);
+      }
+      return 0;
+    });
 
     const notificationUnreadCount = await prisma.notification
       .count({ where: { userId: uid, readAt: null } })
@@ -101,11 +88,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ orders: [], ...ZEROS });
     }
 
-    const role = session.user.role;
-    if (!isRole(role)) {
-      return NextResponse.json({ orders: [], ...ZEROS });
-    }
-
     const uid = session.user.id;
 
     let body: { orderIds?: unknown };
@@ -123,7 +105,7 @@ export async function POST(req: Request) {
     let orders: OrderUnreadBatchRow[] = [];
     let batchFailed = false;
     try {
-      const accessible = await filterAccessibleOrderIds(uid, role, requested);
+      const accessible = await filterAccessibleOrderIds(uid, requested);
       const map = await getUnreadFlagsForOrders(uid, accessible);
       orders = accessible.map((orderId) => {
         const f = map.get(orderId)!;
@@ -143,15 +125,13 @@ export async function POST(req: Request) {
 
     let isFallback = batchFailed;
 
-    const unreadChatOrderCount = await getUnreadChatOrderCount(uid, role).catch(
-      (e) => {
-        isFallback = true;
-        if (process.env.NODE_ENV === "development") {
-          console.error("[orders/unread] unreadChatOrderCount failed", e);
-        }
-        return 0;
-      },
-    );
+    const unreadChatOrderCount = await getUnreadChatOrderCount(uid).catch((e) => {
+      isFallback = true;
+      if (process.env.NODE_ENV === "development") {
+        console.error("[orders/unread] unreadChatOrderCount failed", e);
+      }
+      return 0;
+    });
 
     const notificationUnreadCount = await prisma.notification
       .count({ where: { userId: uid, readAt: null } })

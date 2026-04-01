@@ -18,6 +18,7 @@ export function QuickCreateOrderModal({
   const toast = useToast();
   const [orderText, setOrderText] = useState("");
   const [templateId, setTemplateId] = useState("");
+  const [teamId, setTeamId] = useState("");
 
   const { data: templates = [] } = useQuery({
     queryKey: ["admin", "templates-mini"],
@@ -31,10 +32,23 @@ export function QuickCreateOrderModal({
     staleTime: 60_000,
   });
 
+  const { data: teamsPayload } = useQuery({
+    queryKey: ["teams", "list"],
+    queryFn: async () => {
+      const res = await fetch("/api/teams");
+      if (!res.ok) throw new Error("teams");
+      return (await res.json()) as { teams: { id: string; name: string }[] };
+    },
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const teams = teamsPayload?.teams ?? [];
+
   useEffect(() => {
     if (!open) {
       setOrderText("");
       setTemplateId("");
+      setTeamId("");
     }
   }, [open]);
 
@@ -47,6 +61,7 @@ export function QuickCreateOrderModal({
           orderText,
           templateId: templateId || null,
           autoAssign: false,
+          teamId: teamId.trim() || null,
         }),
       });
       if (!res.ok) {
@@ -83,6 +98,19 @@ export function QuickCreateOrderModal({
           className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2.5 text-base leading-relaxed"
           placeholder="Название заказа&#10;Подробное ТЗ..."
         />
+        <label className="mt-4 block text-sm font-medium text-zinc-700">Команда (необязательно)</label>
+        <select
+          value={teamId}
+          onChange={(e) => setTeamId(e.target.value)}
+          className="mt-1 w-full min-h-11 cursor-pointer rounded-md border border-zinc-300 px-3 py-2 text-base sm:min-h-0 sm:py-2 sm:text-sm"
+        >
+          <option value="">— без команды —</option>
+          {teams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
         <label className="mt-4 block text-sm font-medium text-zinc-700">Шаблон (необязательно)</label>
         <select
           value={templateId}

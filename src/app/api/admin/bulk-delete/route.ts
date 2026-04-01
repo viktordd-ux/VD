@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import { writeAudit } from "@/lib/audit";
 import { hardDeleteLead, hardDeleteOrder, softDeleteLead, softDeleteOrder } from "@/lib/deletion-ops";
 import { revalidateAdminBulk } from "@/lib/revalidate-app";
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
   const hard = Boolean(body.hard);
   const ok: string[] = [];
   const failed: { id: string; error: string }[] = [];
+  const orgIds = await getAccessibleOrganizationIds(admin.id);
 
   for (const id of ids) {
     try {
@@ -40,8 +42,8 @@ export async function POST(req: Request) {
         else await softDeleteLead(id, admin.id);
       } else {
         // orders и finance — финансы привязаны к заказу
-        if (hard) await hardDeleteOrder(id, admin.id);
-        else await softDeleteOrder(id, admin.id);
+        if (hard) await hardDeleteOrder(id, admin.id, { allowedOrganizationIds: orgIds });
+        else await softDeleteOrder(id, admin.id, { allowedOrganizationIds: orgIds });
       }
       ok.push(id);
     } catch (e) {

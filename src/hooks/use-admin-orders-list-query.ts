@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import { STALE_MS } from "@/lib/query-stale";
 import type { AdminOrdersListQueryPayload } from "@/lib/react-query-realtime";
 
 export function useAdminOrdersListQuery(searchParamsString: string) {
@@ -17,7 +18,7 @@ export function useAdminOrdersListQuery(searchParamsString: string) {
       }
       return res.json();
     },
-    staleTime: 60_000,
+    staleTime: STALE_MS.list,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
   });

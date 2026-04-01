@@ -1,10 +1,12 @@
 import { hash } from "bcryptjs";
+import { MembershipRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { generatePassword } from "@/lib/generate-password";
 import { getExecutorMetricsMap } from "@/lib/executor-matching";
+import { getAccessibleOrganizationIds, getPrimaryOrganizationIdForUser } from "@/lib/org-scope";
 import { revalidateAdminUsers } from "@/lib/revalidate-app";
 
 export async function POST(req: Request) {
@@ -45,20 +47,38 @@ export async function POST(req: Request) {
   const plain = generatePassword(10);
   const passwordHash = await hash(plain, 10);
 
-  const created = await prisma.user.create({
-    data: {
-      name,
-      firstName,
-      lastName,
-      email: emailRaw,
-      passwordHash,
-      role: "executor",
-      status: "active",
-      skills,
-      primarySkill: skills[0] ?? "",
-      onboarded: false,
-    },
-    select: { id: true, email: true, name: true },
+  const organizationId = await getPrimaryOrganizationIdForUser(admin.id);
+  if (!organizationId) {
+    return NextResponse.json(
+      { error: "Нет организации: создайте организацию перед добавлением исполнителей" },
+      { status: 400 },
+    );
+  }
+
+  const created = await prisma.$transaction(async (tx) => {
+    const u = await tx.user.create({
+      data: {
+        name,
+        firstName,
+        lastName,
+        email: emailRaw,
+        passwordHash,
+        role: "executor",
+        status: "active",
+        skills,
+        primarySkill: skills[0] ?? "",
+        onboarded: false,
+      },
+      select: { id: true, email: true, name: true },
+    });
+    await tx.membership.create({
+      data: {
+        userId: u.id,
+        organizationId,
+        role: MembershipRole.EXECUTOR,
+      },
+    });
+    return u;
   });
 
   await writeAudit({
@@ -85,6 +105,8 @@ export async function GET(req: Request) {
   const user = await requireAdmin();
   if (user instanceof NextResponse) return user;
 
+  const orgIds = await getAccessibleOrganizationIds(user.id);
+
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const skill = searchParams.get("skill");
@@ -92,6 +114,7 @@ export async function GET(req: Request) {
   const users = await prisma.user.findMany({
     where: {
       role: "executor",
+      memberships: { some: { organizationId: { in: orgIds } } },
       ...(status ? { status: status as "active" | "banned" } : {}),
       ...(skill ? { skills: { has: skill } } : {}),
     },
@@ -115,7 +138,9 @@ export async function GET(req: Request) {
     },
   });
 
-  const metrics = await getExecutorMetricsMap(users.map((u) => u.id));
+  const metrics = await getExecutorMetricsMap(users.map((u) => u.id), {
+    organizationIds: orgIds,
+  });
   const enriched = users.map((u) => {
     const m = metrics.get(u.id);
     return {

@@ -1,8 +1,14 @@
+import { MembershipRole, type CheckpointStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
-import type { CheckpointStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { forbidden, requireAdmin, requireUser } from "@/lib/api-auth";
+import { forbidden, requireUser } from "@/lib/api-auth";
 import { orderIsActive } from "@/lib/active-scope";
+import {
+  canStaffManageOrder,
+  getMembership,
+  getOrderAccessWhereInput,
+} from "@/lib/order-access";
+import { getOrderExecutorUserIds, userIsOrderExecutor } from "@/lib/order-executors";
 import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
@@ -39,13 +45,18 @@ export async function PATCH(req: Request, { params }: Params) {
   const existing = await prisma.checkpoint.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const order = await prisma.order.findFirst({
-    where: { id: existing.orderId, ...orderIsActive },
+    where: { id: existing.orderId, ...accessWhere },
+    include: { orderExecutors: { select: { userId: true } } },
   });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (user.role === "executor") {
-    if (order.executorId !== user.id) return forbidden();
+  const m = await getMembership(user.id, order.organizationId);
+  const isExecutorMember =
+    m?.role === MembershipRole.EXECUTOR && userIsOrderExecutor(order, user.id);
+
+  if (isExecutorMember) {
     const body = (await req.json()) as { status?: CheckpointStatus };
     if (Object.keys(body).some((k) => k !== "status")) return forbidden();
     if (body.status === undefined) {
@@ -116,8 +127,7 @@ export async function PATCH(req: Request, { params }: Params) {
     });
   }
 
-  const admin = await requireAdmin();
-  if (admin instanceof NextResponse) return admin;
+  if (!(await canStaffManageOrder(user.id, existing.orderId))) return forbidden();
 
   const body = (await req.json()) as Partial<{
     title: string;
@@ -160,11 +170,11 @@ export async function PATCH(req: Request, { params }: Params) {
     entityType: "checkpoint",
     entityId: id,
     actionType: "update",
-    changedById: admin.id,
+    changedById: user.id,
     diff: { before: existing, after: updated },
   });
 
-  await syncOrderStatusFromCheckpoints(existing.orderId, admin.id);
+  await syncOrderStatusFromCheckpoints(existing.orderId, user.id);
 
   if (body.status === "done" && existing.status !== "done") {
     void dispatchNotification({
@@ -174,10 +184,10 @@ export async function PATCH(req: Request, { params }: Params) {
       audience: "admin",
       event: "checkpoint_done",
     });
-    pushNotifyExecutorCheckpointAccepted(order.executorId, order.title, existing.orderId);
-    if (order.executorId) {
+    for (const uid of getOrderExecutorUserIds(order)) {
+      pushNotifyExecutorCheckpointAccepted(uid, order.title, existing.orderId);
       await createInAppNotification({
-        userId: order.executorId,
+        userId: uid,
         kind: "order",
         title: "Этап принят",
         body: `«${updated.title}» — ${order.title}`,
@@ -198,15 +208,22 @@ export async function PATCH(req: Request, { params }: Params) {
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
-  const admin = await requireAdmin();
-  if (admin instanceof NextResponse) return admin;
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   const { id } = await params;
 
   const existing = await prisma.checkpoint.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  if (!(await canStaffManageOrder(user.id, existing.orderId))) return forbidden();
+
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const orderOk = await prisma.order.findFirst({
-    where: { id: existing.orderId, ...orderIsActive },
+    where: {
+      id: existing.orderId,
+      ...orderIsActive,
+      ...accessWhere,
+    },
   });
   if (!orderOk) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -217,11 +234,11 @@ export async function DELETE(_req: Request, { params }: Params) {
     entityType: "checkpoint",
     entityId: id,
     actionType: "delete",
-    changedById: admin.id,
+    changedById: user.id,
     diff: { before: existing },
   });
 
-  await syncOrderStatusFromCheckpoints(orderId, admin.id);
+  await syncOrderStatusFromCheckpoints(orderId, user.id);
 
   revalidateOrderViews(orderId);
   return NextResponse.json({ ok: true });

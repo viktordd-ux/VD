@@ -58,8 +58,8 @@ export function ExecutorSidebarNav() {
     Math.max(0, Number(navBadges?.unreadChatOrderCount ?? 0)) > 0;
 
   return (
-    <nav className="flex min-h-0 flex-1 flex-col p-2">
-      <div className="flex flex-1 flex-col gap-0.5">
+    <nav className="flex min-h-0 flex-1 flex-col px-2 py-3">
+      <div className="flex flex-1 flex-col gap-1">
       {items.map((item) => {
         const isOn = navItemActive(pathname, item.href);
         return (
@@ -67,14 +67,17 @@ export function ExecutorSidebarNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex min-h-12 items-center gap-2.5 rounded-xl px-3 py-2.5 text-base font-medium transition-colors md:min-h-0 md:py-2 md:text-sm",
+              "vd-interactive-press flex min-h-12 items-center gap-2.5 rounded-xl px-3 py-2.5 text-base font-medium transition-[transform,color,background-color] duration-[140ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:min-h-0 md:py-2 md:text-sm",
               isOn
-                ? "bg-zinc-900 text-white shadow-sm dark:bg-white dark:text-zinc-900"
-                : "text-[var(--text)] hover:bg-[color:var(--muted-bg)]",
+                ? "bg-[var(--text)] text-[var(--bg)] shadow-sm dark:bg-white dark:text-zinc-900"
+                : "text-[var(--muted)] hover:bg-[color:var(--surface-hover)] hover:text-[var(--text)]",
             )}
           >
             <item.icon
-              className={cn("h-[18px] w-[18px] shrink-0", isOn ? "text-white" : "text-zinc-500")}
+              className={cn(
+                "h-[18px] w-[18px] shrink-0 transition-colors duration-150",
+                isOn ? "text-white dark:text-zinc-900" : "text-[var(--muted)]",
+              )}
             />
             <span className="flex-1">{item.label}</span>
             {item.href === "/executor" && chatUnreadAny && (

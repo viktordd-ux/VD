@@ -9,11 +9,11 @@ const variants: Record<Variant, string> = {
   primary:
     "bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:scale-[1.01] active:scale-[0.98] active:bg-zinc-950 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200",
   secondary:
-    "border border-[color:var(--border)] bg-transparent text-[var(--text)] shadow-sm hover:bg-[color:var(--muted-bg)] hover:scale-[1.01] active:scale-[0.98] active:opacity-90 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
+    "border border-[color:var(--border)] bg-transparent text-[var(--text)] shadow-sm hover:bg-[color:var(--surface-hover)] hover:scale-[1.01] active:scale-[0.98] active:opacity-90 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
   destructive:
     "border border-red-200/80 bg-red-50 text-red-900 shadow-sm hover:bg-red-100/90 hover:scale-[1.01] active:scale-[0.98] active:bg-red-200/80 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100 dark:hover:bg-red-950/60",
   ghost:
-    "text-[var(--text)] hover:bg-[color:var(--muted-bg)] hover:scale-[1.01] active:scale-[0.98] active:opacity-90 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
+    "text-[var(--text)] hover:bg-[color:var(--surface-hover)] hover:scale-[1.01] active:scale-[0.98] active:opacity-90 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100",
 };
 
 const sizes: Record<Size, string> = {
@@ -41,7 +41,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        "inline-flex cursor-pointer items-center justify-center rounded-lg transition-all duration-150 ease-out will-change-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400 disabled:pointer-events-none",
+        "inline-flex cursor-pointer items-center justify-center rounded-xl transition-all duration-[140ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400 disabled:pointer-events-none",
         loading && "relative opacity-90",
         variants[variant],
         sizes[size],

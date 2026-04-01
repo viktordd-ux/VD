@@ -1,7 +1,13 @@
 import { after, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { getOrderExecutorUserIds } from "@/lib/order-executors";
+import {
+  canWriteOrder,
+  getMembership,
+  getOrderAccessWhereInput,
+  isStaffMembershipRole,
+} from "@/lib/order-access";
 import { writeAudit } from "@/lib/audit";
 import { normalizeExternalUrl, saveOrderFile } from "@/lib/uploads";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
@@ -20,13 +26,11 @@ export async function GET(_req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const order = await prisma.order.findFirst({
-    where: { id: orderId, ...orderIsActive },
+    where: { id: orderId, ...accessWhere },
   });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (user.role === "executor" && order.executorId !== user.id) {
-    return forbidden();
-  }
 
   const files = await prisma.file.findMany({
     where: { orderId },
@@ -40,15 +44,18 @@ export async function POST(req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const order = await prisma.order.findFirst({
-    where: { id: orderId, ...orderIsActive },
+    where: { id: orderId, ...accessWhere },
+    include: { orderExecutors: { select: { userId: true } } },
   });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (user.role === "executor" && order.executorId !== user.id) {
-    return forbidden();
-  }
+  if (!(await canWriteOrder(user.id, orderId))) return forbidden();
 
-  const uploadedBy = user.role === "admin" ? "admin" : "executor";
+  const membership = await getMembership(user.id, order.organizationId);
+  const uploadedBy =
+    membership && isStaffMembershipRole(membership.role) ? "admin" : "executor";
+  const executorIds = getOrderExecutorUserIds(order);
   const ct = req.headers.get("content-type") ?? "";
 
   if (ct.includes("application/json")) {
@@ -100,11 +107,12 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     after(() => {
-      if (user.role === "admin" && order.executorId) {
-        notifyExecutorChatMessage(order.executorId);
-        pushNotifyExecutorOrderFile(order.executorId, order.title, orderId);
-      }
-      if (user.role === "executor") {
+      if (membership && isStaffMembershipRole(membership.role)) {
+        for (const uid of executorIds) {
+          notifyExecutorChatMessage(uid);
+          pushNotifyExecutorOrderFile(uid, order.title, orderId);
+        }
+      } else {
         pushNotifyAdminsNewFile(order.title, orderId);
       }
     });
@@ -167,11 +175,12 @@ export async function POST(req: Request, { params }: Params) {
   }
 
   after(() => {
-    if (user.role === "admin" && order.executorId) {
-      notifyExecutorChatMessage(order.executorId);
-      pushNotifyExecutorOrderFile(order.executorId, order.title, orderId);
-    }
-    if (user.role === "executor") {
+    if (membership && isStaffMembershipRole(membership.role)) {
+      for (const uid of executorIds) {
+        notifyExecutorChatMessage(uid);
+        pushNotifyExecutorOrderFile(uid, order.title, orderId);
+      }
+    } else {
       pushNotifyAdminsNewFile(order.title, orderId);
     }
   });

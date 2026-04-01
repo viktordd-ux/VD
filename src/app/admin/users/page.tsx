@@ -1,5 +1,8 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { getExecutorMetricsMap } from "@/lib/executor-matching";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import {
   AdminUsersListClient,
   type AdminExecutorListRow,
@@ -8,11 +11,21 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  if (session.user.role !== "admin") redirect("/executor");
+  const orgIds = await getAccessibleOrganizationIds(session.user.id);
+
   const users = await prisma.user.findMany({
-    where: { role: "executor" },
+    where: {
+      role: "executor",
+      memberships: { some: { organizationId: { in: orgIds } } },
+    },
     orderBy: { name: "asc" },
   });
-  const metrics = await getExecutorMetricsMap(users.map((u) => u.id));
+  const metrics = await getExecutorMetricsMap(users.map((u) => u.id), {
+    organizationIds: orgIds,
+  });
 
   const initialRows: AdminExecutorListRow[] = users.map((u) => {
     const m = metrics.get(u.id);

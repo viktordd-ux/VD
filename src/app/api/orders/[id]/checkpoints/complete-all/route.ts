@@ -1,7 +1,13 @@
+import { MembershipRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { forbidden, requireUser } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { getOrderExecutorUserIds } from "@/lib/order-executors";
+import {
+  canStaffManageOrder,
+  getMembership,
+  getOrderAccessWhereInput,
+} from "@/lib/order-access";
 import { writeAudit } from "@/lib/audit";
 import { syncOrderStatusFromCheckpoints } from "@/lib/checkpoint-sync";
 import { dispatchNotification } from "@/lib/notifications";
@@ -13,26 +19,32 @@ import { revalidateOrderViews } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** Завершить этапы массово: исполнитель — сдаёт все на проверку; админ — принимает все (done + выплата). */
+/** Завершить этапы массово: исполнитель — сдаёт все на проверку; руководство — принимает все (done + выплата). */
 export async function PATCH(_req: Request, { params }: Params) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
   const { id: orderId } = await params;
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const order = await prisma.order.findFirst({
-    where: { id: orderId, ...orderIsActive },
-    include: { checkpoints: true },
+    where: { id: orderId, ...accessWhere },
+    include: {
+      checkpoints: true,
+      orderExecutors: { select: { userId: true } },
+    },
   });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (user.role === "executor") {
-    if (order.executorId !== user.id) return forbidden();
-  }
+  const m = await getMembership(user.id, order.organizationId);
+  const ids = getOrderExecutorUserIds(order);
+  const isExecutorMember =
+    m?.role === MembershipRole.EXECUTOR && ids.includes(user.id);
+  const isStaffOp = await canStaffManageOrder(user.id, orderId);
 
-  const isAdmin = user.role === "admin";
+  if (!isStaffOp && !isExecutorMember) return forbidden();
 
   const pending = order.checkpoints.filter((c) =>
-    isAdmin ? c.status !== "done" : c.status === "pending",
+    isStaffOp ? c.status !== "done" : c.status === "pending",
   );
 
   if (pending.length === 0) {
@@ -53,7 +65,7 @@ export async function PATCH(_req: Request, { params }: Params) {
     const before = await prisma.checkpoint.findUnique({ where: { id: c.id } });
     if (!before) continue;
 
-    const data = isAdmin
+    const data = isStaffOp
       ? {
           status: "done" as const,
           payoutReleasedAt: before.payoutReleasedAt ?? new Date(),
@@ -67,7 +79,7 @@ export async function PATCH(_req: Request, { params }: Params) {
     await writeAudit({
       entityType: "checkpoint",
       entityId: c.id,
-      actionType: user.role === "executor" ? "executor_update" : "update",
+      actionType: isExecutorMember ? "executor_update" : "update",
       changedById: user.id,
       diff: { before, after: next, bulk: true },
     });
@@ -83,17 +95,19 @@ export async function PATCH(_req: Request, { params }: Params) {
 
   await dispatchNotification({
     key: `complete-all-${orderId}-${Date.now()}`,
-    title: isAdmin ? "Все этапы приняты" : "Этапы сданы на проверку",
+    title: isStaffOp ? "Все этапы приняты" : "Этапы сданы на проверку",
     body: `Заказ «${order.title}» — ${updated} этап(ов). Статус: ${orderRow?.status ?? "?"}`,
     audience: "admin",
     event: "checkpoints_complete_all",
   });
 
   if (updated > 0) {
-    if (!isAdmin) {
+    if (!isStaffOp) {
       pushNotifyAdminsCheckpointsBulk(order.title, orderId, updated);
-    } else if (order.executorId) {
-      pushNotifyExecutorCheckpointsBulkAccepted(order.executorId, order.title, orderId);
+    } else {
+      for (const uid of getOrderExecutorUserIds(order)) {
+        pushNotifyExecutorCheckpointsBulkAccepted(uid, order.title, orderId);
+      }
     }
   }
 

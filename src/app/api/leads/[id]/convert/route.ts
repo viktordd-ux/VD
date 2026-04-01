@@ -1,20 +1,49 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { leadIsActive } from "@/lib/active-scope";
+import { getPrimaryOrganizationIdForUser } from "@/lib/org-scope";
+import { resolveTeamIdForOrder } from "@/lib/team-scope";
 import { computeProfit } from "@/lib/money";
 import { revalidateAdminLeads, revalidateOrderViews } from "@/lib/revalidate-app";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function POST(_req: Request, { params }: Params) {
-  const user = await requireAdmin();
+export async function POST(req: Request, { params }: Params) {
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
 
   const lead = await prisma.lead.findFirst({ where: { id, ...leadIsActive } });
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const organizationId = await getPrimaryOrganizationIdForUser(user.id);
+  if (!organizationId) {
+    return NextResponse.json(
+      { error: "Нет организации: создайте организацию или примите приглашение" },
+      { status: 400 },
+    );
+  }
+
+  let body: { teamId?: string } = {};
+  try {
+    body = (await req.json()) as { teamId?: string };
+  } catch {
+    /* тело необязательно */
+  }
+
+  let teamId: string | null = null;
+  if (body.teamId != null && String(body.teamId).trim()) {
+    const resolved = await resolveTeamIdForOrder(organizationId, body.teamId);
+    if (!resolved) {
+      return NextResponse.json(
+        { error: "Команда не найдена в этой организации" },
+        { status: 400 },
+      );
+    }
+    teamId = resolved;
+  }
 
   const budgetClient = 0;
   const budgetExecutor = 0;
@@ -32,6 +61,8 @@ export async function POST(_req: Request, { params }: Params) {
       profit,
       status: "LEAD",
       leadId: lead.id,
+      organizationId,
+      teamId,
     },
   });
 

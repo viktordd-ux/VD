@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff, requireUser } from "@/lib/api-auth";
 import { parseDefaultCheckpoints } from "@/lib/order-template";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Params) {
-  const user = await requireAdmin();
+  const user = await requireUser();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
 
@@ -17,7 +17,7 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function PATCH(req: Request, { params }: Params) {
-  const user = await requireAdmin();
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
 
@@ -66,7 +66,7 @@ export async function PATCH(req: Request, { params }: Params) {
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
-  const user = await requireAdmin();
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
 

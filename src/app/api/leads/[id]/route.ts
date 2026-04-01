@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { hardDeleteLead, softDeleteLead } from "@/lib/deletion-ops";
 import { leadIsActive } from "@/lib/active-scope";
@@ -8,7 +8,7 @@ import { leadIsActive } from "@/lib/active-scope";
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Params) {
-  const user = await requireAdmin();
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
   const lead = await prisma.lead.findFirst({ where: { id, ...leadIsActive } });
@@ -17,7 +17,7 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function PATCH(req: Request, { params }: Params) {
-  const user = await requireAdmin();
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
   const existing = await prisma.lead.findFirst({ where: { id, ...leadIsActive } });
@@ -49,7 +49,7 @@ export async function PATCH(req: Request, { params }: Params) {
 }
 
 export async function DELETE(req: Request, { params }: Params) {
-  const user = await requireAdmin();
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
   const { searchParams } = new URL(req.url);

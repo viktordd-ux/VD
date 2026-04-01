@@ -1,38 +1,28 @@
 import { after, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { forbidden, requireUser } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { requireUser } from "@/lib/api-auth";
 import {
-  createInAppNotification,
-  createInAppNotificationForAdmins,
-} from "@/lib/in-app-notifications";
-import { serializeMessage } from "@/lib/message-serialize";
+  buildChatParticipants,
+  chatOrderHrefForUser,
+  getOrderChatParticipantUserIds,
+  isStaffMembershipRole,
+  loadOrderForChatAccess,
+  userCanAccessOrderChat,
+} from "@/lib/order-chat-access";
+import { serializeMessageWithSender } from "@/lib/message-serialize";
 import {
-  pushNotifyAdminsNewChatMessage,
-  pushNotifyExecutorChatMessage,
-} from "@/lib/push-notify";
-import { notifyExecutorChatMessage } from "@/lib/telegram-notify";
+  parseChatAttachmentsJson,
+  toPrismaAttachmentsJson,
+  type ChatAttachment,
+} from "@/lib/chat-attachments";
+import { createInAppNotification } from "@/lib/in-app-notifications";
+import { sendPushToUser } from "@/lib/push-send";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 const MAX_LEN = 8000;
 
-async function loadOrderForChat(orderId: string) {
-  return prisma.order.findFirst({
-    where: { id: orderId, ...orderIsActive },
-    select: { id: true, executorId: true, title: true },
-  });
-}
-
-function canAccessOrder(
-  role: "admin" | "executor",
-  userId: string,
-  order: { executorId: string | null },
-): boolean {
-  if (role === "admin") return true;
-  return order.executorId === userId;
-}
-
-/** GET /api/messages?order_id=… — история чата по заказу */
+/** GET /api/messages?order_id=… — история + участники (групповой чат заказа). */
 export async function GET(req: Request) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
@@ -42,23 +32,33 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "order_id required" }, { status: 400 });
   }
 
-  const order = await loadOrderForChat(orderId);
+  const order = await loadOrderForChatAccess(orderId);
   if (!order) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (!canAccessOrder(user.role, user.id, order)) {
-    return forbidden();
+  if (!(await userCanAccessOrderChat(user.id, order))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const rows = await prisma.message.findMany({
-    where: { orderId },
-    orderBy: { createdAt: "asc" },
-  });
+  const [rows, participants] = await Promise.all([
+    prisma.message.findMany({
+      where: { orderId },
+      orderBy: { createdAt: "asc" },
+      include: {
+        sender: { select: { name: true } },
+        reactions: { select: { userId: true, emoji: true } },
+      },
+    }),
+    buildChatParticipants(order),
+  ]);
 
-  return NextResponse.json({ messages: rows.map(serializeMessage) });
+  return NextResponse.json({
+    messages: rows.map(serializeMessageWithSender),
+    participants,
+  });
 }
 
-/** POST /api/messages — { order_id, text }; время created_at только из БД (@default(now())). */
+/** POST /api/messages — { order_id, text }; время created_at только из БД. */
 export async function POST(req: Request) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
@@ -70,12 +70,20 @@ export async function POST(req: Request) {
   const replyToIdRaw =
     typeof body.reply_to_id === "string" ? body.reply_to_id.trim() : "";
   const replyToId = replyToIdRaw || null;
-  // createdAt / created_at с клиента не используются
+
+  let attachments: ChatAttachment[] = [];
+  if (Array.isArray(body.attachments)) {
+    attachments = parseChatAttachmentsJson(body.attachments);
+  }
+
   if (!orderId) {
     return NextResponse.json({ error: "order_id required" }, { status: 400 });
   }
-  if (!textRaw) {
-    return NextResponse.json({ error: "text required" }, { status: 400 });
+  if (!textRaw && attachments.length === 0) {
+    return NextResponse.json(
+      { error: "text or attachments required" },
+      { status: 400 },
+    );
   }
   if (textRaw.length > MAX_LEN) {
     return NextResponse.json(
@@ -84,15 +92,35 @@ export async function POST(req: Request) {
     );
   }
 
-  const order = await loadOrderForChat(orderId);
+  const order = await loadOrderForChatAccess(orderId);
   if (!order) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (!canAccessOrder(user.role, user.id, order)) {
-    return forbidden();
+  if (!(await userCanAccessOrderChat(user.id, order))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const role = user.role === "admin" ? "admin" : "executor";
+  for (const a of attachments) {
+    const f = await prisma.file.findFirst({
+      where: { id: a.fileId, orderId },
+    });
+    if (!f) {
+      return NextResponse.json(
+        { error: "attachment file not found in order" },
+        { status: 400 },
+      );
+    }
+  }
+
+  const membership = await prisma.membership.findUnique({
+    where: {
+      userId_organizationId: { userId: user.id, organizationId: order.organizationId },
+    },
+  });
+  const messageRole =
+    membership && isStaffMembershipRole(membership.role)
+      ? ("admin" as const)
+      : ("executor" as const);
 
   if (replyToId) {
     const parent = await prisma.message.findFirst({
@@ -112,9 +140,14 @@ export async function POST(req: Request) {
       data: {
         orderId,
         senderId: user.id,
-        role,
+        role: messageRole,
         text: textRaw,
+        attachments: toPrismaAttachmentsJson(attachments),
         ...(replyToId ? { replyToId } : {}),
+      },
+      include: {
+        sender: { select: { name: true } },
+        reactions: { select: { userId: true, emoji: true } },
       },
     });
   } catch (e) {
@@ -140,44 +173,67 @@ export async function POST(req: Request) {
     );
   }
 
-  const preview = textRaw.length > 180 ? `${textRaw.slice(0, 177)}…` : textRaw;
+  const preview =
+    textRaw.length > 0
+      ? textRaw.length > 180
+        ? `${textRaw.slice(0, 177)}…`
+        : textRaw
+      : attachments
+          .map((a) => a.name)
+          .filter(Boolean)
+          .join(", ") || "Вложение";
 
-  /** In-app сразу в БД → Realtime INSERT до ответа (без after). */
+  const participantIds = await getOrderChatParticipantUserIds(order);
+  const memberships = await prisma.membership.findMany({
+    where: {
+      organizationId: order.organizationId,
+      userId: { in: participantIds },
+    },
+    select: { userId: true, role: true },
+  });
+  const roleByUser = new Map(memberships.map((m) => [m.userId, m.role]));
+
   try {
-    if (user.role === "admin" && order.executorId) {
+    for (const uid of participantIds) {
+      if (uid === user.id) continue;
+      const href = chatOrderHrefForUser(order.id, roleByUser.get(uid));
       await createInAppNotification({
-        userId: order.executorId,
+        userId: uid,
         kind: "chat",
         title: `Сообщение в «${order.title}»`,
         body: preview,
-        linkHref: `/executor/orders/${orderId}`,
-      });
-    }
-    if (user.role === "executor") {
-      await createInAppNotificationForAdmins({
-        kind: "chat",
-        title: `Новое сообщение: ${order.title}`,
-        body: preview,
-        linkHref: `/admin/orders/${orderId}`,
+        linkHref: href,
       });
     }
   } catch {
-    // не блокируем ответ; push/Telegram ниже
+    /* ignore */
   }
 
   after(async () => {
     try {
-      if (user.role === "admin" && order.executorId) {
-        notifyExecutorChatMessage(order.executorId);
-        pushNotifyExecutorChatMessage(order.executorId, order.title, orderId);
-      }
-      if (user.role === "executor") {
-        pushNotifyAdminsNewChatMessage(order.title, orderId);
+      for (const uid of participantIds) {
+        if (uid === user.id) continue;
+        const href = chatOrderHrefForUser(order.id, roleByUser.get(uid));
+        void sendPushToUser(uid, {
+          title: "Новое сообщение",
+          body: `Заказ «${order.title}»`,
+          url: href,
+        });
+        void notifyChatTelegram(uid);
       }
     } catch {
       /* ignore */
     }
   });
 
-  return NextResponse.json({ message: serializeMessage(created) });
+  return NextResponse.json({ message: serializeMessageWithSender(created) });
+}
+
+async function notifyChatTelegram(userId: string): Promise<void> {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { telegramId: true },
+  });
+  if (!u?.telegramId?.trim()) return;
+  await sendTelegramMessage(u.telegramId.trim(), "Новое сообщение в заказе");
 }

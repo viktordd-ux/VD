@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { requireUser } from "@/lib/api-auth";
+import { getOrderAccessWhereInput } from "@/lib/order-access";
 
 export async function GET() {
-  const user = await requireAdmin();
+  const user = await requireUser();
   if (user instanceof NextResponse) return user;
+
+  const accessWhere = await getOrderAccessWhereInput(user.id);
 
   const now = new Date();
   const soon = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
@@ -13,9 +15,10 @@ export async function GET() {
   const [overdue, edge, heavyRevisions, bannedExecutors] = await Promise.all([
     prisma.order.findMany({
       where: {
-        ...orderIsActive,
-        deadline: { lt: now },
-        status: { not: "DONE" },
+        AND: [
+          accessWhere,
+          { deadline: { lt: now }, status: { not: "DONE" } },
+        ],
       },
       include: { executor: true },
       orderBy: { deadline: "asc" },
@@ -23,16 +26,22 @@ export async function GET() {
     }),
     prisma.order.findMany({
       where: {
-        ...orderIsActive,
-        deadline: { gte: now, lte: soon },
-        status: { not: "DONE" },
+        AND: [
+          accessWhere,
+          {
+            deadline: { gte: now, lte: soon },
+            status: { not: "DONE" },
+          },
+        ],
       },
       include: { executor: true },
       orderBy: { deadline: "asc" },
       take: 50,
     }),
     prisma.order.findMany({
-      where: { ...orderIsActive, revisionCount: { gt: 2 } },
+      where: {
+        AND: [accessWhere, { revisionCount: { gt: 2 } }],
+      },
       include: { executor: true },
       orderBy: { updatedAt: "desc" },
       take: 50,

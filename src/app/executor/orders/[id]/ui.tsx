@@ -43,10 +43,10 @@ export function ExecutorOrderPanel({ orderId }: { orderId: string }) {
   return (
     <div className="relative space-y-6 pb-24 lg:pb-0">
       <Card className="p-4 md:p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
           Файлы и ссылки
         </h2>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-[var(--muted)]">
           Загрузите файл или добавьте ссылку на материал (Google Drive, Figma и т.д.).
         </p>
         <OrderFileUpload orderId={orderId} onUploaded={onFileUploaded} />
@@ -54,10 +54,10 @@ export function ExecutorOrderPanel({ orderId }: { orderId: string }) {
 
       <Card className="hidden p-4 md:block md:p-6">
         <form id="executor-submit-form" onSubmit={onSubmit}>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
             Сдать работу
           </h2>
-          <p className="mt-2 text-sm text-zinc-600">
+          <p className="mt-2 text-sm text-[var(--muted)]">
             Переводит заказ на проверку. Доступно только в статусе «В работе».
           </p>
           <Button
@@ -72,8 +72,8 @@ export function ExecutorOrderPanel({ orderId }: { orderId: string }) {
         </form>
       </Card>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
-        <p className="mb-2 text-center text-xs text-zinc-500">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[color:var(--border)] bg-[var(--card)]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+        <p className="mb-2 text-center text-xs text-[var(--muted)]">
           Статус «В работе» — можно сдать на проверку
         </p>
         <button

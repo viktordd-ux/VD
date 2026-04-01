@@ -7,10 +7,16 @@ import { recalculateFinance } from "@/lib/recalculate-finance";
 export async function softDeleteOrder(
   orderId: string,
   changedById: string,
-  options?: { actionType?: string },
+  options?: { actionType?: string; allowedOrganizationIds?: string[] },
 ) {
   const existing = await prisma.order.findFirst({
-    where: { id: orderId, deletedAt: null },
+    where: {
+      id: orderId,
+      deletedAt: null,
+      ...(options?.allowedOrganizationIds
+        ? { organizationId: { in: options.allowedOrganizationIds } }
+        : {}),
+    },
   });
   if (!existing) {
     const err = new Error("NOT_FOUND") as Error & { code?: string };
@@ -39,9 +45,16 @@ export async function softDeleteOrder(
 export async function hardDeleteOrder(
   orderId: string,
   changedById: string,
-  options?: { actionType?: string },
+  options?: { actionType?: string; allowedOrganizationIds?: string[] },
 ) {
-  const existing = await prisma.order.findUnique({ where: { id: orderId } });
+  const existing = await prisma.order.findFirst({
+    where: {
+      id: orderId,
+      ...(options?.allowedOrganizationIds
+        ? { organizationId: { in: options.allowedOrganizationIds } }
+        : {}),
+    },
+  });
   if (!existing) {
     const err = new Error("NOT_FOUND") as Error & { code?: string };
     err.code = "NOT_FOUND";

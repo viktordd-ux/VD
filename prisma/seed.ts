@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { MembershipRole, PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -21,6 +21,11 @@ async function main() {
       status: "active",
     },
   });
+
+  const adminUser = await prisma.user.findUnique({
+    where: { email: "admin@vd.local" },
+  });
+  if (!adminUser) throw new Error("seed: admin user missing");
 
   const executor = await prisma.user.upsert({
     where: { email: "executor@vd.local" },
@@ -47,6 +52,46 @@ async function main() {
       skills: ["layout", "react", "figma"],
       primarySkill: "react",
       onboarded: true,
+    },
+  });
+
+  const seedOrg = await prisma.organization.upsert({
+    where: { id: "seed-org-default" },
+    update: {},
+    create: {
+      id: "seed-org-default",
+      name: "Default",
+      ownerId: adminUser.id,
+    },
+  });
+
+  await prisma.membership.upsert({
+    where: {
+      userId_organizationId: {
+        userId: adminUser.id,
+        organizationId: seedOrg.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: adminUser.id,
+      organizationId: seedOrg.id,
+      role: MembershipRole.OWNER,
+    },
+  });
+
+  await prisma.membership.upsert({
+    where: {
+      userId_organizationId: {
+        userId: executor.id,
+        organizationId: seedOrg.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: executor.id,
+      organizationId: seedOrg.id,
+      role: MembershipRole.EXECUTOR,
     },
   });
 
@@ -96,6 +141,7 @@ async function main() {
       status: "IN_PROGRESS",
       executorId: executor.id,
       leadId: lead.id,
+      organizationId: seedOrg.id,
     },
   });
 

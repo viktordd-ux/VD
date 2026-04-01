@@ -34,6 +34,7 @@ export type AdminOrdersListQueryPayload = {
   orders: SerializedOrderWithRelations[];
   allSkills: string[];
   templates: { id: string; title: string }[];
+  teams: { id: string; name: string }[];
   viewSnapshot: AdminOrderListViewSnapshot;
   sort: OrderListSort;
   baseUrlParams: string;
@@ -382,6 +383,9 @@ export function applyRealtimeOrderRowToBundleCache(
           parsed.executorId === prev.order.executorId
             ? prev.order.executor
             : null,
+        executorUserIds: prev.order.executorUserIds,
+        team:
+          parsed.teamId === prev.order.teamId ? prev.order.team : undefined,
       } as AdminDetailOrder);
       return { ...prev, order: nextOrder };
     },

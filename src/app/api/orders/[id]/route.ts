@@ -1,12 +1,26 @@
+import { MembershipRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { forbidden, requireAdmin, requireUser } from "@/lib/api-auth";
+import { forbidden, requireUser } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { hardDeleteOrder, softDeleteOrder } from "@/lib/deletion-ops";
 import { computeProfit } from "@/lib/money";
 import { dispatchNotification } from "@/lib/notifications";
+import {
+  assertUsersAreOrgExecutors,
+  getOrderExecutorUserIds,
+  replaceOrderExecutors,
+  userIsOrderExecutor,
+} from "@/lib/order-executors";
+import {
+  canHardDeleteOrder,
+  canStaffManageOrder,
+  getMembership,
+  getOrderAccessWhereInput,
+  getSerializeOrderRoleForUser,
+} from "@/lib/order-access";
 import { serializeOrder } from "@/lib/serialize";
-import { orderIsActive } from "@/lib/active-scope";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 import { revalidateOrderViews } from "@/lib/revalidate-app";
 import {
   pushNotifyAdminsLowMargin,
@@ -26,34 +40,37 @@ export async function GET(_req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id } = await params;
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
   const order = await prisma.order.findFirst({
-    where: { id, ...orderIsActive },
+    where: { id, ...accessWhere },
     include: {
       executor: true,
-      ...(user.role === "admin" ? { lead: true } : {}),
+      orderExecutors: { select: { userId: true } },
+      lead: true,
     },
   });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (user.role === "executor" && order.executorId !== user.id) {
-    return forbidden();
-  }
-
-  return NextResponse.json(serializeOrder(order, user.role === "admin" ? "admin" : "executor"));
+  const serRole = await getSerializeOrderRoleForUser(user.id, order.organizationId);
+  return NextResponse.json(serializeOrder(order, serRole));
 }
 
 export async function DELETE(req: Request, { params }: Params) {
-  const admin = await requireAdmin();
-  if (admin instanceof NextResponse) return admin;
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   const { id } = await params;
+  const orgIds = await getAccessibleOrganizationIds(user.id);
   const { searchParams } = new URL(req.url);
   const hard = searchParams.get("hard") === "true";
 
+  if (!(await canStaffManageOrder(user.id, id))) return forbidden();
+  if (hard && !(await canHardDeleteOrder(user.id, id))) return forbidden();
+
   try {
     if (hard) {
-      await hardDeleteOrder(id, admin.id);
+      await hardDeleteOrder(id, user.id, { allowedOrganizationIds: orgIds });
     } else {
-      await softDeleteOrder(id, admin.id);
+      await softDeleteOrder(id, user.id, { allowedOrganizationIds: orgIds });
     }
   } catch (e) {
     const code = (e as { code?: string }).code;
@@ -72,13 +89,19 @@ export async function PATCH(req: Request, { params }: Params) {
   if (user instanceof NextResponse) return user;
   const { id } = await params;
 
+  const accessWhere = await getOrderAccessWhereInput(user.id);
+
   const existing = await prisma.order.findFirst({
-    where: { id, ...orderIsActive },
+    where: { id, ...accessWhere },
+    include: { orderExecutors: { select: { userId: true } } },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (user.role === "executor") {
-    if (existing.executorId !== user.id) return forbidden();
+  const membership = await getMembership(user.id, existing.organizationId);
+  const isExecutorMember =
+    membership?.role === MembershipRole.EXECUTOR && userIsOrderExecutor(existing, user.id);
+
+  if (isExecutorMember) {
     const body = (await req.json()) as { status?: string };
     if (Object.keys(body).some((k) => k !== "status")) {
       return forbidden();
@@ -98,7 +121,7 @@ export async function PATCH(req: Request, { params }: Params) {
     const updated = await prisma.order.update({
       where: { id },
       data: { status: "REVIEW" },
-      include: { executor: true },
+      include: { executor: true, orderExecutors: { select: { userId: true } } },
     });
     await writeAudit({
       entityType: "order",
@@ -125,8 +148,7 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json(serializeOrder(updated, "executor"));
   }
 
-  const admin = await requireAdmin();
-  if (admin instanceof NextResponse) return admin;
+  if (!(await canStaffManageOrder(user.id, id))) return forbidden();
 
   const body = (await req.json()) as Partial<{
     title: string;
@@ -138,8 +160,12 @@ export async function PATCH(req: Request, { params }: Params) {
     budgetExecutor: number | string;
     status: "LEAD" | "IN_PROGRESS" | "REVIEW" | "DONE";
     executorId: string | null;
+    executorUserIds: string[] | null;
     requiredSkills: string[];
   }>;
+
+  const shouldSyncExecutors =
+    body.executorUserIds !== undefined || body.executorId !== undefined;
 
   let revisionInc = 0;
   if (
@@ -159,7 +185,9 @@ export async function PATCH(req: Request, { params }: Params) {
       : Number(existing.budgetExecutor);
   const profit = computeProfit(budgetClient, budgetExecutor);
 
-  const updated = await prisma.order.update({
+  const beforeExecutorIds = new Set(getOrderExecutorUserIds(existing));
+
+  await prisma.order.update({
     where: { id },
     data: {
       title: body.title ?? undefined,
@@ -179,63 +207,95 @@ export async function PATCH(req: Request, { params }: Params) {
         ? profit
         : undefined,
       status: body.status ?? undefined,
-      executorId: body.executorId !== undefined ? body.executorId : undefined,
+      executorId:
+        shouldSyncExecutors
+          ? undefined
+          : body.executorId !== undefined
+            ? body.executorId
+            : undefined,
       requiredSkills: body.requiredSkills !== undefined ? body.requiredSkills : undefined,
       revisionCount: revisionInc ? { increment: revisionInc } : undefined,
     },
-    include: { executor: true, lead: true },
+    include: { executor: true, lead: true, orderExecutors: { select: { userId: true } } },
   });
+
+  if (shouldSyncExecutors) {
+    const list =
+      body.executorUserIds !== undefined
+        ? body.executorUserIds ?? []
+        : body.executorId
+          ? [body.executorId]
+          : [];
+    try {
+      await assertUsersAreOrgExecutors(existing.organizationId, list);
+    } catch {
+      return NextResponse.json(
+        { error: "Недопустимые исполнители для организации" },
+        { status: 400 },
+      );
+    }
+    await replaceOrderExecutors(id, list);
+  }
+
+  const finalOrder = await prisma.order.findFirst({
+    where: { id },
+    include: { executor: true, lead: true, orderExecutors: { select: { userId: true } } },
+  });
+  if (!finalOrder) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   await writeAudit({
     entityType: "order",
     entityId: id,
     actionType: "update",
-    changedById: admin.id,
-    diff: { before: existing, after: updated },
+    changedById: user.id,
+    diff: { before: existing, after: finalOrder },
   });
 
-  if (
-    body.executorId !== undefined &&
-    updated.executorId &&
-    updated.executorId !== existing.executorId
-  ) {
-    notifyExecutorOrderAssigned(updated.executorId, updated.title);
-    pushNotifyExecutorAssigned(updated.executorId, updated.title, id);
-    void createInAppNotification({
-      userId: updated.executorId,
-      kind: "order",
-      title: "Вас назначили на заказ",
-      body: updated.title,
-      linkHref: `/executor/orders/${id}`,
-    });
+  const afterExecutorIds = getOrderExecutorUserIds(finalOrder);
+  for (const uid of afterExecutorIds) {
+    if (!beforeExecutorIds.has(uid)) {
+      notifyExecutorOrderAssigned(uid, finalOrder.title);
+      pushNotifyExecutorAssigned(uid, finalOrder.title, id);
+      void createInAppNotification({
+        userId: uid,
+        kind: "order",
+        title: "Вас назначили на заказ",
+        body: finalOrder.title,
+        linkHref: `/executor/orders/${id}`,
+      });
+    }
   }
 
   if (
     body.status !== undefined &&
-    updated.status !== existing.status &&
-    updated.executorId
+    finalOrder.status !== existing.status &&
+    afterExecutorIds.length > 0
   ) {
-    void createInAppNotification({
-      userId: updated.executorId,
-      kind: "order",
-      title: "Статус заказа обновлён",
-      body: `«${updated.title}» — ${updated.status}`,
-      linkHref: `/executor/orders/${id}`,
-    });
+    for (const uid of afterExecutorIds) {
+      void createInAppNotification({
+        userId: uid,
+        kind: "order",
+        title: "Статус заказа обновлён",
+        body: `«${finalOrder.title}» — ${finalOrder.status}`,
+        linkHref: `/executor/orders/${id}`,
+      });
+    }
   }
 
-  const bc = Number(updated.budgetClient);
-  if (bc > 0 && Number(updated.profit) / bc < 0.5) {
+  const bc = Number(finalOrder.budgetClient);
+  if (bc > 0 && Number(finalOrder.profit) / bc < 0.5) {
     void dispatchNotification({
       key: `low-margin-${id}-${Date.now()}`,
       title: "Низкая маржа",
-      body: `Заказ «${updated.title}» — маржа ниже 50%`,
+      body: `Заказ «${finalOrder.title}» — маржа ниже 50%`,
       audience: "admin",
       event: "low_margin",
     });
-    pushNotifyAdminsLowMargin(updated.title, id);
+    pushNotifyAdminsLowMargin(finalOrder.title, id);
   }
 
   revalidateOrderViews(id);
-  return NextResponse.json(serializeOrder(updated, "admin"));
+  return NextResponse.json(serializeOrder(finalOrder, "admin"));
 }

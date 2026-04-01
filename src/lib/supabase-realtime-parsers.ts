@@ -28,6 +28,8 @@ export function parseOrderRowFromSupabase(row: Record<string, unknown>): Order |
     budgetExecutor: dec(row.budget_executor),
     profit: dec(row.profit),
     status: row.status as OrderStatus,
+    organizationId: String(row.organization_id ?? ""),
+    teamId: row.team_id != null && row.team_id !== "" ? String(row.team_id) : null,
     executorId: row.executor_id != null ? String(row.executor_id) : null,
     leadId: row.lead_id != null ? String(row.lead_id) : null,
     revisionCount: Number(row.revision_count ?? 0),
@@ -99,10 +101,17 @@ export function mergeOrderIntoListItem(
   if (!parsed) return null;
   const executor =
     prev && prev.executorId === parsed.executorId ? prev.executor : null;
+  const executorUserIds =
+    prev?.executorUserIds ??
+    (parsed.executorId ? [parsed.executorId] : []);
+  const team =
+    prev && parsed.teamId === prev.teamId ? prev.team ?? null : null;
   return {
     ...parsed,
     executor,
     checkpoints: prev?.checkpoints ?? [],
     files: prev?.files ?? [],
+    executorUserIds,
+    team,
   };
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import type { Checkpoint, File, Order } from "@prisma/client";
+
+export type ExecutorOrderState = Order & { executorUserIds?: string[] };
 import {
   createContext,
   useCallback,
@@ -11,8 +13,8 @@ import {
 } from "react";
 
 type Ctx = {
-  order: Order;
-  setOrder: React.Dispatch<React.SetStateAction<Order>>;
+  order: ExecutorOrderState;
+  setOrder: React.Dispatch<React.SetStateAction<ExecutorOrderState>>;
   checkpoints: Checkpoint[];
   setCheckpoints: React.Dispatch<React.SetStateAction<Checkpoint[]>>;
   files: File[];
@@ -30,7 +32,7 @@ export function ExecutorOrderProvider({
   initialFiles,
 }: {
   children: ReactNode;
-  initialOrder: Order;
+  initialOrder: ExecutorOrderState;
   initialCheckpoints: Checkpoint[];
   initialFiles: File[];
 }) {

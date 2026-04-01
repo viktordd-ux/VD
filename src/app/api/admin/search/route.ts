@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
-import { orderIsActive } from "@/lib/active-scope";
+import { requireUser } from "@/lib/api-auth";
+import { getOrderAccessWhereInput } from "@/lib/order-access";
+import { getAccessibleOrganizationIds } from "@/lib/org-scope";
 
 const LIMIT = 8;
 
 /** GET /api/admin/search?q= — заказы, исполнители, лиды (для Command Palette). */
 export async function GET(req: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireUser();
   if (admin instanceof NextResponse) return admin;
+
+  const orgIds = await getAccessibleOrganizationIds(admin.id);
+  const accessWhere = await getOrderAccessWhereInput(admin.id);
 
   const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) {
@@ -24,8 +28,10 @@ export async function GET(req: Request) {
   const [orders, executors, leads] = await Promise.all([
     prisma.order.findMany({
       where: {
-        ...orderIsActive,
-        OR: [{ title: contains }, { clientName: contains }, { platform: contains }],
+        AND: [
+          accessWhere,
+          { OR: [{ title: contains }, { clientName: contains }, { platform: contains }] },
+        ],
       },
       select: {
         id: true,
@@ -40,6 +46,7 @@ export async function GET(req: Request) {
       where: {
         role: "executor",
         status: "active",
+        memberships: { some: { organizationId: { in: orgIds } } },
         OR: [
           { name: contains },
           { email: contains },

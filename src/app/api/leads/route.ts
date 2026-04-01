@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireStaff, requireUser } from "@/lib/api-auth";
 import { writeAudit } from "@/lib/audit";
 import { leadIsActive } from "@/lib/active-scope";
 
 export async function GET() {
-  const user = await requireAdmin();
+  const user = await requireUser();
   if (user instanceof NextResponse) return user;
 
   const leads = await prisma.lead.findMany({
@@ -16,7 +16,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const user = await requireAdmin();
+  const user = await requireStaff();
   if (user instanceof NextResponse) return user;
 
   const body = (await req.json()) as {

@@ -4,6 +4,7 @@ import { orderIsActive } from "@/lib/active-scope";
 /** Серия по календарным дням (UTC date key), прибыль по DONE-заказам по updatedAt. */
 export async function buildDailyProfitSeries(
   days: number,
+  organizationIds: string[],
 ): Promise<{ date: string; profit: number }[]> {
   const end = new Date();
   end.setHours(23, 59, 59, 999);
@@ -11,9 +12,15 @@ export async function buildDailyProfitSeries(
   start.setDate(start.getDate() - (days - 1));
   start.setHours(0, 0, 0, 0);
 
+  const orgScope =
+    organizationIds.length === 0
+      ? { id: { in: [] as string[] } }
+      : { organizationId: { in: organizationIds } };
+
   const orders = await prisma.order.findMany({
     where: {
       ...orderIsActive,
+      ...orgScope,
       status: "DONE",
       updatedAt: { gte: start, lte: end },
     },
